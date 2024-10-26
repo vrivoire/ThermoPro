@@ -1,4 +1,4 @@
-# pyinstaller --onefile Thermopro.py --icon=Thermopro.jpg --nowindowed --noconsole
+# pyinstaller --onefile Thermopro.py --icon=Thermoro.jpg --nowindowed --noconsole
 
 import logging as log
 import logging.handlers
@@ -98,7 +98,7 @@ def call_all():
             os.remove(OUTPUT_JSON_FILE)
     else:
         log.error('json_data empty')
-        
+
     log.info(f"End task {datetime.now()}")
 
 
