@@ -20,12 +20,12 @@ ARGS = [RTL_433_EXE, '-T', '60', '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
 SCHEDULE_DELAY = 60
 
 log.basicConfig(
-	level=logging.INFO,
-	format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
-	handlers=[
-		logging.handlers.TimedRotatingFileHandler(f'{PATH}ThermoPro.log', when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
-		logging.StreamHandler()
-	]
+    level=logging.INFO,
+    format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+    handlers=[
+        logging.handlers.TimedRotatingFileHandler(f'{PATH}ThermoPro.log', when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
+        logging.StreamHandler()
+    ]
 )
 
 
