@@ -1,4 +1,4 @@
-# pyinstaller --onefile Thermopro.py --icon=Thermoro.jpg --nowindowed --noconsole
+# pyinstaller --onefile ThermoProScan.py --icon=Thermoro.jpg --nowindowed --noconsole
 
 import logging as log
 import logging.handlers
@@ -14,8 +14,8 @@ import csv
 RTL_433_VERSION = '23.11'
 RTL_433_EXE = f'C:/Users/rivoi/Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe'
 PATH = "C:/Users/rivoi/GoogleDrive/PoidsPression/"
-OUTPUT_JSON_FILE = f"{PATH}ThermoPro.json"
-OUTPUT_CSV_FILE = f"{PATH}ThermoPro.csv"
+OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
+OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
 ARGS = [RTL_433_EXE, '-T', '60', '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
 SCHEDULE_DELAY = 60
 
@@ -23,7 +23,7 @@ log.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
     handlers=[
-        logging.handlers.TimedRotatingFileHandler(f'{PATH}ThermoPro.log', when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
+        logging.handlers.TimedRotatingFileHandler(f'{PATH}ThermoProScan.log', when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
         logging.StreamHandler()
     ]
 )
@@ -104,7 +104,7 @@ def call_all():
 
 
 if __name__ == '__main__':
-    log.info('ThermoPro started')
+    log.info('ThermoProScan started')
     # call_all()
     schedule.every().hour.at(":00").do(call_all)
     try:
@@ -117,5 +117,5 @@ if __name__ == '__main__':
         log.error(f'ERROR \n{ex}')
 
     schedule.clear()
-    log.info('ThermoPro stopped')
+    log.info('ThermoProScan stopped')
     sys.exit()
