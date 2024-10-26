@@ -75,7 +75,8 @@ def load_json() -> dict[str, any]:
 
 
 def call_all():
-    log.info('\n\n--------------------------------------------------------------------------------')
+    log.info('')
+    log.info('--------------------------------------------------------------------------------')
     call_rtl_433()
     json_data: dict[str, any] = load_json()
     log.info(json_data)
@@ -104,6 +105,7 @@ def call_all():
 
 if __name__ == '__main__':
     log.info('ThermoPro started')
+    # call_all()
     schedule.every().hour.at(":00").do(call_all)
     try:
         while True:
