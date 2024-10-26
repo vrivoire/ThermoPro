@@ -1,4 +1,4 @@
-# pyinstaller --onefile ThermoProScan.py --icon=Thermoro.jpg --nowindowed --noconsole
+# pyinstaller --onefile ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
 import logging as log
 import logging.handlers
@@ -54,8 +54,8 @@ def call_rtl_433():
         log.error(f"CalledProcessError, returned {calledProcessError.returncode}\n{calledProcessError}")
     except subprocess.SubprocessError as subprocessError:
         log.error(f"SubprocessError, returned \n{subprocessError}")
-    except Exception as ex:
-        log.error(f'ERROR \n{ex}')
+    except Exception as exception:
+        log.error(f'ERROR \n{exception}')
 
 
 def load_json() -> dict[str, any]:
