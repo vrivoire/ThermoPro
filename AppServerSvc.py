@@ -10,6 +10,7 @@ from ThermoProScan import ThermoProScan
 class AppServerSvc(win32serviceutil.ServiceFramework):
     _svc_name_ = "ThermoProScan"
     _svc_display_name_ = "ThermoProScan"
+    thermoProScan: ThermoProScan = ThermoProScan()
 
     def __init__(self, args):
         win32serviceutil.ServiceFramework.__init__(self, args)
@@ -17,6 +18,7 @@ class AppServerSvc(win32serviceutil.ServiceFramework):
         socket.setdefaulttimeout(60)
 
     def SvcStop(self):
+        AppServerSvc.thermoProScan.stop(AppServerSvc.thermoProScan)
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
         win32event.SetEvent(self.hWaitStop)
 
@@ -27,8 +29,7 @@ class AppServerSvc(win32serviceutil.ServiceFramework):
         self.main()
 
     def main(self):
-        thermoProScan: ThermoProScan = ThermoProScan()
-        thermoProScan.start(thermoProScan)
+        AppServerSvc.thermoProScan.start(AppServerSvc.thermoProScan)
 
 
 if __name__ == '__main__':

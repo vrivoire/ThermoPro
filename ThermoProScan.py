@@ -14,19 +14,21 @@ import csv
 
 
 class ThermoProScan:
-    RTL_433_VERSION = '23.11'
-    RTL_433_EXE = f'C:/Users/rivoi/Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe'
-    PATH = "C:/Users/rivoi/GoogleDrive/PoidsPression/"
+    HOME_PATH = "C:/Users/rivoi/"
+    PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
-    ARGS = [RTL_433_EXE, '-T', '60', '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
-    SCHEDULE_DELAY = 60
+    LOG_PATH = f"{PATH}ThermoProScan.log"
+    RTL_433_VERSION = '23.11'
+    RTL_433_EXE = f'{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe'
+    SCHEDULE_DELAY = '60'
+    ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
 
     log.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(lineno)d] %(message)s",
         handlers=[
-            logging.handlers.TimedRotatingFileHandler(f'{PATH}ThermoProScan.log', when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
+            logging.handlers.TimedRotatingFileHandler(LOG_PATH, when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
             logging.StreamHandler()
         ]
     )
@@ -53,15 +55,20 @@ class ThermoProScan:
 
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned \n{timeoutExpired}")
-            log.error(timeoutExpired)
+            log.error(traceback.format_exc())
+
         except subprocess.CalledProcessError as calledProcessError:
             log.error(f"CalledProcessError, returned {calledProcessError.returncode}\n{calledProcessError}")
-            log.error(calledProcessError)
+            log.error(traceback.format_exc())
+
         except subprocess.SubprocessError as subprocessError:
             log.error(f"SubprocessError, returned \n{subprocessError}")
-            log.error(subprocessError)
+            log.error(traceback.format_exc())
+
         except Exception as exception:
             log.error(exception)
+            log.error(traceback.format_exc())
+
 
     @staticmethod
     def load_json() -> dict[str, any]:
@@ -121,15 +128,21 @@ class ThermoProScan:
                 schedule.run_pending()
                 time.sleep(1)
         except KeyboardInterrupt as ki:
-            log.error(ki)
+            log.error(f'{ki}')
+            log.error(traceback.format_exc())
+
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
 
-        schedule.clear()
-        log.info('ThermoProScan stopped')
-        sys.exit()
+        thermoProScan.stop(self)
 
+
+    @staticmethod
+    def stop(self):
+        log.info('ThermoProScan stopped')
+        schedule.clear()
+        sys.exit()
 
 if __name__ == '__main__':
     thermoProScan: ThermoProScan = ThermoProScan()
