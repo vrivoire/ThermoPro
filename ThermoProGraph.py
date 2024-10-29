@@ -1,16 +1,19 @@
 # pyinstaller --onefile ThermoProGraph.py --icon=ThermoPro.jpg --nowindowed --noconsole
-import logging
-import os.path
+
+from ThermoProScan import ThermoProScan
 from datetime import timedelta
 import logging as log
 import logging.handlers
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import os.path
 import pandas as pd
-from ThermoProScan import ThermoProScan
+import sys
 
 
 class ThermoProGraph:
+    MEAN = 24
+
     log.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(lineno)d] %(message)s",
@@ -21,7 +24,7 @@ class ThermoProGraph:
     )
 
     @staticmethod
-    def load_csv(self) -> list[dict]:
+    def load_csv() -> list[dict]:
         if os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE):
             result = pd.read_csv(ThermoProScan.OUTPUT_CSV_FILE)
             result = result.rename(columns={'temperature_C': 'temp.'})
@@ -32,51 +35,42 @@ class ThermoProGraph:
 
     @staticmethod
     def create_graph(self):
-        csv_data = self.load_csv(self)
+        csv_data = self.load_csv()
         if bool(csv_data):
             sortedDatas = sorted(csv_data, key=lambda d: d["time"])
             df = pd.DataFrame(sortedDatas)
-            print(df)
+            log.info(f'\n{df}')
 
             fig, ax1 = plt.subplots()
-            ax1.set_ylabel('Temperature °C', color='tab:red')
-            ax1.plot(df["time"], df["temp."], color='tab:red')
-            # ax1.tick_params(axis='y', labelcolor='tab:red')
-            ax1.grid(color='tab:red', linewidth=0.2)
-            yticks = []
-            count = int(df['temp.'].min(numeric_only=True) - 1)
-            while count <= int(df['temp.'].max(numeric_only=True) + 1):
-                yticks.append(count)
-                count += 1
-            plt.yticks(yticks)
-            # ax1.minorticks_on()
+            ax1.set_ylabel('Temperature °C', color='xkcd:scarlet')
+            ax1.plot(df["time"], df["temp."], color='xkcd:scarlet')
+            ax1.grid(axis='y', color='xkcd:scarlet', linewidth=0.2)
+            ax1.set_yticks(list(range(int(df['temp.'].min(numeric_only=True) - 1), int(df['temp.'].max(numeric_only=True) + 2), 1)))
+            plt.axhline(0, linewidth=2, color='black')
+
+            ax1.plot(df["time"], df["temp."].rolling(window=ThermoProGraph.MEAN).mean(), color='xkcd:deep red', alpha=0.3)
 
             ax2 = ax1.twinx()  # instantiate a second Axes that shares the same x-axis
-            ax2.set_ylabel('Humidity %', color='tab:blue')  # we already handled the x-label with ax1
-            ax2.plot(df["time"], df["humidity"], color='tab:blue')
-            # ax2.tick_params(axis='y', labelcolor='tab:blue')
-            ax2.grid(color='tab:blue', linewidth=0.2)
+            ax2.set_ylabel('Humidity %', color='xkcd:royal blue')  # we already handled the x-label with ax1
+            ax2.plot(df["time"], df["humidity"], color='xkcd:royal blue')
+            ax2.grid(axis='y', color='blue', linewidth=0.2)
 
-            # plt.tick_params(axis='x',color='black')
-            # plt.gca().xaxis.grid(color='black')
+            ax2.plot(df["time"], df["humidity"].rolling(window=ThermoProGraph.MEAN).mean(), color='xkcd:deep blue', alpha=0.3)
 
-            # plt.gca().xaxis.set_major_locator(color='black')
-            # Rotate and align the tick labels , color='black'
+            # min_humidity = int((df['humidity'].min(numeric_only=True) - 1)/10)*10
+            # max_humidity = int(df['humidity'].max(numeric_only=True) - 1)
+            # log.info(list(range(min_humidity, max_humidity, 5)))
+            # ax2.set_yticks(list(range(min_humidity, max_humidity, 5)))
+            ax2.set_yticks(list(range(0, 105, 5)))
 
-            ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
-            ax2.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-
-            plt.xticks(rotation=45, ha='right', fontsize='small', color='black')
-            # plt.xticks(minor=True, rotation=45, ha='right', fontsize='small', color='black')
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
+            plt.gca().xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            plt.gca().xaxis.set_minor_formatter(mdates.DateFormatter('%H'))
+            plt.gca().xaxis.set_minor_locator(mdates.HourLocator(range(0, 25, 6)))
+            ax1.grid(axis='x', color='black', which="major", linewidth=0.2)
+            ax1.grid(axis='x', color='black', which="minor", linewidth=0.1)
+            plt.xticks(rotation=45, ha='right', fontsize='small')
             plt.gcf().autofmt_xdate()
-
-            ax2.xaxis.set_minor_formatter(mdates.DateFormatter('%H'))
-            ax2.xaxis.set_minor_locator(mdates.HourLocator(range(0, 25, 6)))
-
-            # ax2.grid(color='black', linestyle = '--', linewidth = 10)
-            # plt.gca().grid(which='minor', axis='both', linestyle='--')
-            # ax2.grid(which='minor', color='black')
-            # ax2.set_xticks(minor=True)
 
             plt.title(f"Temperature & Humidity")
             x_min = df['time'][0] - timedelta(hours=1)
@@ -87,7 +81,6 @@ class ThermoProGraph:
 
             plt.tight_layout()
 
-            # fig = plt.gcf()
             fig.canvas.manager.set_window_title('ThermoPro Graph')
             DPI = fig.get_dpi()
             fig.set_size_inches(1280.0 / float(DPI), 720.0 / float(DPI))
@@ -100,3 +93,4 @@ if __name__ == '__main__':
     thermoProGraph: ThermoProGraph = ThermoProGraph()
     thermoProGraph.create_graph(thermoProGraph)
     plt.show()
+    sys.exit()

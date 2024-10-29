@@ -1,16 +1,16 @@
 # pyinstaller --onefile ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
+from datetime import datetime
+import csv
+import json
 import logging as log
 import logging.handlers
-import subprocess
 import os
-import sys
-import traceback
 import schedule
+import subprocess
+import sys
 import time
-from datetime import datetime
-import json
-import csv
+import traceback
 
 
 class ThermoProScan:
@@ -135,11 +135,11 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-        thermoProScan.stop(self)
+        thermoProScan.stop()
 
 
     @staticmethod
-    def stop(self):
+    def stop():
         log.info('ThermoProScan stopped')
         schedule.clear()
         sys.exit()

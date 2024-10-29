@@ -18,7 +18,7 @@ class AppServerSvc(win32serviceutil.ServiceFramework):
         socket.setdefaulttimeout(60)
 
     def SvcStop(self):
-        AppServerSvc.thermoProScan.stop(AppServerSvc.thermoProScan)
+        AppServerSvc.thermoProScan.stop()
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
         win32event.SetEvent(self.hWaitStop)
 
