@@ -1,16 +1,17 @@
 # pyinstaller --onefile ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
-from datetime import datetime
 import csv
 import json
 import logging as log
 import logging.handlers
 import os
-import schedule
 import subprocess
 import sys
 import time
 import traceback
+from datetime import datetime
+
+import schedule
 
 
 class ThermoProScan:
@@ -26,7 +27,7 @@ class ThermoProScan:
 
     log.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(lineno)d] %(message)s",
+        format="%(asctime)s [%(name)s:%(levelname)-10.10s] [%(funcName)-15.15s:%(lineno)d] %(message)s",
         handlers=[
             logging.handlers.TimedRotatingFileHandler(LOG_PATH, when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
             logging.StreamHandler()
@@ -101,7 +102,7 @@ class ThermoProScan:
             with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
-                    writer.writerow(["time", "temperature_C", "humidity"])
+                    writer.writerow(["time", "temperature", "humidity"])
                 writer.writerow([json_data["time"], json_data["temperature_C"], json_data["humidity"]])
 
             if not is_new_file:
@@ -121,7 +122,7 @@ class ThermoProScan:
     @staticmethod
     def start(self):
         log.info('ThermoProScan started')
-        # self.call_all(self)
+        # self.call_all()
         schedule.every().hour.at(":00").do(self.call_all)
         try:
             while True:
