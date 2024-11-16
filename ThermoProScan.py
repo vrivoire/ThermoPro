@@ -1,23 +1,22 @@
 # pyinstaller --onefile ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
-
-from datetime import datetime
-from datetime import timedelta
 import csv
 import ctypes
 import json
 import logging as log
 import logging.handlers
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import os
 import os.path
-import pandas as pd
-import schedule
 import subprocess
 import sys
 import time
 import traceback
+from datetime import datetime, timedelta
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
+import schedule
 
 
 class ThermoProScan:
@@ -26,11 +25,11 @@ class ThermoProScan:
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
     LOG_PATH = f"{PATH}ThermoProScan.log"
-    RTL_433_VERSION = '23.11'
+    RTL_433_VERSION = '24.10'
     RTL_433_EXE = f'{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe'
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
-    MEAN = 24
+    MEAN = 48
 
     log.basicConfig(
         level=logging.INFO,
@@ -67,14 +66,14 @@ class ThermoProScan:
             ax1.grid(axis='y', color='blue', linewidth=0.2)
             ax1.plot(df["time"], df["humidity"].rolling(window=ThermoProScan.MEAN).mean(), color='xkcd:deep blue', alpha=0.3)
             ax1.set_yticks(list(range(0, 101, 10)))
-
-            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
-            ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            # ax1.xaxis.set_minor_formatter(mdates.DateFormatter('%H'))
-            ax1.xaxis.set_minor_locator(mdates.HourLocator(range(0, 25, 12)))
+            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
+            ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+            ax1.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
+            ax1.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.SU, interval=1))
             ax1.grid(axis='x', color='black', which="major", linewidth=0.2)
             ax1.grid(axis='x', color='black', which="minor", linewidth=0.1)
-            plt.xticks(rotation=45, ha='right', fontsize='x-small')
+            ax1.tick_params(axis='both', which='minor', labelsize=8)
+            plt.xticks(rotation=45, ha='right', fontsize='9')
             plt.gcf().autofmt_xdate()
 
             ax2 = ax1.twinx()
@@ -83,14 +82,16 @@ class ThermoProScan:
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
             ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 0.5), int(df['temperature'].max(numeric_only=True) + 0.5), 1)))
             ax2.plot(df["time"], df["temperature"].rolling(window=ThermoProScan.MEAN).mean(), color='xkcd:deep red', alpha=0.3)
-            plt.axhline(0, linewidth=2, color='black')
+            plt.axhline(0, linewidth=1, color='black')
+
+            plt.axis((
+                df['time'][0] - timedelta(hours=1),
+                df["time"][df["time"].size - 1] + timedelta(hours=1),
+                df['temperature'].min(numeric_only=True) - 1,
+                df['temperature'].max(numeric_only=True) + 1
+            ))
 
             plt.title("Temperature & Humidity")
-            # x_min = df['time'][0] - timedelta(hours=1)
-            # x_max = df["time"][df["time"].size - 1] + timedelta(hours=1)
-            # y_max = df['humidity'].max(numeric_only=True) + 5
-            # y_min = df['temperature'].min(numeric_only=True)
-            # plt.axis((x_min, x_max, y_min, y_max))
             plt.tight_layout()
             fig.subplots_adjust(
                 left=0.055,
