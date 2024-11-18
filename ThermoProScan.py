@@ -29,7 +29,7 @@ class ThermoProScan:
     RTL_433_EXE = f'{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe'
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
-    MEAN = 48
+    DAYS = 7
 
     log.basicConfig(
         level=logging.INFO,
@@ -64,12 +64,12 @@ class ThermoProScan:
             ax1.set_ylabel('Humidity %', color='xkcd:royal blue')  # we already handled the x-label with ax1
             ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue')
             ax1.grid(axis='y', color='blue', linewidth=0.2)
-            ax1.plot(df["time"], df["humidity"].rolling(window=ThermoProScan.MEAN).mean(), color='xkcd:deep blue', alpha=0.3)
+            ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3)
             ax1.set_yticks(list(range(0, 101, 10)))
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
             ax1.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
-            ax1.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.SU, interval=1))
+            ax1.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.SU.weekday, interval=1))
             ax1.grid(axis='x', color='black', which="major", linewidth=0.2)
             ax1.grid(axis='x', color='black', which="minor", linewidth=0.1)
             ax1.tick_params(axis='both', which='minor', labelsize=8)
@@ -81,7 +81,7 @@ class ThermoProScan:
             ax2.plot(df["time"], df["temperature"], color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
             ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 0.5), int(df['temperature'].max(numeric_only=True) + 0.5), 1)))
-            ax2.plot(df["time"], df["temperature"].rolling(window=ThermoProScan.MEAN).mean(), color='xkcd:deep red', alpha=0.3)
+            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(), color='xkcd:deep red', alpha=0.3)
             plt.axhline(0, linewidth=1, color='black')
 
             plt.axis((
@@ -91,7 +91,7 @@ class ThermoProScan:
                 df['temperature'].max(numeric_only=True) + 1
             ))
 
-            plt.title("Temperature & Humidity")
+            plt.title(f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%, rolling x̄: {ThermoProScan.DAYS} days")
             plt.tight_layout()
             fig.subplots_adjust(
                 left=0.055,
