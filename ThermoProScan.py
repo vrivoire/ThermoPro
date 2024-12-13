@@ -24,18 +24,27 @@ class ThermoProScan:
     PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
-    LOG_PATH = f"{PATH}ThermoProScan.log"
+
     RTL_433_VERSION = '24.10'
     RTL_433_EXE = f'{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe'
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
     DAYS = 7
 
+    LOG_PATH = f"{PATH}logs/"
+    LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
+    def namer(name: str) -> str:
+        return name.replace(".log", "") + ".log"
+
+    if not os.path.exists(LOG_PATH):
+        os.mkdir(LOG_PATH)
+    fileHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None)
+    fileHandler.namer = namer
     log.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(name)s:%(levelname)-10.10s] [%(funcName)-15.15s:%(lineno)d] %(message)s",
+        format="%(asctime)s [%(levelname)-8s] [%(filename)s.%(funcName)s:%(lineno)d] %(message)s",
         handlers=[
-            logging.handlers.TimedRotatingFileHandler(LOG_PATH, when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None),
+            fileHandler,
             logging.StreamHandler()
         ]
     )
@@ -206,8 +215,9 @@ class ThermoProScan:
                 schedule.run_pending()
                 time.sleep(1)
         except KeyboardInterrupt as ki:
-            log.error(f'{ki}')
-            log.error(traceback.format_exc())
+            pass
+            # log.error(f'{ki}')
+            # log.error(traceback.format_exc())
 
         except Exception as ex:
             log.error(ex)
