@@ -1,5 +1,7 @@
 # pyinstaller --onefile ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
+# https://github.com/merbanan/rtl_433
+
 import csv
 import ctypes
 import json
@@ -33,6 +35,7 @@ class ThermoProScan:
 
     LOG_PATH = f"{PATH}logs/"
     LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
+
     def namer(name: str) -> str:
         return name.replace(".log", "") + ".log"
 
@@ -121,11 +124,15 @@ class ThermoProScan:
                 ctypes.windll.user32.MessageBoxW(0, "csv_data is empty", 'Error', 16)
 
     @staticmethod
+    def clear_json_file() -> None:
+        if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
+            os.remove(ThermoProScan.OUTPUT_JSON_FILE)
+
+    @staticmethod
     def call_rtl_433() -> None:
         log.info("Start call_rtl_433")
         try:
-            if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
-                os.remove(ThermoProScan.OUTPUT_JSON_FILE)
+            ThermoProScan.clear_json_file()
 
             completed_process = subprocess.run(
                 ThermoProScan.ARGS,
@@ -203,6 +210,7 @@ class ThermoProScan:
         else:
             log.error('json_data empty')
 
+        ThermoProScan.clear_json_file()
         log.info("End task")
 
     @staticmethod
