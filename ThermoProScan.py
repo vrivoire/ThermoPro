@@ -19,6 +19,8 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 import schedule
+from matplotlib.dates import date2num, num2date
+from matplotlib.widgets import CheckButtons, Slider, Button
 
 
 class ThermoProScan:
@@ -74,9 +76,9 @@ class ThermoProScan:
 
             fig, ax1 = plt.subplots()
             ax1.set_ylabel('Humidity %', color='xkcd:royal blue')  # we already handled the x-label with ax1
-            ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue')
+            l0, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='%')
             ax1.grid(axis='y', color='blue', linewidth=0.2)
-            ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3)
+            ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
             ax1.set_yticks(list(range(0, 101, 10)))
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
@@ -90,10 +92,10 @@ class ThermoProScan:
 
             ax2 = ax1.twinx()
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
-            ax2.plot(df["time"], df["temperature"], color='xkcd:scarlet')
+            l1, = ax2.plot(df["time"], df["temperature"], color='xkcd:scarlet', label='°C')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
             ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 0.5), int(df['temperature'].max(numeric_only=True) + 0.5), 1)))
-            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(), color='xkcd:deep red', alpha=0.3)
+            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
             plt.axhline(0, linewidth=1, color='black')
 
             plt.axis((
@@ -117,6 +119,65 @@ class ThermoProScan:
             DPI = fig.get_dpi()
             fig.set_size_inches(1280.0 / float(DPI), 720.0 / float(DPI))
             plt.savefig(ThermoProScan.PATH + 'ThermoProScan.png')
+
+            def callback(label):
+                ln = lines_by_label[label]
+                ln.set_visible(not ln.get_visible())
+                ln.figure.canvas.draw_idle()
+
+            lines_by_label = {l.get_label(): l for l in [l0, l1]}
+            line_colors = [l.get_color() for l in lines_by_label.values()]
+            check = CheckButtons(
+                ax=ax1.inset_axes([0.0, 0.0, 0.03, 0.1]),
+                labels=lines_by_label.keys(),
+                actives=[l.get_visible() for l in lines_by_label.values()],
+                label_props={'color': line_colors},
+                frame_props={'edgecolor': line_colors},
+                check_props={'facecolor': line_colors},
+            )
+            check.on_clicked(callback)
+
+            def update(val):
+                slider_position.valtext.set_text(num2date(val).date())
+                df2 = df.set_index(['time']).loc[num2date(val - 50).date():num2date(val + 50).date()]
+                window = [val - 10, val + 10, df2['humidity'].min(numeric_only=True) - 0.5, df2['humidity'].max(numeric_only=True) + 0.5]
+                ax1.axis(window)
+                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True) - 0.5, df2['temperature'].max(numeric_only=True) + 0.5]
+                ax2.axis(window2)
+                fig.canvas.draw_idle()
+
+            def reset(event):
+                slider_position.reset()
+                window = [
+                    df['time'][0] - timedelta(hours=1),
+                    df["time"][df["time"].size - 1] + timedelta(hours=1),
+                    df['humidity'].min(numeric_only=True) - 1,
+                    df['humidity'].max(numeric_only=True) + 1
+                ]
+                ax1.axis(window)
+                window2 = [
+                    df['time'][0] - timedelta(hours=1),
+                    df["time"][df["time"].size - 1] + timedelta(hours=1),
+                    df['temperature'].min(numeric_only=True) - 1,
+                    df['temperature'].max(numeric_only=True) + 1
+                ]
+                ax2.axis(window2)
+                fig.canvas.draw_idle()
+
+            slider_position = Slider(
+                plt.axes((0.08, 0.01, 0.73, 0.03), facecolor='White'), 'Date', date2num(df["time"][0]),
+                date2num(df['time'][len(df['time']) - 1]),
+                valstep=1,
+                color='w',
+                initcolor='none'
+            )
+            slider_position.valtext.set_text(df["time"][0].date())
+            slider_position.on_changed(update)
+            button = Button(fig.add_axes((0.9, 0.01, 0.055, 0.03)), 'Reset', hovercolor='0.975')
+            button.on_clicked(reset)
+
+            if popup:
+                plt.show()
 
         else:
             log.warning('csv_data is empty')
