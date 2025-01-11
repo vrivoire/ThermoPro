@@ -148,20 +148,18 @@ class ThermoProScan:
 
             def reset(event):
                 slider_position.reset()
-                window = [
+                ax1.axis([
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
-                    df['humidity'].min(numeric_only=True) - 1,
-                    df['humidity'].max(numeric_only=True) + 1
-                ]
-                ax1.axis(window)
-                window2 = [
+                    0,
+                    105
+                ])
+                ax2.axis([
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
-                    df['temperature'].min(numeric_only=True) - 1,
-                    df['temperature'].max(numeric_only=True) + 1
-                ]
-                ax2.axis(window2)
+                    df['temperature'].min(numeric_only=True) - 0.5,
+                    df['temperature'].max(numeric_only=True) + 0.5
+                ])
                 fig.canvas.draw_idle()
 
             slider_position = Slider(
