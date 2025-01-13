@@ -35,7 +35,7 @@ class ThermoProScan:
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
     DAYS = 7
 
-    LOG_PATH = f"{PATH}logs/"
+    LOG_PATH = "C:/Users/rivoi/Documents/PoidsPression/logs/"
     LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
 
     def namer(name: str) -> str:
