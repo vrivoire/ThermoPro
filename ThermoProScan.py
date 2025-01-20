@@ -139,11 +139,18 @@ class ThermoProScan:
 
             def update(val):
                 slider_position.valtext.set_text(num2date(val).date())
-                df2 = df.set_index(['time']).loc[num2date(val - 50).date():num2date(val + 50).date()]
+                df2 = df.set_index(['time'])
+                df2 = df2[num2date(val - 10).date():num2date(val + 10).date()]
+
                 window = [val - 10, val + 10, df2['humidity'].min(numeric_only=True) - 0.5, df2['humidity'].max(numeric_only=True) + 0.5]
                 ax1.axis(window)
-                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True) - 0.5, df2['temperature'].max(numeric_only=True) + 0.5]
+                ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
+                ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+
+                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True), df2['temperature'].max(numeric_only=True)]
                 ax2.axis(window2)
+                ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True)), int(df2['temperature'].max(numeric_only=True)), 1)))
+
                 fig.canvas.draw_idle()
 
             def reset(event):
@@ -154,6 +161,10 @@ class ThermoProScan:
                     0,
                     105
                 ])
+                ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
+                ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+                ax1.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
+                ax1.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.SU.weekday, interval=1))
                 ax2.axis([
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
