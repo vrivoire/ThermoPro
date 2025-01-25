@@ -1,4 +1,6 @@
-# pyinstaller --onefile ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
+# start pyinstaller --onedir ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
+
+# cd "C:\Users\rivoi\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
 
 # https://github.com/merbanan/rtl_433
 
@@ -24,7 +26,7 @@ from matplotlib.widgets import CheckButtons, Slider, Button
 
 
 class ThermoProScan:
-    HOME_PATH = "C:/Users/rivoi/"
+    HOME_PATH = f"{os.getenv('USERPROFILE')}/"
     PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
@@ -62,6 +64,8 @@ class ThermoProScan:
             result = result.astype({'time': 'datetime64[ns]'})
             result = result.astype({'temperature': 'float'})
             return result.to_dict('records')
+        else:
+            log.error(f'The path "{ThermoProScan.OUTPUT_CSV_FILE}" does not exit.')
         return []
 
     @staticmethod
@@ -147,7 +151,7 @@ class ThermoProScan:
                 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
                 ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
-                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True), df2['temperature'].max(numeric_only=True)]
+                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True) - 1, df2['temperature'].max(numeric_only=True) + 1]
                 ax2.axis(window2)
                 ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True)), int(df2['temperature'].max(numeric_only=True)), 1)))
 
@@ -203,7 +207,7 @@ class ThermoProScan:
         log.info("Start call_rtl_433")
         try:
             ThermoProScan.clear_json_file()
-
+            log.info(f'ARGS={ThermoProScan.ARGS}')
             completed_process = subprocess.run(
                 ThermoProScan.ARGS,
                 capture_output=True,
@@ -212,10 +216,11 @@ class ThermoProScan:
                 check=False,
                 shell=True
             )
-            log.info(f'ARGS: {completed_process.args}')
+
             log.info(f'Return code: {completed_process.returncode}')
             log.info(f'stdout: {completed_process.stdout}')
-            log.info(f'stderr: {completed_process.stderr}')
+            log.error(f'stderr: {completed_process.stderr}')
+            # completed_process.check_returncode()
 
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned \n{timeoutExpired}")
@@ -240,7 +245,7 @@ class ThermoProScan:
         json_data: dict[str, any] = {}
         log.info(f'Loading file {ThermoProScan.OUTPUT_JSON_FILE}')
 
-        if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE) and os.stat(ThermoProScan.OUTPUT_JSON_FILE).st_size > 0:
+        if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE) and os.stat(ThermoProScan.OUTPUT_JSON_FILE).st_size > 2:
             with open(ThermoProScan.OUTPUT_JSON_FILE, 'r') as file:
                 json_str = file.read()
             json_str = json_str.splitlines()[0]
@@ -285,10 +290,10 @@ class ThermoProScan:
 
     @staticmethod
     def start(self):
-        log.info('ThermoProScan started')
-        # self.call_all()
-        schedule.every().hour.at(":00").do(self.call_all)
         try:
+            log.info('ThermoProScan started')
+            self.call_all()
+            schedule.every().hour.at(":00").do(self.call_all)
             while True:
                 schedule.run_pending()
                 time.sleep(1)

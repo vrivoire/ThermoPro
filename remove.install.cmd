@@ -6,6 +6,11 @@ rem taskkill /IM “pythonservice.exe” /F
 
 rem python AppServerSvc.py remove
 
-python AppServerSvc.py --startup auto --username ADELE\rivoi --password mlvelc099. install
+rem python AppServerSvc.py --startup delayed --username LAURELINE\rivoi --password mlvelc099. install
 
-pause
+rem Compte systeme local !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+cd "C:\Users\rivoi\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
+
+
+rem pause

@@ -1,9 +1,6 @@
-# pyinstaller --onefile ThermoProGraph.py --icon=ThermoPro.jpg --nowindowed --noconsole
-
+# start pyinstaller --onedir ThermoProGraph.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
 import sys
-
-import matplotlib.pyplot as plt
 
 from ThermoProScan import ThermoProScan
 
