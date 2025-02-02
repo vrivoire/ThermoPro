@@ -45,7 +45,9 @@ class ThermoProScan:
 
     if not os.path.exists(LOG_PATH):
         os.mkdir(LOG_PATH)
-    fileHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7, encoding=None, delay=False, utc=False, atTime=None, errors=None)
+    fileHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7,
+                                                            encoding=None, delay=False, utc=False, atTime=None,
+                                                            errors=None)
     fileHandler.namer = namer
     log.basicConfig(
         level=logging.INFO,
@@ -82,7 +84,8 @@ class ThermoProScan:
             ax1.set_ylabel('Humidity %', color='xkcd:royal blue')  # we already handled the x-label with ax1
             l0, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='%')
             ax1.grid(axis='y', color='blue', linewidth=0.2)
-            ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
+            ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(),
+                     color='xkcd:deep blue', alpha=0.3, label='%')
             ax1.set_yticks(list(range(0, 101, 10)))
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
@@ -98,8 +101,10 @@ class ThermoProScan:
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             l1, = ax2.plot(df["time"], df["temperature"], color='xkcd:scarlet', label='°C')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
-            ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 0.5), int(df['temperature'].max(numeric_only=True) + 0.5), 1)))
-            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
+            ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 0.5),
+                                      int(df['temperature'].max(numeric_only=True) + 0.5), 1)))
+            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(),
+                     color='xkcd:deep red', alpha=0.3, label='°C')
             plt.axhline(0, linewidth=1, color='black')
 
             plt.axis((
@@ -109,7 +114,8 @@ class ThermoProScan:
                 df['temperature'].max(numeric_only=True) + 1
             ))
 
-            plt.title(f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%, rolling x̄: {ThermoProScan.DAYS} days")
+            plt.title(
+                f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%, rolling x̄: {ThermoProScan.DAYS} days")
             plt.tight_layout()
             fig.subplots_adjust(
                 left=0.055,
@@ -146,14 +152,17 @@ class ThermoProScan:
                 df2 = df.set_index(['time'])
                 df2 = df2[num2date(val - 10).date():num2date(val + 10).date()]
 
-                window = [val - 10, val + 10, df2['humidity'].min(numeric_only=True) - 0.5, df2['humidity'].max(numeric_only=True) + 0.5]
+                window = [val - 10, val + 10, df2['humidity'].min(numeric_only=True) - 0.5,
+                          df2['humidity'].max(numeric_only=True) + 0.5]
                 ax1.axis(window)
                 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
                 ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
-                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True) - 1, df2['temperature'].max(numeric_only=True) + 1]
+                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True) - 1,
+                           df2['temperature'].max(numeric_only=True) + 1]
                 ax2.axis(window2)
-                ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True)), int(df2['temperature'].max(numeric_only=True)), 1)))
+                ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True)),
+                                          int(df2['temperature'].max(numeric_only=True)), 1)))
 
                 fig.canvas.draw_idle()
 
@@ -265,7 +274,8 @@ class ThermoProScan:
         json_data: dict[str, any] = ThermoProScan.load_json()
         log.info(json_data)
         if bool(json_data):
-            is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
+            is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(
+                ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
             with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
@@ -273,7 +283,8 @@ class ThermoProScan:
                 writer.writerow([json_data["time"], json_data["temperature_C"], json_data["humidity"]])
 
             if not is_new_file:
-                with open(ThermoProScan.OUTPUT_CSV_FILE, 'r') as r, open(ThermoProScan.OUTPUT_CSV_FILE + '.tmp', 'w') as o:
+                with open(ThermoProScan.OUTPUT_CSV_FILE, 'r') as r, open(ThermoProScan.OUTPUT_CSV_FILE + '.tmp',
+                                                                         'w') as o:
                     for line in r:
                         line = line.strip()
                         if len(line) > 0:
@@ -292,6 +303,11 @@ class ThermoProScan:
     def start(self):
         try:
             log.info('ThermoProScan started')
+            i = 0
+            while not os.path.exists(ThermoProScan.PATH) and i > 4:
+                log.warning(f'The path "{ThermoProScan.PATH}" not ready.')
+                i += 1
+                time.sleep(10)
             self.call_all()
             schedule.every().hour.at(":00").do(self.call_all)
             while True:
