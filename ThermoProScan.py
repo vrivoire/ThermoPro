@@ -32,12 +32,12 @@ class ThermoProScan:
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
 
     RTL_433_VERSION = '24.10'
-    RTL_433_EXE = f'{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe'
+    RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
     DAYS = 7
 
-    LOG_PATH = "C:/Users/rivoi/Documents/PoidsPression/logs/"
+    LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
     LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
 
     def namer(name: str) -> str:
