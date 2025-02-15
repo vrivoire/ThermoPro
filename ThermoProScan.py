@@ -148,17 +148,18 @@ class ThermoProScan:
             check.on_clicked(callback)
 
             def update(val):
+                print(val)
                 slider_position.valtext.set_text(num2date(val).date())
                 df2 = df.set_index(['time'])
                 df2 = df2[num2date(val - 10).date():num2date(val + 10).date()]
 
-                window = [val - 10, val + 10, df2['humidity'].min(numeric_only=True) - 0.5,
+                window = [val -2, val + 2, df2['humidity'].min(numeric_only=True) - 0.5,
                           df2['humidity'].max(numeric_only=True) + 0.5]
                 ax1.axis(window)
                 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
                 ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
-                window2 = [val - 10, val + 10, df2['temperature'].min(numeric_only=True) - 1,
+                window2 = [val - 2, val + 2, df2['temperature'].min(numeric_only=True) - 1,
                            df2['temperature'].max(numeric_only=True) + 1]
                 ax2.axis(window2)
                 ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True)),
