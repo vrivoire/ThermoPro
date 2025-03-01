@@ -31,7 +31,7 @@ class ThermoProScan:
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
 
-    RTL_433_VERSION = '24.10'
+    RTL_433_VERSION = '25.02'
     RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
