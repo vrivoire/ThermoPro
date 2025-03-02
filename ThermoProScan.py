@@ -148,7 +148,6 @@ class ThermoProScan:
             check.on_clicked(callback)
 
             def update(val):
-                print(val)
                 slider_position.valtext.set_text(num2date(val).date())
                 df2 = df.set_index(['time'])
                 df2 = df2[num2date(val - 10).date():num2date(val + 10).date()]
