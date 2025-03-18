@@ -152,8 +152,8 @@ class ThermoProScan:
                 df2 = df.set_index(['time'])
                 df2 = df2[num2date(val - 10).date():num2date(val + 10).date()]
 
-                window = [val - 7, val + 0.1, df2['humidity'].min(numeric_only=True) - 0.5,
-                          df2['humidity'].max(numeric_only=True) + 0.5]
+                window = [val - 7, val + 0.1, df2['humidity'].min(numeric_only=True) - 1,
+                          df2['humidity'].max(numeric_only=True) + 1]
                 ax1.axis(window)
                 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
                 ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
@@ -161,8 +161,8 @@ class ThermoProScan:
                 window2 = [val - 7, val + 0.1, df2['temperature'].min(numeric_only=True) - 1,
                            df2['temperature'].max(numeric_only=True) + 1]
                 ax2.axis(window2)
-                ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True)),
-                                          int(df2['temperature'].max(numeric_only=True)), 1)))
+                ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True) - 1.1),
+                                          int(df2['temperature'].max(numeric_only=True) + 1.1), 1)))
 
                 fig.canvas.draw_idle()
 
