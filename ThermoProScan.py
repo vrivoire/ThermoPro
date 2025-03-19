@@ -1,6 +1,6 @@
 # start pyinstaller --onedir ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
-# cd "C:\Users\rivoi\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
+# cd "C:\Users\adele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
 
 # https://github.com/merbanan/rtl_433
 
