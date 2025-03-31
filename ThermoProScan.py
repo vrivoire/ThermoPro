@@ -178,12 +178,15 @@ class ThermoProScan:
                 ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
                 ax1.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
                 ax1.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.SU.weekday, interval=1))
+
                 ax2.axis([
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
                     df['temperature'].min(numeric_only=True) - 0.5,
                     df['temperature'].max(numeric_only=True) + 0.5
                 ])
+                ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 1.1),
+                                          int(df['temperature'].max(numeric_only=True) + 1.1), 1)))
                 fig.canvas.draw_idle()
 
             slider_position = Slider(
