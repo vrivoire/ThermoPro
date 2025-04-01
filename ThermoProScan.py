@@ -35,7 +35,7 @@ class ThermoProScan:
     RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
-    DAYS = 7
+    DAYS = 7 * 2
 
     LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
     LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
@@ -150,16 +150,24 @@ class ThermoProScan:
             def update(val):
                 slider_position.valtext.set_text(num2date(val).date())
                 df2 = df.set_index(['time'])
-                df2 = df2[num2date(val - 10).date():num2date(val + 10).date()]
+                df2 = df2[num2date(val - ThermoProScan.DAYS).date():num2date(val + ThermoProScan.DAYS).date()]
 
-                window = [val - 7, val + 0.1, df2['humidity'].min(numeric_only=True) - 1,
-                          df2['humidity'].max(numeric_only=True) + 1]
+                window = [
+                    val - ThermoProScan.DAYS,
+                    val + 0.1,
+                    df2['humidity'].min(numeric_only=True) - 1,
+                    df2['humidity'].max(numeric_only=True) + 1
+                ]
                 ax1.axis(window)
                 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
                 ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
-                window2 = [val - 7, val + 0.1, df2['temperature'].min(numeric_only=True) - 1,
-                           df2['temperature'].max(numeric_only=True) + 1]
+                window2 = [
+                    val - ThermoProScan.DAYS,
+                    val + 0.1,
+                    df2['temperature'].min(numeric_only=True) - 1,
+                    df2['temperature'].max(numeric_only=True) + 1
+                ]
                 ax2.axis(window2)
                 ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True) - 1.1),
                                           int(df2['temperature'].max(numeric_only=True) + 1.1), 1)))
