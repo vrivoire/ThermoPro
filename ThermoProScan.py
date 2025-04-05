@@ -1,9 +1,10 @@
 # start pyinstaller --onedir ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
-# cd "C:\Users\adele\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
+# C:\Users\ADELE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
 
 # https://github.com/merbanan/rtl_433
 
+import atexit
 import csv
 import ctypes
 import json
@@ -26,6 +27,8 @@ from matplotlib.widgets import CheckButtons, Slider, Button
 
 
 class ThermoProScan:
+    schedule.clear()
+
     HOME_PATH = f"{os.getenv('USERPROFILE')}/"
     PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
@@ -333,15 +336,17 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-        thermoProScan.stop()
-
     @staticmethod
     def stop():
-        log.info('ThermoProScan stopped')
-        schedule.clear()
-        sys.exit()
+        try:
+            log.info('ThermoProScan stopped')
+            schedule.clear()
+            sys.exit()
+        except SystemExit as ex:
+            pass
 
 
 if __name__ == '__main__':
     thermoProScan: ThermoProScan = ThermoProScan()
+    atexit.register(thermoProScan.stop)
     thermoProScan.start(thermoProScan)
