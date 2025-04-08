@@ -201,7 +201,12 @@ class ThermoProScan:
                 fig.canvas.draw_idle()
 
             slider_position = Slider(
-                plt.axes((0.08, 0.01, 0.73, 0.03), facecolor='White'), 'Date', date2num(df["time"][0]),
+                plt.axes(
+                    (0.08, 0.01, 0.73, 0.03),
+                    facecolor='White'
+                ),
+                'Date',
+                date2num(df["time"][0]),
                 date2num(df['time'][len(df['time']) - 1]),
                 valstep=1,
                 color='w',
@@ -211,6 +216,8 @@ class ThermoProScan:
             slider_position.on_changed(update)
             button = Button(fig.add_axes((0.9, 0.01, 0.055, 0.03)), 'Reset', hovercolor='0.975')
             button.on_clicked(reset)
+
+            update(date2num(df['time'][len(df['time']) - 1]))
 
             if popup:
                 plt.show()
