@@ -217,7 +217,7 @@ class ThermoProScan:
             button = Button(fig.add_axes((0.9, 0.01, 0.055, 0.03)), 'Reset', hovercolor='0.975')
             button.on_clicked(reset)
 
-            update(date2num(df['time'][len(df['time']) - 1]))
+            slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
             if popup:
                 plt.show()
