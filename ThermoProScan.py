@@ -10,6 +10,7 @@ import ctypes
 import json
 import logging as log
 import logging.handlers
+import math
 import os
 import os.path
 import subprocess
@@ -74,6 +75,34 @@ class ThermoProScan:
         return []
 
     @staticmethod
+    def get_humidex(temperature: float, humidity: int) -> int | None:
+        if temperature > 20.0:
+            kelvin = temperature + 273
+            ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
+            etd = ets * humidity / 100
+            humidex: int = round(temperature + ((etd - 10) * 5 / 9))
+            if humidex < temperature:
+                humidex = round(temperature)
+
+            # color = 'white'
+            # if 30 <= humidex < 33:
+            #     color = 'xkcd:banana'
+            # if 34 <= humidex < 37:
+            #     color = 'xkcd:bananayellow'
+            # if 38 <= humidex < 39:
+            #     color = 'xkcd:babypoo'
+            # if 40 <= humidex < 41:
+            #     color = 'xkcd:brightorange'
+            # if 42 <= humidex < 44:
+            #     color = 'xkcd:brightlilac'
+            # if humidex >= 45:
+            #     color = 'xkcd:brightred'
+            # return [humidex, color]
+            return humidex
+        else:
+            return None
+
+    @staticmethod
     def create_graph(popup: bool) -> None:
         log.info('create_graph')
         csv_data = ThermoProScan.load_csv()
@@ -81,6 +110,7 @@ class ThermoProScan:
             sortedDatas = sorted(csv_data, key=lambda d: d["time"])
             df = pd.DataFrame(sortedDatas)
             df.set_index('time')
+            df['humidex'] = df.apply(lambda row: ThermoProScan.get_humidex(row.temperature, row.humidity), axis=1)
             log.info(f'\n{df}')
 
             fig, ax1 = plt.subplots()
@@ -103,9 +133,11 @@ class ThermoProScan:
             ax2 = ax1.twinx()
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             l1, = ax2.plot(df["time"], df["temperature"], color='xkcd:scarlet', label='°C')
+            l2, = ax2.plot(df["time"], df["humidex"], color='xkcd:pink', label='hdx')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
             ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 0.5),
-                                      int(df['temperature'].max(numeric_only=True) + 0.5), 1)))
+                                      int(max(df['temperature'].max(numeric_only=True),
+                                              df['humidex'].max(numeric_only=True)) + 0.5), 1)))
             ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(),
                      color='xkcd:deep red', alpha=0.3, label='°C')
             plt.axhline(0, linewidth=1, color='black')
@@ -114,11 +146,16 @@ class ThermoProScan:
                 df['time'][0] - timedelta(hours=1),
                 df["time"][df["time"].size - 1] + timedelta(hours=1),
                 df['temperature'].min(numeric_only=True) - 1,
-                df['temperature'].max(numeric_only=True) + 1
+                max(df['temperature'].max(numeric_only=True), df['humidex'].max(numeric_only=True)) + 1
             ))
 
+            if df['temperature'][len(df['temperature']) - 1] > 0:
+                m_humidex = f', humidex: {ThermoProScan.get_humidex(df['temperature'][len(df['temperature']) - 1], df['humidity'][len(df['humidity']) - 1])}°C'
+            else:
+                m_humidex = ''
+
             plt.title(
-                f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%, rolling x̄: {ThermoProScan.DAYS} days")
+                f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%{m_humidex}, rolling x̄: {ThermoProScan.DAYS} days")
             plt.tight_layout()
             fig.subplots_adjust(
                 left=0.055,
@@ -138,7 +175,7 @@ class ThermoProScan:
                 ln.set_visible(not ln.get_visible())
                 ln.figure.canvas.draw_idle()
 
-            lines_by_label = {l.get_label(): l for l in [l0, l1]}
+            lines_by_label = {l.get_label(): l for l in [l0, l1, l2]}
             line_colors = [l.get_color() for l in lines_by_label.values()]
             check = CheckButtons(
                 ax=ax1.inset_axes([0.0, 0.0, 0.03, 0.1]),
@@ -169,11 +206,12 @@ class ThermoProScan:
                     val - ThermoProScan.DAYS,
                     val + 0.1,
                     df2['temperature'].min(numeric_only=True) - 1,
-                    df2['temperature'].max(numeric_only=True) + 1
+                    max(df2['temperature'].max(numeric_only=True), df2['humidex'].max(numeric_only=True)) + 1
                 ]
                 ax2.axis(window2)
                 ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True) - 1.1),
-                                          int(df2['temperature'].max(numeric_only=True) + 1.1), 1)))
+                                          int(max(df2['temperature'].max(numeric_only=True),
+                                                  df2['humidex'].max(numeric_only=True)) + 1.1), 1)))
 
                 fig.canvas.draw_idle()
 
@@ -197,7 +235,8 @@ class ThermoProScan:
                     df['temperature'].max(numeric_only=True) + 0.5
                 ])
                 ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 1.1),
-                                          int(df['temperature'].max(numeric_only=True) + 1.1), 1)))
+                                          int(max(df['temperature'].max(numeric_only=True),
+                                                  df['humidex'].max(numeric_only=True)) + 1.1), 1)))
                 fig.canvas.draw_idle()
 
             slider_position = Slider(
