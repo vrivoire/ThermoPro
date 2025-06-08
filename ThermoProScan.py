@@ -102,6 +102,8 @@ class ThermoProScan:
         else:
             return None
 
+    # Color values between points
+    # https://matplotlib.org/stable/gallery/lines_bars_and_markers/multicolored_line.html#color-values-between-points
     @staticmethod
     def create_graph(popup: bool) -> None:
         log.info('create_graph')
@@ -364,10 +366,14 @@ class ThermoProScan:
         try:
             log.info('ThermoProScan started')
             i = 0
-            while not os.path.exists(ThermoProScan.PATH) and i > 4:
+            while not os.path.exists(ThermoProScan.PATH) and i < 5:
                 log.warning(f'The path "{ThermoProScan.PATH}" not ready.')
                 i += 1
                 time.sleep(10)
+            if not os.path.exists(ThermoProScan.PATH):
+                ctypes.windll.user32.MessageBoxW(0, "Mapping not ready.", "Warning!", 16)
+                os.abort()
+
             self.call_all()
             schedule.every().hour.at(":00").do(self.call_all)
             while True:
