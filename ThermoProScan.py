@@ -4,7 +4,6 @@
 
 # https://github.com/merbanan/rtl_433
 
-import atexit
 import csv
 import ctypes
 import json
@@ -372,7 +371,7 @@ class ThermoProScan:
                 time.sleep(10)
             if not os.path.exists(ThermoProScan.PATH):
                 ctypes.windll.user32.MessageBoxW(0, "Mapping not ready.", "Warning!", 16)
-                os.abort()
+                sys.exit()
 
             self.call_all()
             schedule.every().hour.at(":00").do(self.call_all)
@@ -400,5 +399,4 @@ class ThermoProScan:
 
 if __name__ == '__main__':
     thermoProScan: ThermoProScan = ThermoProScan()
-    atexit.register(thermoProScan.stop)
     thermoProScan.start(thermoProScan)
