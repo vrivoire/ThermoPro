@@ -455,3 +455,4 @@ if __name__ == '__main__':
         log.error(traceback.format_exc())
     finally:
         log.info(f'logout={test2.logout()}')
+        test2.logout()

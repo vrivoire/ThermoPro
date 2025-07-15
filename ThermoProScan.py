@@ -93,6 +93,7 @@ class ThermoProScan:
             log.error(traceback.format_exc())
         finally:
             log.info(f'logout={neviwebTemperature.logout()}')
+            neviwebTemperature.logout()
 
     @staticmethod
     def get_humidex(temperature: float, humidity: int) -> int | None:
@@ -162,7 +163,7 @@ class ThermoProScan:
                 m_humidex = ''
 
             plt.title(
-                f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%{m_humidex}, rolling x̄: {ThermoProScan.DAYS} days")
+                f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, int: {df['temp_int'][len(df['temp_int']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%{m_humidex}, rolling x̄: {ThermoProScan.DAYS} days")
             plt.tight_layout()
             fig.subplots_adjust(
                 left=0.055,
@@ -172,10 +173,6 @@ class ThermoProScan:
                 wspace=0.198,
                 hspace=0.202
             )
-            fig.canvas.manager.set_window_title('ThermoPro Graph')
-            dpi = fig.get_dpi()
-            fig.set_size_inches(1280.0 / float(dpi), 720.0 / float(dpi))
-            plt.savefig(ThermoProScan.PATH + 'ThermoProScan.png')
 
             def callback(label):
                 ln = lines_by_label[label]
@@ -269,6 +266,11 @@ class ThermoProScan:
             button.on_clicked(reset)
 
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
+
+            fig.canvas.manager.set_window_title('ThermoPro Graph')
+            dpi = fig.get_dpi()
+            fig.set_size_inches(1280.0 / float(dpi), 720.0 / float(dpi))
+            plt.savefig(ThermoProScan.PATH + 'ThermoProScan.png')
 
             if popup:
                 plt.show()
