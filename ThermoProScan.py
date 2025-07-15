@@ -77,7 +77,7 @@ class ThermoProScan:
         return []
 
     @staticmethod
-    def load_neviweb() -> {str, float}:
+    def load_neviweb() -> float:
         neviwebTemperature: NeviwebTemperature = NeviwebTemperature(None, "rivoire.vincent@gmail.com", "Mlvelc123.", None, None, None, None)
         try:
             log.info(f'login={neviwebTemperature.login()}')
@@ -87,7 +87,15 @@ class ThermoProScan:
             for gateway_data2 in neviwebTemperature.gateway_data:
                 data[gateway_data2['displayName']] = gateway_data2['roomTemperatureDisplay']
             log.info("Updated data: %s", json.dumps(data, indent=4))
-            return data
+
+            count = 0
+            temp_int: float = 0.0
+            for temp in data:
+                count += 1
+                temp_int += data[temp]
+            temp_int = temp_int / count
+            log.info(f'temp_int={temp_int} ({round(temp_int, 1)})')
+            return round(temp_int, 1)
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -348,16 +356,9 @@ class ThermoProScan:
         json_data: dict[str, any] = ThermoProScan.load_json()
         log.info(f'json_data={json_data}')
         if bool(json_data):
-            neviweb_temp: {str, int} = ThermoProScan.load_neviweb()
-            count = 0
-            temp_int = 0.0
-            for temp in neviweb_temp:
-                count += 1
-                temp_int += neviweb_temp[temp]
-            temp_int = temp_int / count
-
+            temp_int: float = ThermoProScan.load_neviweb()
             is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(
-                ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
+            ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
             with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
