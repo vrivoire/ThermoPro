@@ -7,7 +7,6 @@
 import csv
 import ctypes
 import json
-# import logging as log
 import math
 import os
 import os.path
@@ -46,27 +45,6 @@ class ThermoProScan:
 
     LOCATION = f'{os.getenv('USERPROFILE')}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
 
-    # LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
-    # LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
-
-    # def namer(name: str) -> str:
-    #     return name.replace(".log", "") + ".log"
-    #
-    # if not os.path.exists(LOG_PATH):
-    #     os.mkdir(LOG_PATH)
-    # fileHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7,
-    #                                                         encoding=None, delay=False, utc=False, atTime=None,
-    #                                                         errors=None)
-    # fileHandler.namer = namer
-    # log.basicConfig(
-    #     level=logging.INFO,
-    #     format="%(asctime)s [%(levelname)-8s] [%(filename)s.%(funcName)s:%(lineno)d] %(message)s",
-    #     handlers=[
-    #         fileHandler,
-    #         logging.StreamHandler()
-    #     ]
-    # )
-
     @staticmethod
     def load_csv() -> list[dict]:
         log.info('load_csv')
@@ -81,14 +59,14 @@ class ThermoProScan:
         return []
 
     @staticmethod
-    def load_neviweb() -> float:
-        neviwebTemperature: NeviwebTemperature = NeviwebTemperature(None, "rivoire.vincent@gmail.com", "Mlvelc123.", None, None, None, None)
+    def load_neviweb() -> float | None:
+        neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, "rivoire.vincent@gmail.com", "Mlvelc123.", None, None, None, None)
         try:
-            log.info(f'login={neviwebTemperature.login()}')
-            log.info(neviwebTemperature.get_network())
-            log.info(neviwebTemperature.get_gateway_data())
+            log.info(f'login={neviweb_temperature.login()}')
+            log.info(neviweb_temperature.get_network())
+            log.info(neviweb_temperature.get_gateway_data())
             data: {str, int} = {}
-            for gateway_data2 in neviwebTemperature.gateway_data:
+            for gateway_data2 in neviweb_temperature.gateway_data:
                 data[gateway_data2['displayName']] = gateway_data2['roomTemperatureDisplay']
             log.info("Updated data: %s", json.dumps(data, indent=4))
 
@@ -104,8 +82,8 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
         finally:
-            log.info(f'logout={neviwebTemperature.logout()}')
-            neviwebTemperature.logout()
+            log.info(f'logout={neviweb_temperature.logout()}')
+            neviweb_temperature.logout()
 
     @staticmethod
     def get_humidex(temperature: float, humidity: int) -> int | None:
@@ -125,8 +103,8 @@ class ThermoProScan:
         log.info('create_graph')
         csv_data = ThermoProScan.load_csv()
         if bool(csv_data):
-            sortedDatas = sorted(csv_data, key=lambda d: d["time"])
-            df = pd.DataFrame(sortedDatas)
+            sorted_datas = sorted(csv_data, key=lambda d: d["time"])
+            df = pd.DataFrame(sorted_datas)
             df.set_index('time')
             df['humidex'] = df.apply(lambda row: ThermoProScan.get_humidex(row.temperature, row.humidity), axis=1)
             log.info(f'\n{df}')
@@ -135,8 +113,7 @@ class ThermoProScan:
             ax1.set_ylabel('Humidity %', color='xkcd:royal blue')  # we already handled the x-label with ax1
             l0, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='%')
             ax1.grid(axis='y', color='blue', linewidth=0.2)
-            ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(),
-                     color='xkcd:deep blue', alpha=0.3, label='%')
+            ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
             ax1.set_yticks(list(range(0, 101, 10)))
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
@@ -150,16 +127,16 @@ class ThermoProScan:
 
             ax2 = ax1.twinx()
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
-            l1, = ax2.plot(df["time"], df["temperature"], color='xkcd:scarlet', label='°C')
+            l1, = ax2.plot(df["time"], df["temperature"], color='xkcd:scarlet', label='Ext. °C')
             l2, = ax2.plot(df["time"], df["humidex"], color='xkcd:pink', label='Humidex')
-            l3, = ax2.plot(df["time"], df["temp_int"], color='xkcd:green', label='°C interior')
+            l3, = ax2.plot(df["time"], df["temp_int"], color='xkcd:green', label='Int. °C')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
             ax2.set_yticks(list(range(int(df['temperature'].min(numeric_only=True) - 0.5),
                                       int(max(df['temperature'].max(numeric_only=True),
                                               df['humidex'].max(numeric_only=True) + 0.5,
                                               df['temp_int'].max(numeric_only=True))))))
-            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(),
-                     color='xkcd:deep red', alpha=0.3, label='°C')
+            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temperature'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
+            ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temp_int'].mean(), color='xkcd:deep green', alpha=0.3, label='°C')
             plt.axhline(0, linewidth=1, color='black')
 
             plt.axis((
@@ -170,12 +147,12 @@ class ThermoProScan:
             ))
 
             if df['temperature'][len(df['temperature']) - 1] > 20:
-                m_humidex = f', humidex: {ThermoProScan.get_humidex(df['temperature'][len(df['temperature']) - 1], df['humidity'][len(df['humidity']) - 1])}°C'
+                m_humidex = f', Humidex: {ThermoProScan.get_humidex(df['temperature'][len(df['temperature']) - 1], df['humidity'][len(df['humidity']) - 1])}°C'
             else:
                 m_humidex = ''
 
             plt.title(
-                f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, {df['temperature'][len(df['temperature']) - 1]}°C, int: {df['temp_int'][len(df['temp_int']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%{m_humidex}, rolling x̄: {ThermoProScan.DAYS} days")
+                f"Temperature & Humidity date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Ext.: {df['temperature'][len(df['temperature']) - 1]}°C, Int: {df['temp_int'][len(df['temp_int']) - 1]}°C, {df['humidity'][len(df['humidity']) - 1]}%{m_humidex}, rolling x̄: {ThermoProScan.DAYS} days")
             plt.tight_layout()
             fig.subplots_adjust(
                 left=0.055,
@@ -193,6 +170,7 @@ class ThermoProScan:
 
             lines_by_label = {l.get_label(): l for l in [l0, l1, l2, l3]}
             line_colors = [l.get_color() for l in lines_by_label.values()]
+            print(f'{type(lines_by_label.keys())}    {list(lines_by_label.keys())}')
             check = CheckButtons(
                 ax=ax1.inset_axes((0.0, 0.0, 0.1, 0.1)),
                 labels=lines_by_label.keys(),
