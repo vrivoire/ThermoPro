@@ -17,7 +17,9 @@ import sys
 import time
 import traceback
 from datetime import datetime, timedelta
+from tkinter import PhotoImage
 
+import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -41,6 +43,8 @@ class ThermoProScan:
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
     DAYS = 7 * 2
+
+    LOCATION = f'{os.getenv('USERPROFILE')}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
 
     LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
     LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
@@ -281,6 +285,9 @@ class ThermoProScan:
             plt.savefig(ThermoProScan.PATH + 'ThermoProScan.png')
 
             if popup:
+                thismanager = matplotlib.pyplot.get_current_fig_manager()
+                img = PhotoImage(file=f'{ThermoProScan.LOCATION}ThermoPro.png')
+                thismanager.window.tk.call('wm', 'iconphoto', thismanager.window._w, img)
                 plt.show()
 
         else:
@@ -358,7 +365,7 @@ class ThermoProScan:
         if bool(json_data):
             temp_int: float = ThermoProScan.load_neviweb()
             is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(
-            ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
+                ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
             with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
@@ -428,4 +435,3 @@ class ThermoProScan:
 if __name__ == '__main__':
     thermoProScan: ThermoProScan = ThermoProScan()
     thermoProScan.start(thermoProScan)
-
