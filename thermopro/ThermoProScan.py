@@ -7,8 +7,7 @@
 import csv
 import ctypes
 import json
-import logging as log
-import logging.handlers
+# import logging as log
 import math
 import os
 import os.path
@@ -27,13 +26,14 @@ import schedule
 from matplotlib.dates import date2num, num2date
 from matplotlib.widgets import CheckButtons, Slider, Button
 
-from NeviwebTemperature import NeviwebTemperature
+from thermopro import HOME_PATH, log
+from thermopro.NeviwebTemperature import NeviwebTemperature
 
 
 class ThermoProScan:
     schedule.clear()
 
-    HOME_PATH = f"{os.getenv('USERPROFILE')}/"
+    # HOME_PATH = f"{os.getenv('USERPROFILE')}/"
     PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
@@ -46,26 +46,26 @@ class ThermoProScan:
 
     LOCATION = f'{os.getenv('USERPROFILE')}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
 
-    LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
-    LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
+    # LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
+    # LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
 
-    def namer(name: str) -> str:
-        return name.replace(".log", "") + ".log"
-
-    if not os.path.exists(LOG_PATH):
-        os.mkdir(LOG_PATH)
-    fileHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7,
-                                                            encoding=None, delay=False, utc=False, atTime=None,
-                                                            errors=None)
-    fileHandler.namer = namer
-    log.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)-8s] [%(filename)s.%(funcName)s:%(lineno)d] %(message)s",
-        handlers=[
-            fileHandler,
-            logging.StreamHandler()
-        ]
-    )
+    # def namer(name: str) -> str:
+    #     return name.replace(".log", "") + ".log"
+    #
+    # if not os.path.exists(LOG_PATH):
+    #     os.mkdir(LOG_PATH)
+    # fileHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7,
+    #                                                         encoding=None, delay=False, utc=False, atTime=None,
+    #                                                         errors=None)
+    # fileHandler.namer = namer
+    # log.basicConfig(
+    #     level=logging.INFO,
+    #     format="%(asctime)s [%(levelname)-8s] [%(filename)s.%(funcName)s:%(lineno)d] %(message)s",
+    #     handlers=[
+    #         fileHandler,
+    #         logging.StreamHandler()
+    #     ]
+    # )
 
     @staticmethod
     def load_csv() -> list[dict]:

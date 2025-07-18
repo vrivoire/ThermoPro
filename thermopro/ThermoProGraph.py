@@ -2,7 +2,8 @@
 
 import sys
 
-from ThermoProScan import ThermoProScan
+from thermopro.ThermoProScan import ThermoProScan
+import thermopro
 
 if __name__ == '__main__':
     thermoProScan: ThermoProScan = ThermoProScan()
