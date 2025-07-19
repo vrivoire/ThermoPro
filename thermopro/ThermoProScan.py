@@ -22,17 +22,20 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 import schedule
+from matplotlib.backend_bases import FigureManagerBase
 from matplotlib.dates import date2num, num2date
 from matplotlib.widgets import CheckButtons, Slider, Button
 
+import thermopro
 from thermopro import HOME_PATH, log
 from thermopro.NeviwebTemperature import NeviwebTemperature
 
 
 class ThermoProScan:
-    schedule.clear()
 
-    # HOME_PATH = f"{os.getenv('USERPROFILE')}/"
+    def __init__(self):
+        schedule.clear()
+
     PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
@@ -170,7 +173,6 @@ class ThermoProScan:
 
             lines_by_label = {l.get_label(): l for l in [l0, l1, l2, l3]}
             line_colors = [l.get_color() for l in lines_by_label.values()]
-            print(f'{type(lines_by_label.keys())}    {list(lines_by_label.keys())}')
             check = CheckButtons(
                 ax=ax1.inset_axes((0.0, 0.0, 0.1, 0.1)),
                 labels=lines_by_label.keys(),
@@ -186,22 +188,22 @@ class ThermoProScan:
                 df2 = df.set_index(['time'])
                 df2 = df2[num2date(val - ThermoProScan.DAYS).date():num2date(val + ThermoProScan.DAYS).date()]
 
-                window = [
+                window = (
                     val - ThermoProScan.DAYS,
                     val + 0.1,
                     df2['humidity'].min(numeric_only=True) - 1,
                     df2['humidity'].max(numeric_only=True) + 1
-                ]
+                )
                 ax1.axis(window)
                 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
                 ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
 
-                window2 = [
+                window2 = (
                     val - ThermoProScan.DAYS,
                     val + 0.1,
                     df2['temperature'].min(numeric_only=True) - 1,
                     max(df2['temperature'].max(numeric_only=True), df2['humidex'].max(numeric_only=True), df2['temp_int'].max(numeric_only=True)) + 1
-                ]
+                )
                 ax2.axis(window2)
 
                 ax2.set_yticks(list(range(int(df2['temperature'].min(numeric_only=True) - 1.1),
@@ -263,9 +265,9 @@ class ThermoProScan:
             plt.savefig(ThermoProScan.PATH + 'ThermoProScan.png')
 
             if popup:
-                thismanager = matplotlib.pyplot.get_current_fig_manager()
+                manager: FigureManagerBase = matplotlib.pyplot.get_current_fig_manager()
                 img = PhotoImage(file=f'{ThermoProScan.LOCATION}ThermoPro.png')
-                thismanager.window.tk.call('wm', 'iconphoto', thismanager.window._w, img)
+                manager.window.tk.call('wm', 'iconphoto', manager.window._w, img)
                 plt.show()
 
         else:
@@ -411,5 +413,9 @@ class ThermoProScan:
 
 
 if __name__ == '__main__':
+    thermopro.LOG_FILE = f'{thermopro.LOG_PATH}{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]}.log'
+    thermopro.set_up()
+
+    log.info('ThermoProScan')
     thermoProScan: ThermoProScan = ThermoProScan()
     thermoProScan.start(thermoProScan)

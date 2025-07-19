@@ -1,9 +1,7 @@
 import json
-import logging as log
-import logging.handlers
-import os.path
 import traceback
-
+import thermopro
+from thermopro import log
 import requests
 from requests import Response
 
@@ -17,30 +15,6 @@ DEVICE_DATA_URL = f"{HOST}/api/device/"
 NEVIWEB_LOCATION = f"{HOST}/api/location/"
 
 ATTR_SIGNATURE = 'roomTemperatureDisplay'
-
-HOME_PATH = f"{os.getenv('USERPROFILE')}/"
-LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
-LOG_FILE = f'{LOG_PATH}ThermoProScan.log'
-
-
-def namer(name: str) -> str:
-    return name.replace(".log", "") + ".log"
-
-
-if not os.path.exists(LOG_PATH):
-    os.mkdir(LOG_PATH)
-fileHandler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7,
-                                                        encoding=None, delay=False, utc=False, atTime=None,
-                                                        errors=None)
-fileHandler.namer = namer
-log.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)-8s] [%(filename)s.%(funcName)s:%(lineno)d] %(message)s",
-    handlers=[
-        fileHandler,
-        logging.StreamHandler()
-    ]
-)
 
 
 class NeviwebTemperature:
@@ -56,6 +30,7 @@ class NeviwebTemperature:
             ignore_miwi,
             timeout=REQUESTS_TIMEOUT
     ):
+        log.info('NeviwebTemperature')
         """Initialize the client object."""
         self.hass = hass
         self._email = username
@@ -78,22 +53,19 @@ class NeviwebTemperature:
         self._occupancyMode = None
         self.user = None
 
-        # self.login()
-        # self.__get_network()
-        # self.__get_gateway_data()
-        # self.logout()
 
     def login(self):
-        data = {
+        input_data: dict[str, str | int] = {
             "username": self._email,
             "password": self._password,
             "interface": "neviweb",
             "stayConnected": 1,
         }
+        raw_res: Response = None
         try:
             raw_res: Response = requests.post(
                 LOGIN_URL,
-                json=data,
+                json=input_data,
                 cookies=self._cookies,
                 allow_redirects=False,
                 timeout=self._timeout,
@@ -102,13 +74,13 @@ class NeviwebTemperature:
             log.error(ex)
             log.error(traceback.format_exc())
 
-        if raw_res.status_code != 200:
+        if raw_res and raw_res.status_code != 200:
             log.info("Login status: %s", raw_res.json())
             raise Exception("Cannot log in")
 
             # Update session
         self._cookies = raw_res.cookies
-        data = raw_res.json()
+        data: any = raw_res.json()
         log.info("Login response: %s", data)
         if "error" in data:
             if data["error"]["code"] == "ACCSESSEXC":
@@ -381,8 +353,6 @@ class NeviwebTemperature:
                     device[ATTR_SIGNATURE] = data3[ATTR_SIGNATURE]
                 log.info("Received signature data: %s", data3)
 
-        # log.info("Updated gateway data: %s", json.dumps(self.gateway_data, indent=4))
-        # log.info(self.gateway_data)
 
     def get_device_attributes(self, device_id, attributes):
         """Get device attributes."""
@@ -416,8 +386,6 @@ class NeviwebTemperature:
                     "Session expired. Set a scan_interval less"
                     + "than 10 minutes, otherwise the session will end."
                 )
-                # raise PyNeviweb130Error("Session expired... reconnecting...")
-        # log.info(f"Updated data for device={device_id}: {json.dumps(data, indent=4)}")
         return data
 
     def logout(self):
@@ -441,11 +409,14 @@ class NeviwebTemperature:
 
 
 if __name__ == '__main__':
+    thermopro.LOG_FILE = f'{thermopro.LOG_PATH}{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]}.log'
+    thermopro.set_up()
+
     test2: NeviwebTemperature = NeviwebTemperature(None, "rivoire.vincent@gmail.com", "Mlvelc123.", None, None, None, None)
     try:
         log.info(f'login={test2.login()}')
-        log.info(test2.get_network())
-        log.info(test2.get_gateway_data())
+        log.info(f'get_network={test2.get_network()}')
+        log.info(f'get_gateway_data={test2.get_gateway_data()}')
         data: {str, int} = {}
         for gateway_data2 in test2.gateway_data:
             data[gateway_data2['displayName']] = gateway_data2['roomTemperatureDisplay']
