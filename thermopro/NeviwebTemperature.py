@@ -409,8 +409,8 @@ class NeviwebTemperature:
 
 
 if __name__ == '__main__':
-    thermopro.LOG_FILE = f'{thermopro.LOG_PATH}{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]}.log'
-    thermopro.set_up()
+
+    thermopro.set_up(__file__)
 
     test2: NeviwebTemperature = NeviwebTemperature(None, "rivoire.vincent@gmail.com", "Mlvelc123.", None, None, None, None)
     try:
