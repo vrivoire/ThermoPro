@@ -1,9 +1,11 @@
 import json
 import traceback
-import thermopro
-from thermopro import log
+
 import requests
 from requests import Response
+
+import thermopro
+from thermopro import log
 
 REQUESTS_TIMEOUT = 30
 HOST = "https://neviweb.com"
@@ -12,7 +14,8 @@ LOGOUT_URL = f"{HOST}/api/logout"
 LOCATIONS_URL = f"{HOST}/api/locations?account$id="
 GATEWAY_DEVICE_URL = f"{HOST}/api/devices?location$id="
 DEVICE_DATA_URL = f"{HOST}/api/device/"
-NEVIWEB_LOCATION = f"{HOST}/api/location/"
+OPEN_WEATHER = API_API = '10a108db2e0a8313f2487fb920090b1e'
+WEATHER_URL = f'https://api.openweathermap.org/data/3.0/onecall?lat=45.55064&lon=-73.56062&exclude=minutely,hourly,daily,alerts&appid={OPEN_WEATHER}&units=metric&lang=en'
 
 ATTR_SIGNATURE = 'roomTemperatureDisplay'
 
@@ -52,7 +55,6 @@ class NeviwebTemperature:
         self._timeout = timeout
         self._occupancyMode = None
         self.user = None
-
 
     def login(self):
         input_data: dict[str, str | int] = {
@@ -353,7 +355,6 @@ class NeviwebTemperature:
                     device[ATTR_SIGNATURE] = data3[ATTR_SIGNATURE]
                 log.info("Received signature data: %s", data3)
 
-
     def get_device_attributes(self, device_id, attributes):
         """Get device attributes."""
         # Prepare return
@@ -407,6 +408,26 @@ class NeviwebTemperature:
             except OSError as ex:
                 raise ex
 
+    # https://home.openweathermap.org/statistics/onecall_30
+    def get_open_weather(self) -> dict[str, any] | None:
+        # print(WEATHER_URL)
+        response = requests.get(WEATHER_URL)
+        resp = response.json()
+        # print(json.dumps(resp, indent=4))
+        if "cod" in resp:
+            log.error(json.dumps(resp, indent=4))
+            return None
+        elif "current" in resp:
+            current = resp['current']
+            return {
+                'open_temp': round(current['temp'], 1),
+                'open_feels_like': round(current['feels_like'], 0),
+                'open_humidity': round(current['humidity'], 0),
+            }
+        else:
+            log.error(json.dumps(resp, indent=4))
+            return None
+
 
 if __name__ == '__main__':
 
@@ -417,10 +438,20 @@ if __name__ == '__main__':
         log.info(f'login={test2.login()}')
         log.info(f'get_network={test2.get_network()}')
         log.info(f'get_gateway_data={test2.get_gateway_data()}')
-        data: {str, int} = {}
+        data: {str, float} = {}
         for gateway_data2 in test2.gateway_data:
             data[gateway_data2['displayName']] = gateway_data2['roomTemperatureDisplay']
+
+        log.info([gateway_data2['roomTemperatureDisplay'] for gateway_data2 in test2.gateway_data])
+
         log.info("Updated data: %s", json.dumps(data, indent=4))
+
+        data: list = [float(gateway_data2['roomTemperatureDisplay']) for gateway_data2 in test2.gateway_data]
+        temp_int: float = sum(data) / len(data)
+
+        log.info(f'temp_int={temp_int} ({round(temp_int, 1)})')
+
+        log.info(test2.get_open_weather())
     except Exception as ex:
         log.error(ex)
         log.error(traceback.format_exc())
