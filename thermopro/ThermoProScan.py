@@ -29,6 +29,7 @@ from matplotlib.dates import date2num, num2date
 from matplotlib.widgets import CheckButtons, Slider, Button
 
 import thermopro
+import thermopro.Secrets as Secrets
 from thermopro import HOME_PATH, log
 from thermopro.NeviwebTemperature import NeviwebTemperature
 
@@ -69,7 +70,7 @@ class ThermoProScan:
 
     @staticmethod
     def load_neviweb() -> dict[str, Any] | None:
-        neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, "rivoire.vincent@gmail.com", "Mlvelc123.", None, None, None, None)
+        neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, Secrets.NEVIWEB_EMAIL, Secrets.NEVIWEB_PASSWORD, None, None, None, None, open_weather_api_key=Secrets.OPEN_WEATHER_API_KEY)
         try:
             log.info(f'login={neviweb_temperature.login()}')
             log.info(neviweb_temperature.get_network())
@@ -440,4 +441,8 @@ if __name__ == '__main__':
 
     log.info('ThermoProScan')
     thermoProScan: ThermoProScan = ThermoProScan()
+
+    # thermoProScan.load_neviweb()
+    # sys.exit()
+
     thermoProScan.start(thermoProScan)
