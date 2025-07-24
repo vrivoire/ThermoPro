@@ -5,7 +5,7 @@ import requests
 from requests import Response
 
 import thermopro
-from thermopro import log
+from thermopro import log, ppretty
 
 REQUESTS_TIMEOUT = 30
 HOST = "https://neviweb.com"

@@ -29,16 +29,12 @@ from matplotlib.dates import date2num, num2date
 from matplotlib.widgets import CheckButtons, Slider, Button
 
 import thermopro
-from thermopro import HOME_PATH, log
+from thermopro import HOME_PATH, log, ppretty
 
 sys.path.append(f'{os.getenv('USERPROFILE')}/Documents\\BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
 
 from thermopro.NeviwebTemperature import NeviwebTemperature
-
-
-
-
 
 
 class ThermoProScan:
@@ -60,6 +56,8 @@ class ThermoProScan:
     WEATHER_URL = f'https://api.openweathermap.org/data/3.0/onecall?{POS}&exclude=minutely,hourly,daily,alerts&appid={OPEN_WEATHER_API_KEY}&units=metric&lang=en'
 
     LOCATION = f'{os.getenv('USERPROFILE')}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
+    MIN_HPA = 970
+    MAX_HPA = 1085
 
     @staticmethod
     def load_csv() -> list[dict]:
@@ -73,6 +71,8 @@ class ThermoProScan:
             result = result.astype({'open_feels_like': 'float'})
             result = result.astype({'open_humidity': 'float'})
             result = result.astype({'open_pressure': 'float'})
+            result = result.astype({'humidex': 'float'})
+            # print(result)
             return result.to_dict('records')
         else:
             log.error(f'The path "{ThermoProScan.OUTPUT_CSV_FILE}" does not exit.')
@@ -138,16 +138,13 @@ class ThermoProScan:
 
     @staticmethod
     def get_humidex(temp_ext: float, humidity: int) -> int | None:
-        if temp_ext > 20.0:
-            kelvin = temp_ext + 273
-            ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
-            etd = ets * humidity / 100
-            humidex: int = round(temp_ext + ((etd - 10) * 5 / 9))
-            if humidex < temp_ext:
-                humidex = round(temp_ext)
-            return humidex
-        else:
-            return None
+        kelvin = temp_ext + 273
+        ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
+        etd = ets * humidity / 100
+        humidex: int = round(temp_ext + ((etd - 10) * 5 / 9))
+        if humidex < temp_ext:
+            humidex = round(temp_ext)
+        return humidex
 
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
     @staticmethod
@@ -155,10 +152,11 @@ class ThermoProScan:
         log.info('create_graph')
         csv_data = ThermoProScan.load_csv()
         if bool(csv_data):
+            # print(csv_data)
             sorted_datas = sorted(csv_data, key=lambda d: d["time"])
             df = pd.DataFrame(sorted_datas)
             df.set_index('time')
-            df['humidex'] = df.apply(lambda row: ThermoProScan.get_humidex(row.temp_ext, row.humidity), axis=1)
+            # df['humidex'] = df.apply(lambda row: ThermoProScan.get_humidex(row.temp_ext, row.humidity), axis=1)
             pandas.set_option('display.max_columns', None)
             pandas.set_option('display.width', 200)
             log.info(f'\n{df}')
@@ -172,7 +170,7 @@ class ThermoProScan:
 
             humidity, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='%')
             open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
-            open_pressure, = ax1.plot(df["time"], df["open_pressure"] / 12, color='xkcd:black', label='hPa')
+            open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - ThermoProScan.MIN_HPA) / ((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100), color='xkcd:black', label='hPa')
 
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
@@ -217,14 +215,9 @@ class ThermoProScan:
                     df['open_feels_like'].max(numeric_only=True) + 0.5
                     )))
 
-            if df['temp_ext'][len(df['temp_ext']) - 1] > 20:
-                m_humidex = f', Humidex: {ThermoProScan.get_humidex(df['temp_ext'][len(df['temp_ext']) - 1], df['humidity'][len(df['humidity']) - 1])}°C'
-            else:
-                m_humidex = ''
-
             plt.title(
                 f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Ext.: {df['temp_ext'][len(df['temp_ext']) - 1]}°C, Int: {df['temp_int'][len(df['temp_int']) - 1]}°C, " \
-                + f"{df['humidity'][len(df['humidity']) - 1]}%{m_humidex}, " \
+                + f"{df['humidity'][len(df['humidity']) - 1]}%, Humidex: {df['humidex'][len(df['humidex']) - 1]}, " \
                 + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {df['open_humidity'][len(df['open_humidity']) - 1]}%, Open Humidex: {df['open_feels_like'][len(df['open_feels_like']) - 1]}, " \
                 + f'Pressure: {df['open_pressure'][len(df['open_pressure']) - 1]} hPa, Rolling x̄: {ThermoProScan.DAYS} days', fontsize=10)
             plt.tight_layout()
@@ -432,16 +425,28 @@ class ThermoProScan:
             if open_weather_data:
                 json_data.update(open_weather_data)
 
+            json_data['humidex'] = ThermoProScan.get_humidex(json_data['temp_ext'], json_data['humidity'])
+
             log.info(thermopro.ppretty(json_data, indent=4))
 
             is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
             with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
-                    writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure'])
+                    writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'humidex'])
 
                 if json_data:
-                    writer.writerow([json_data["time"], json_data["temp_ext"], json_data["humidity"], json_data.get('int_temp'), json_data.get('open_temp'), json_data.get('open_feels_like'), json_data.get('open_humidity'), json_data.get('open_pressure')])
+                    writer.writerow([
+                        json_data["time"],
+                        json_data["temp_ext"],
+                        json_data["humidity"],
+                        json_data.get('int_temp'),
+                        json_data.get('open_temp'),
+                        json_data.get('open_feels_like'),
+                        json_data.get('open_humidity'),
+                        json_data.get('open_pressure'),
+                        json_data.get('humidex')
+                    ])
                 else:
                     writer.writerow([json_data["time"], json_data["temp_ext"], json_data["humidity"]])
                 log.info("CSV file writen")
@@ -515,6 +520,21 @@ if __name__ == '__main__':
     # sys.exit()
 
     # thermoProScan.load_open_weather()
+
+    # csv_data: list[dict] = ThermoProScan.load_csv()
+    # for data in csv_data:
+    #     if data['humidex']:
+    #         data['humidex'] = ThermoProScan.get_humidex(data['temp_ext'], data['humidity'])
+    #     print(data)
+    #
+    # keys = csv_data[0].keys()
+    # print(keys)
+    #
+    # with open(ThermoProScan.OUTPUT_CSV_FILE, 'w', encoding='utf8', newline='') as output_file:
+    #     dict_writer = csv.DictWriter(output_file, keys)
+    #     dict_writer.writeheader()
+    #     dict_writer.writerows(csv_data)
+    #
     # sys.exit()
 
     thermoProScan.start(thermoProScan)
