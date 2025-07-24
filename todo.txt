@@ -1,0 +1,8 @@
+
+hPa center
+
+tooltip     https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
+            https://bitbucket.org/aivarannamaa/tkinterhtml/src/master/tkinterhtml/__main__.py?fileviewer=file-view-default
+
+add humidex
+
