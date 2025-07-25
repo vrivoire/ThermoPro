@@ -357,7 +357,7 @@ class ThermoProScan:
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
             open_pressure_crs = mplcursors.cursor(open_pressure, hover=True)
-            open_pressure_crs.connect("add", lambda sel: sel.annotation.set_text('Pression: {}hPa '.format(int(float(sel[1][1]) * float((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100.0) + ThermoProScan.MIN_HPA))))
+            open_pressure_crs.connect("add", lambda sel: sel.annotation.set_text(f'Pression: {int(float(sel[1][1]) * float((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100.0) + ThermoProScan.MIN_HPA)}hPa '))
 
             fig.canvas.manager.set_window_title('ThermoPro Graph')
             dpi = fig.get_dpi()
