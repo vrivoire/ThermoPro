@@ -22,6 +22,7 @@ from typing import Any
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import mplcursors
 import pandas
 import pandas as pd
 import requests
@@ -73,9 +74,9 @@ class ThermoProScan:
             result = result.astype({'temp_int': 'float'})
             result = result.astype({'open_temp': 'float'})
             result = result.astype({'open_feels_like': 'float'})
-            result = result.astype({'open_humidity': 'float'})
-            result = result.astype({'open_pressure': 'float'})
-            result = result.astype({'humidex': 'float'})
+            result = result.astype({'open_humidity': 'Int64'})
+            result = result.astype({'open_pressure': 'Int64'})
+            result = result.astype({'humidex': 'Int64'})
             # print(result)
             return result.to_dict('records')
         else:
@@ -119,21 +120,22 @@ class ThermoProScan:
             # print(f'{type(current['weather'][0]['description'])}   {current['weather'][0]['description']}')
             data: dict[str, Any] = {
                 'open_temp': round(current['temp'], 1),
-                'open_feels_like': round(current['feels_like'], 0),
-                'open_humidity': round(current['humidity'], 0),
-                "open_pressure": round(current['pressure'], 1),
+                'open_feels_like': int(current['feels_like']),
+                'open_humidity': int(current['humidity']),
+                "open_pressure": int(current['pressure']),
                 "open_clouds": round(current['clouds'], 0),
                 "open_visibility": round(current['visibility'], 0),
                 "open_wind_speed": round(current['wind_speed'], 1),
-                "open_wind_gust": round(current['wind_gust'], 1) if "wind_gust" in resp else None,
+                "open_wind_gust": round(current['wind_gust'], 1) if current.get("wind_gust") else None,
                 "open_wind_deg": round(current['wind_deg'], 0),
 
-                "open_rain": round(current['rain'][0]["1h"], 1) if "rain" in resp else None,  # mm/h
-                "open_snow": round(current['snow'][0]["1h"], 1) if "snow" in resp else None,  # mm/h
+                "open_rain": round(current['rain']["1h"], 2) if current.get('rain') else None,  # mm/h
+                "open_snow": round(current['snow']["1h"], 2) if current.get('snow') else None,  # mm/h
 
-                "open_description": current['weather'][0]['description'] if current['weather'] else '',
-                "open_icon": current['weather'][0]['icon'] if current['weather'] else None
+                "open_description": current['weather'][0]['description'] if current.get('weather') else '',
+                "open_icon": current['weather'][0]['icon'] if current.get('weather') else None
             }
+            # print(current.get('rain'))
             # print(thermopro.ppretty(data, indent=4))
             return data
         else:
@@ -221,9 +223,9 @@ class ThermoProScan:
 
             plt.title(
                 f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Ext.: {df['temp_ext'][len(df['temp_ext']) - 1]}°C, Int: {df['temp_int'][len(df['temp_int']) - 1]}°C, " \
-                + f"{df['humidity'][len(df['humidity']) - 1]}%, Humidex: {df['humidex'][len(df['humidex']) - 1]}, " \
-                + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {df['open_humidity'][len(df['open_humidity']) - 1]}%, Open Humidex: {df['open_feels_like'][len(df['open_feels_like']) - 1]}, " \
-                + f'Pressure: {df['open_pressure'][len(df['open_pressure']) - 1]} hPa, Rolling x̄: {ThermoProScan.DAYS} days', fontsize=10)
+                + f"{int(df['humidity'][len(df['humidity']) - 1])}%, Humidex: {int(df['humidex'][len(df['humidex']) - 1])}, " \
+                + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {int(df['open_humidity'][len(df['open_humidity']) - 1])}%, Open Humidex: {int(df['open_feels_like'][len(df['open_feels_like']) - 1])}, " \
+                + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {ThermoProScan.DAYS} days', fontsize=10)
             plt.tight_layout()
             fig.subplots_adjust(
                 left=0.055,
@@ -354,6 +356,9 @@ class ThermoProScan:
             button.on_clicked(reset)
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
+            open_pressure_crs = mplcursors.cursor(open_pressure, hover=True)
+            open_pressure_crs.connect("add", lambda sel: sel.annotation.set_text('Pression: {}hPa '.format(int(float(sel[1][1]) * float((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100.0) + ThermoProScan.MIN_HPA))))
+
             fig.canvas.manager.set_window_title('ThermoPro Graph')
             dpi = fig.get_dpi()
             fig.set_size_inches(1280.0 / float(dpi), 720.0 / float(dpi))
@@ -462,16 +467,16 @@ class ThermoProScan:
                     writer.writerow([
                         json_data["time"],
                         json_data["temp_ext"],
-                        json_data["humidity"],
+                        int(json_data["humidity"]),
                         json_data.get('int_temp'),
                         json_data.get('open_temp'),
-                        json_data.get('open_feels_like'),
-                        json_data.get('open_humidity'),
-                        json_data.get('open_pressure'),
-                        json_data.get('humidex')
+                        int(json_data.get('open_feels_like')),
+                        int(json_data.get('open_humidity')),
+                        int(json_data.get('open_pressure')),
+                        int(json_data.get('humidex'))
                     ])
                 else:
-                    writer.writerow([json_data["time"], json_data["temp_ext"], json_data["humidity"]])
+                    writer.writerow([json_data["time"], json_data["temp_ext"], int(json_data["humidity"])])
                 log.info("CSV file writen")
 
             if not is_new_file:

@@ -8,4 +8,3 @@ tooltip     https://stackoverflow.com/questions/7908636/how-to-add-hovering-anno
 
 hpa hoover tooltip
 
-int humidity
