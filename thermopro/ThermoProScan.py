@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import traceback
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from tkinter import PhotoImage
 from typing import Any
@@ -26,15 +27,15 @@ import pandas as pd
 import requests
 import schedule
 from matplotlib.dates import date2num, num2date
+from matplotlib.lines import Line2D
 from matplotlib.widgets import CheckButtons, Slider, Button
 
 import thermopro
-from thermopro import HOME_PATH, log, ppretty
-
-sys.path.append(f'{os.getenv('USERPROFILE')}/Documents\\BkpScripts')
-from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
-
+from thermopro import HOME_PATH, log
 from thermopro.NeviwebTemperature import NeviwebTemperature
+
+sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
+from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
 
 
 class ThermoProScan:
@@ -45,17 +46,20 @@ class ThermoProScan:
     PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
     OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
+    LOCATION = f'{HOME_PATH}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
 
     RTL_433_VERSION = '25.02'
     RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
     SCHEDULE_DELAY = '60'
     ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', '162', '-F', f'json:{OUTPUT_JSON_FILE}']
     DAYS = 7 * 2
-    POS = 'lat=45.509&lon=-73.588'  # Montreal
-    # POS = 'lat=45.55064&lon=-73.56062' # Angus
-    WEATHER_URL = f'https://api.openweathermap.org/data/3.0/onecall?{POS}&exclude=minutely,hourly,daily,alerts&appid={OPEN_WEATHER_API_KEY}&units=metric&lang=en'
 
-    LOCATION = f'{os.getenv('USERPROFILE')}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
+    OPEN_LAT = 45.509  # Montreal
+    OPEN_LON = -73.588  # Montreal
+    # OPEN_LAT = 45.55064  # Angus
+    # OPEN_LON = -73.56062 # Angus
+    WEATHER_URL = f'https://api.openweathermap.org/data/3.0/onecall?lat={OPEN_LAT}&lon={OPEN_LON}&exclude=minutely,hourly,daily,alerts&appid={OPEN_WEATHER_API_KEY}&units=metric&lang=en'
+
     MIN_HPA = 970
     MAX_HPA = 1085
 
@@ -230,24 +234,43 @@ class ThermoProScan:
                 hspace=0.202
             )
 
-            def callback(label):
-                ln = lines_by_label[label]
-                ln.set_visible(not ln.get_visible())
-                ln.figure.canvas.draw_idle()
+            def on_clicked(label):
+                line: Line2D | None = None
+                for line in all_lines:
+                    if line.get_label() == label:
+                        break
+                line.set_visible(not line.get_visible())
+                line.figure.canvas.draw_idle()
 
-            lines_by_label = {l.get_label(): l for l in [temp_ext, temp_int, open_temp, humidity, open_humidity, humidex, open_feels_like, open_pressure]}
-            line_colors = [l.get_color() for l in lines_by_label.values()]
+                check.eventson = False
+                if label == 'Select All/None':
+                    for i in range(len(all_lines)):
+                        line2 = all_lines[i]
+                        line2.set_visible(line.get_visible())
+                        line2.figure.canvas.draw_idle()
+                        # print(line2.get_visible())
+                        check.set_active(i, line.get_visible())
+                check.eventson = True
+
+            select: Line2D = Line2D([1], [1], label='Select All/None', color='black')
+            select.set_figure(temp_ext.figure)
+            select.figure.set_canvas(temp_ext.figure.canvas)
+
+            all_lines: list[Line2D] = [select, temp_ext, temp_int, open_temp, humidity, open_humidity, humidex, open_feels_like, open_pressure]
+            lines_label: Sequence[str] = [str(line.get_label()) for line in all_lines]
+            lines_colors: Sequence[str] = [line.get_color() for line in all_lines]
+            lines_actives: Sequence[bool] = [line.get_visible() for line in all_lines]
             check = CheckButtons(
-                ax=ax1.inset_axes((0.0, 0.0, 0.12, 0.2)),
-                labels=lines_by_label.keys(),
-                actives=[l.get_visible() for l in lines_by_label.values()],
-                label_props={'color': line_colors},
-                frame_props={'edgecolor': line_colors},
-                check_props={'facecolor': line_colors},
+                ax=ax1.inset_axes((0.0, 0.0, 0.14, 0.3)),
+                labels=lines_label,
+                actives=lines_actives,
+                label_props={'color': lines_colors},
+                frame_props={'edgecolor': lines_colors},
+                check_props={'facecolor': lines_colors},
             )
-            check.on_clicked(callback)
+            check.on_clicked(on_clicked)
 
-            def update(val):
+            def on_changed(val):
                 slider_position.valtext.set_text(num2date(val).date())
                 df2 = df.set_index(['time'])
                 df2 = df2[num2date(val - ThermoProScan.DAYS).date():num2date(val + ThermoProScan.DAYS).date()]
@@ -326,7 +349,7 @@ class ThermoProScan:
                 initcolor='none',
             )
             slider_position.valtext.set_text(df["time"][0].date())
-            slider_position.on_changed(update)
+            slider_position.on_changed(on_changed)
             button = Button(fig.add_axes((0.9, 0.01, 0.055, 0.03)), 'Reset', hovercolor='0.975')
             button.on_clicked(reset)
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
