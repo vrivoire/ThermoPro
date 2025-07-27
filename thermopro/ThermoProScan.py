@@ -258,7 +258,7 @@ class ThermoProScan:
             select.set_figure(temp_ext.figure)
             select.figure.set_canvas(temp_ext.figure.canvas)
 
-            all_lines: list[Line2D] = [select, temp_ext, temp_int, open_temp, humidity, open_humidity, humidex, open_feels_like, open_pressure]
+            all_lines: list[Line2D] = [select, open_pressure, temp_ext, temp_int, open_temp, humidity, open_humidity, humidex, open_feels_like]
             lines_label: Sequence[str] = [str(line.get_label()) for line in all_lines]
             lines_colors: Sequence[str] = [line.get_color() for line in all_lines]
             lines_actives: Sequence[bool] = [line.get_visible() for line in all_lines]
@@ -356,8 +356,15 @@ class ThermoProScan:
             button.on_clicked(reset)
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
-            open_pressure_crs = mplcursors.cursor(open_pressure, hover=True)
-            open_pressure_crs.connect("add", lambda sel: sel.annotation.set_text(f'Pression: {int(float(sel[1][1]) * float((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100.0) + ThermoProScan.MIN_HPA)}hPa '))
+            mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'Pression: {int(float(sel[1][1]) * float((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100.0) + ThermoProScan.MIN_HPA)} {sel[0].get_label()}'
+            ))
+            # for line in all_lines:
+            #     if line.get_label() != 'Select All/None' and line.get_label() != 'hPa':
+            #         print(line)
+            #         mplcursors.cursor(line, hover=True).connect("add", lambda sel: sel.annotation.set_text(
+            #             f'{{sel[0].get_label()}}: {sel[1][1]}'
+            #         ))
 
             fig.canvas.manager.set_window_title('ThermoPro Graph')
             dpi = fig.get_dpi()
@@ -366,7 +373,6 @@ class ThermoProScan:
 
             if popup:
                 manager = matplotlib.pyplot.get_current_fig_manager()
-                # print(f'{type(manager)}  {manager}')
                 img = PhotoImage(file=f'{ThermoProScan.LOCATION}ThermoPro.png')
                 manager.window.tk.call('wm', 'iconphoto', manager.window._w, img)
                 plt.show()
