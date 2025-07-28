@@ -174,7 +174,7 @@ class ThermoProScan:
             ax1.grid(axis='y', color='blue', linewidth=0.2)
             ax1.set_yticks(list(range(0, 101, 10)))
 
-            humidity, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='%')
+            humidity, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='Ext. %')
             open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
             open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - ThermoProScan.MIN_HPA) / ((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100), color='xkcd:black', label='hPa')
 
@@ -193,7 +193,7 @@ class ThermoProScan:
 
             temp_ext, = ax2.plot(df["time"], df["temp_ext"], color='xkcd:scarlet', label='Ext. °C')
             temp_int, = ax2.plot(df["time"], df["temp_int"], color='xkcd:red', label='Int. °C')
-            open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='OpenTemp. °C')
+            open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
 
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
@@ -222,7 +222,7 @@ class ThermoProScan:
                     )))
 
             plt.title(
-                f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Ext.: {df['temp_ext'][len(df['temp_ext']) - 1]}°C, Int: {df['temp_int'][len(df['temp_int']) - 1]}°C, " \
+                f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['temp_int'][len(df['temp_int']) - 1]}°C, Ext.: {df['temp_ext'][len(df['temp_ext']) - 1]}°C, " \
                 + f"{int(df['humidity'][len(df['humidity']) - 1])}%, Humidex: {int(df['humidex'][len(df['humidex']) - 1])}, " \
                 + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {int(df['open_humidity'][len(df['open_humidity']) - 1])}%, Open Humidex: {int(df['open_feels_like'][len(df['open_feels_like']) - 1])}, " \
                 + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {ThermoProScan.DAYS} days', fontsize=10)
@@ -258,7 +258,7 @@ class ThermoProScan:
             select.set_figure(temp_ext.figure)
             select.figure.set_canvas(temp_ext.figure.canvas)
 
-            all_lines: list[Line2D] = [select, open_pressure, temp_ext, temp_int, open_temp, humidity, open_humidity, humidex, open_feels_like]
+            all_lines: list[Line2D] = [select, open_pressure, temp_int, temp_ext, open_temp, humidity, open_humidity, humidex, open_feels_like]
             lines_label: Sequence[str] = [str(line.get_label()) for line in all_lines]
             lines_colors: Sequence[str] = [line.get_color() for line in all_lines]
             lines_actives: Sequence[bool] = [line.get_visible() for line in all_lines]
@@ -560,7 +560,7 @@ if __name__ == '__main__':
     #     if data['humidex']:
     #         data['humidex'] = ThermoProScan.get_humidex(data['temp_ext'], data['humidity'])
     #     print(data)
-    #
+    #         data['humidex'] = ThermoProScan.get_humidex(data['temp_ext'], data['humidity'])
     # keys = csv_data[0].keys()
     # print(keys)
     #

@@ -6,5 +6,16 @@ details     https://stackoverflow.com/questions/7908636/how-to-add-hovering-anno
 
 
 
-hpa hoover tooltip hide
+morentro int_%
 
+hilo kw/h
+Hilo			rivoire.vincent@gmail.com / Elcv753.,
+https://connexion.hiloenergie.com/hilodirectoryb2c.onmicrosoft.com/oauth2/v2.0/authorize?p=b2c_1a_sign_in&client_id=fd8e2de8-8ee3-4871-9812-397023e7638b&redirect_uri=com.hiloenergie.hilo%3A%2F%2Flogin-callback&scope=openid%20offline_access%20https%3A%2F%2FHiloDirectoryB2C.onmicrosoft.com%2Fhiloapis%2Fuser_impersonation&nonce=oKTpZrDHDmXAzwdkM5sFCp595oM&state=oKTpZrDHDmXAzwdkM5sFCp595oM&code_challenge_method=S256&code_challenge=FYXDw8Kn9T4MXr2M-LoCQj47TEpIRummdsyin2YFfag&response_type=code&ui_locales=fr
+
+taille des dates en bas
+
+
+air quality
+
+
+auto tile thermopro
