@@ -3,7 +3,7 @@
 import sys
 
 import thermopro
-from thermopro import log, ppretty
+from thermopro import log
 from thermopro.ThermoProScan import ThermoProScan
 
 if __name__ == '__main__':

@@ -84,19 +84,16 @@ class ThermoProScan:
         return []
 
     @staticmethod
-    def load_neviweb() -> dict[str, Any] | None:
+    def load_neviweb() -> dict[str, float] | None:
         neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, None, None, None, None)
         try:
             log.info(f'login={neviweb_temperature.login()}')
             log.info(neviweb_temperature.get_network())
             log.info(neviweb_temperature.get_gateway_data())
             data: list = [float(gateway_data2['roomTemperatureDisplay']) for gateway_data2 in neviweb_temperature.gateway_data]
-            temp_int: float = sum(data) / len(data)
-
-            data: dict[str, Any] = {'int_temp': round(temp_int, 1)}
-
-            log.info(f'**************** data={data}')
-            return data
+            temp_int: float = round(sum(data) / len(data), 1)
+            log.info(f'temp_int={temp_int}, data={data}')
+            return {'int_temp': temp_int}
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -471,7 +468,7 @@ class ThermoProScan:
 
                 if json_data:
                     writer.writerow([
-                        json_data["time"],
+                        json_data["time"].strftime('%Y/%m/%d %H:%M:%S'),
                         json_data["temp_ext"],
                         int(json_data["humidity"]),
                         json_data.get('int_temp'),
@@ -482,7 +479,7 @@ class ThermoProScan:
                         int(json_data.get('humidex'))
                     ])
                 else:
-                    writer.writerow([json_data["time"], json_data["temp_ext"], int(json_data["humidity"])])
+                    writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
                 log.info("CSV file writen")
 
             if not is_new_file:
@@ -500,7 +497,7 @@ class ThermoProScan:
             for line in r:
                 line = line.strip()
                 if len(line) > 0:
-                    o.write(line.strip() + '\n')
+                    o.write(line + '\n')
         os.remove(ThermoProScan.OUTPUT_CSV_FILE)
         os.rename(ThermoProScan.OUTPUT_CSV_FILE + '.tmp', ThermoProScan.OUTPUT_CSV_FILE)
         if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):

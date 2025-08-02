@@ -19,3 +19,7 @@ air quality
 
 
 auto tile thermopro
+
+
+ThermoPro TP826 Wireless 915MHz UHF
+https://www.reddit.com/r/RTLSDR/comments/10j0amr/finally_got_something_on_915mhz/
