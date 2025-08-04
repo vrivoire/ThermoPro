@@ -4,6 +4,8 @@ import os.path
 
 HOME_PATH = f"{os.getenv('USERPROFILE')}/"
 LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
+MAME: str = ''
+
 
 def ppretty(value, htchar='\t', lfchar='\n', indent=0):
     nlch: str = lfchar + htchar * (indent + 1)
@@ -28,16 +30,18 @@ def ppretty(value, htchar='\t', lfchar='\n', indent=0):
     else:
         return repr(value)
 
+
 def set_up(name: str):
-    name = f'{LOG_PATH}{name[name.rfind('\\') + 1:len(name) - 3]}.log'
+    global MAME
+    MAME = f'{LOG_PATH}{name[name.rfind('\\') + 1:len(name) - 3]}.log'
 
     def new_namer() -> str | None:
-        return name.replace(".log", "") + ".log"
+        return MAME.replace(".log", "") + ".log"
 
-    # if not os.path.exists(name):
-    #     os.mkdir(name)
+    if not os.path.exists(LOG_PATH):
+        os.mkdir(LOG_PATH)
 
-    file_handler = logging.handlers.TimedRotatingFileHandler(name, when='midnight', interval=1, backupCount=7,
+    file_handler = logging.handlers.TimedRotatingFileHandler(MAME, when='midnight', interval=1, backupCount=7,
                                                              encoding=None, delay=True, utc=False, atTime=None,
                                                              errors=None)
     file_handler.namer = new_namer()
