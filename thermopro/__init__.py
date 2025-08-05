@@ -4,47 +4,44 @@ import os.path
 
 HOME_PATH = f"{os.getenv('USERPROFILE')}/"
 LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
-MAME: str = ''
+LOG_NAME: str = ''
 
 
-def ppretty(value, htchar='\t', lfchar='\n', indent=0):
-    nlch: str = lfchar + htchar * (indent + 1)
+def ppretty(value, tab_char='\t', return_char='\n', indent=0):
+    nlch: str = return_char + tab_char * (indent + 1)
     if type(value) is dict:
         items = [
-            nlch + repr(key) + ': ' + ppretty(value[key], htchar, lfchar, indent + 1)
+            nlch + repr(key) + ': ' + ppretty(value[key], tab_char, return_char, indent + 1)
             for key in value
         ]
-        return '{%s}' % (','.join(items) + lfchar + htchar * indent)
+        return '{%s}' % (','.join(items) + return_char + tab_char * indent)
     elif type(value) is list:
         items = [
-            nlch + ppretty(item, htchar, lfchar, indent + 1)
+            nlch + ppretty(item, tab_char, return_char, indent + 1)
             for item in value
         ]
-        return '[%s]' % (','.join(items) + lfchar + htchar * indent)
+        return '[%s]' % (','.join(items) + return_char + tab_char * indent)
     elif type(value) is tuple:
         items = [
-            nlch + ppretty(item, htchar, lfchar, indent + 1)
+            nlch + ppretty(item, tab_char, return_char, indent + 1)
             for item in value
         ]
-        return '(%s)' % (','.join(items) + lfchar + htchar * indent)
+        return '(%s)' % (','.join(items) + return_char + tab_char * indent)
     else:
         return repr(value)
 
 
-def set_up(name: str):
-    global MAME
-    MAME = f'{LOG_PATH}{name[name.rfind('\\') + 1:len(name) - 3]}.log'
-
-    def new_namer() -> str | None:
-        return MAME.replace(".log", "") + ".log"
+def set_up(log_name: str):
+    global LOG_NAME
+    LOG_NAME = f'{LOG_PATH}{log_name[log_name.rfind('\\') + 1:len(log_name) - 3]}.log'
 
     if not os.path.exists(LOG_PATH):
         os.mkdir(LOG_PATH)
 
-    file_handler = logging.handlers.TimedRotatingFileHandler(MAME, when='midnight', interval=1, backupCount=7,
+    file_handler = logging.handlers.TimedRotatingFileHandler(LOG_NAME, when='midnight', interval=1, backupCount=7,
                                                              encoding=None, delay=True, utc=False, atTime=None,
                                                              errors=None)
-    file_handler.namer = new_namer()
+    file_handler.namer = lambda name: name.replace(".log", "") + ".log"
     log.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)-8s] [%(filename)s.%(funcName)s:%(lineno)d] %(message)s",
@@ -53,4 +50,3 @@ def set_up(name: str):
             logging.StreamHandler()
         ]
     )
-    # log.info(f'LOG_FILE={name}')
