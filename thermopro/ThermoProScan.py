@@ -136,7 +136,7 @@ class ThermoProScan:
                 "open_icon": current['weather'][0]['icon'] if current.get('weather') else None
             }
             # print(current.get('rain'))
-            print(thermopro.ppretty(data, indent=4))
+            # print(thermopro.ppretty(data, indent=4))
             return data
         else:
             log.error(json.dumps(resp, indent=4))
@@ -384,12 +384,12 @@ class ThermoProScan:
                 ctypes.windll.user32.MessageBoxW(0, "csv_data is empty", 'Error', 16)
 
     @staticmethod
-    def clear_json_file() -> None:
+    def clear_json_file() -> dict[str, Any] | None:
         if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
             os.remove(ThermoProScan.OUTPUT_JSON_FILE)
 
     @staticmethod
-    def call_rtl_433() -> None:
+    def call_rtl_433() -> dict[str, Any] | None:
         log.info("Start call_rtl_433")
         try:
             ThermoProScan.clear_json_file()
@@ -406,8 +406,11 @@ class ThermoProScan:
             log.info(f'Return code: {completed_process.returncode}')
             log.info(f'stdout: {completed_process.stdout}')
             log.error(f'stderr: {completed_process.stderr}')
-            # completed_process.check_returncode()
+            json_rtl_433: dict[str, Any] = ThermoProScan.load_json()
 
+            log.info(f'json_data={json_rtl_433}')
+
+            return json_rtl_433
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned \n{timeoutExpired}")
             log.error(traceback.format_exc())
@@ -442,6 +445,11 @@ class ThermoProScan:
         else:
             log.error(f'File {ThermoProScan.OUTPUT_JSON_FILE} not existing or empty.')
 
+        del json_data['model']
+        del json_data['subtype']
+        del json_data['id']
+        del json_data['channel']
+        del json_data['battery_ok']
         return json_data
 
     @staticmethod
@@ -449,60 +457,61 @@ class ThermoProScan:
         log.info('')
         log.info('--------------------------------------------------------------------------------')
         log.info("Start task")
-        ThermoProScan.call_rtl_433()
-        json_data: dict[str, Any] = ThermoProScan.load_json()
-        log.info(f'json_data={json_data}')
-        if bool(json_data):
-            neviweb_data: dict[str, Any] | None = ThermoProScan.load_neviweb()
-            if neviweb_data:
-                json_data.update(neviweb_data)
-            open_weather_data: dict[str, Any] | None = ThermoProScan.load_open_weather()
-            if open_weather_data:
-                json_data.update(open_weather_data)
+        json_data: dict[str, Any] = {}
 
-            json_data['humidex'] = ThermoProScan.get_int_humidex(json_data['temp_ext'], json_data['humidity'])
+        json_rtl_433: dict[str, Any] | None = ThermoProScan.call_rtl_433()
+        if json_rtl_433:
+            json_data.update(json_rtl_433)
 
-            log.info('----------------------------------------------')
-            log.info(thermopro.ppretty(json_data, indent=4))
-            log.info('----------------------------------------------')
+        neviweb_data: dict[str, Any] | None = ThermoProScan.load_neviweb()
+        if neviweb_data:
+            json_data.update(neviweb_data)
 
-            is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
-            with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                if is_new_file:
-                    writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
-                                     'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon'])
+        open_weather_data: dict[str, Any] | None = ThermoProScan.load_open_weather()
+        if open_weather_data:
+            json_data.update(open_weather_data)
 
-                if json_data:
-                    print(json_data)
-                    writer.writerow([
-                        json_data["time"].strftime('%Y/%m/%d %H:%M:%S'),
-                        json_data["temp_ext"],
-                        int(json_data["humidity"]),
-                        json_data.get('int_temp'),
-                        int(json_data.get('humidex')),
-                        json_data.get('open_temp'),
-                        json_data.get('open_feels_like'),
-                        int(json_data.get('open_humidity')),
-                        int(json_data.get('open_pressure')),
-                        int(json_data.get('open_clouds')),
-                        int(json_data.get('open_visibility')),
-                        json_data.get('open_wind_speed'),
-                        json_data.get('open_wind_gust'),
-                        int(json_data.get('open_wind_deg')),
-                        json_data.get('open_rain'),
-                        json_data.get('open_snow'),
-                        json_data.get('open_description'),
-                        json_data.get('open_icon')
-                    ])
-                else:
-                    writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
-                log.info("CSV file writen")
+        json_data['humidex'] = ThermoProScan.get_int_humidex(json_data['temp_ext'], json_data['humidity'])
 
-            if not is_new_file:
-                ThermoProScan.save_csv()
-        else:
-            log.error('json_data empty')
+        log.info('----------------------------------------------')
+        log.info(json.dumps(json_data, indent=4, sort_keys=True, default=str))
+        log.info('----------------------------------------------')
+
+        is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
+        with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            if is_new_file:
+                writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
+                                 'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon'])
+
+            if json_data:
+                print(json_data)
+                writer.writerow([
+                    json_data["time"].strftime('%Y/%m/%d %H:%M:%S'),
+                    json_data["temp_ext"],
+                    int(json_data["humidity"]),
+                    json_data.get('int_temp'),
+                    int(json_data.get('humidex')),
+                    json_data.get('open_temp'),
+                    json_data.get('open_feels_like'),
+                    int(json_data.get('open_humidity')),
+                    int(json_data.get('open_pressure')),
+                    int(json_data.get('open_clouds')),
+                    int(json_data.get('open_visibility')),
+                    json_data.get('open_wind_speed'),
+                    json_data.get('open_wind_gust'),
+                    int(json_data.get('open_wind_deg')),
+                    json_data.get('open_rain'),
+                    json_data.get('open_snow'),
+                    json_data.get('open_description'),
+                    json_data.get('open_icon')
+                ])
+            else:
+                writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
+            log.info("CSV file writen")
+
+            # if not is_new_file:
+            #     ThermoProScan.save_csv()
 
         ThermoProScan.clear_json_file()
         log.info("End task")
