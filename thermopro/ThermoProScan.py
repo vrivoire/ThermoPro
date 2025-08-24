@@ -135,7 +135,8 @@ class ThermoProScan:
                 "open_description": f"{current['weather'][0]['main']}, {current['weather'][0]['description']}" if current.get('weather') else '',
                 "open_icon": current['weather'][0]['icon'] if current.get('weather') else None,
                 'open_sunrise': datetime.fromtimestamp(current['sunrise']),
-                'open_sunset': datetime.fromtimestamp(current['sunset'])
+                'open_sunset': datetime.fromtimestamp(current['sunset']),
+                'open_uvi': round(current['uvi'], 2)  # https://fr.wikipedia.org/wiki/Indice_UV
             }
             # print(current.get('rain'))
             # print(thermopro.ppretty(data, indent=4))
@@ -485,7 +486,7 @@ class ThermoProScan:
             writer = csv.writer(csvfile)
             if is_new_file:
                 writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
-                                 'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset'])
+                                 'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi'])
 
             if json_data:
                 # print(json_data)
@@ -509,7 +510,8 @@ class ThermoProScan:
                     json_data.get('open_description'),
                     json_data.get('open_icon'),
                     json_data["open_sunrise"].strftime('%Y/%m/%d %H:%M:%S'),
-                    json_data["open_sunset"].strftime('%Y/%m/%d %H:%M:%S')
+                    json_data["open_sunset"].strftime('%Y/%m/%d %H:%M:%S'),
+                    json_data.get('open_uvi')
                 ])
             else:
                 writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
