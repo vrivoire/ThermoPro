@@ -4,6 +4,7 @@
 
 # https://github.com/merbanan/rtl_433
 
+import atexit
 import csv
 import ctypes
 import json
@@ -20,7 +21,7 @@ from tkinter import PhotoImage
 from typing import Any
 
 import matplotlib
-import matplotlib.dates as mdates
+import matplotlib.dates as m_dates
 import matplotlib.pyplot as plt
 import mplcursors
 import pandas
@@ -42,6 +43,8 @@ from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
 class ThermoProScan:
 
     def __init__(self):
+        log.info('Starting ThermoProScan')
+        atexit.register(self.cleanup_function)
         schedule.clear()
 
     PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
@@ -107,40 +110,40 @@ class ThermoProScan:
         # print(ThermoProScan.WEATHER_URL)
         response = requests.get(ThermoProScan.WEATHER_URL)
         resp = response.json()
-        # print(json.dumps(resp, indent=4))
+
+        log.info(json.dumps(resp, indent=4))
+
         if "cod" in resp:
             log.error(json.dumps(resp, indent=4))
             return None
         elif "current" in resp:
             current = resp['current']
-            # print(thermopro.ppretty(current, indent=4))
-            # print(f'{type(current['weather'][0]['description'])}   {current['weather'][0]['description']}')
             data: dict[str, Any] = {
-                'open_temp': round(current['temp'], 1),
-                'open_feels_like': int(current['feels_like']),
+                'open_temp': round(current['temp'], 2),
+                'open_feels_like': round(current['feels_like'], 2),
                 'open_humidity': int(current['humidity']),
                 "open_pressure": int(current['pressure']),
                 "open_clouds": round(current['clouds'], 0),
                 "open_visibility": round(current['visibility'], 0),
-                "open_wind_speed": round(current['wind_speed'], 1),
-                "open_wind_gust": round(current['wind_gust'], 1) if current.get("wind_gust") else None,
+                "open_wind_speed": round(current['wind_speed'], 2),
+                "open_wind_gust": round(current['wind_gust'], 2) if current.get("wind_gust") else None,
                 "open_wind_deg": round(current['wind_deg'], 0),
 
                 "open_rain": round(current['rain']["1h"], 2) if current.get('rain') else None,  # mm/h
                 "open_snow": round(current['snow']["1h"], 2) if current.get('snow') else None,  # mm/h
 
-                "open_description": current['weather'][0]['description'] if current.get('weather') else '',
+                "open_description": f"{current['weather'][0]['main']}, {current['weather'][0]['description']}" if current.get('weather') else '',
                 "open_icon": current['weather'][0]['icon'] if current.get('weather') else None
             }
             # print(current.get('rain'))
-            # print(thermopro.ppretty(data, indent=4))
+            print(thermopro.ppretty(data, indent=4))
             return data
         else:
             log.error(json.dumps(resp, indent=4))
             return None
 
     @staticmethod
-    def get_humidex(temp_ext: float, humidity: int) -> int | None:
+    def get_int_humidex(temp_ext: float, humidity: int) -> int | None:
         kelvin = temp_ext + 273
         ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
         etd = ets * humidity / 100
@@ -161,7 +164,7 @@ class ThermoProScan:
             df.set_index('time')
             # df['humidex'] = df.apply(lambda row: ThermoProScan.get_humidex(row.temp_ext, row.humidity), axis=1)
             pandas.set_option('display.max_columns', None)
-            pandas.set_option('display.width', 200)
+            pandas.set_option('display.width', 1000)
             log.info(f'\n{df}')
 
             fig, ax1 = plt.subplots()
@@ -175,10 +178,10 @@ class ThermoProScan:
             open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
             open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - ThermoProScan.MIN_HPA) / ((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100), color='xkcd:black', label='hPa')
 
-            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
-            ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-            ax1.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
-            ax1.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.SU.weekday, interval=1))
+            ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
+            ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
+            ax1.xaxis.set_minor_formatter(m_dates.DateFormatter('%d'))
+            ax1.xaxis.set_minor_locator(m_dates.WeekdayLocator(byweekday=m_dates.SU.weekday, interval=1))
             ax1.grid(axis='x', color='black', which="major", linewidth=0.2)
             ax1.grid(axis='x', color='black', which="minor", linewidth=0.1)
             ax1.tick_params(axis='both', which='minor', labelsize='small')
@@ -282,8 +285,8 @@ class ThermoProScan:
                 )
                 ax1.axis(window)
                 ax1.set_yticks(list(range(0, 101, 10)))
-                ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m/%d'))
-                ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+                ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m/%d'))
+                ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
                 window2 = (
                     val - ThermoProScan.DAYS,
@@ -317,10 +320,10 @@ class ThermoProScan:
                     0,
                     100
                 ))
-                ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
-                ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-                ax1.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
-                ax1.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.SU.weekday, interval=1))
+                ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
+                ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
+                ax1.xaxis.set_minor_formatter(m_dates.DateFormatter('%d'))
+                ax1.xaxis.set_minor_locator(m_dates.WeekdayLocator(byweekday=m_dates.SU.weekday, interval=1))
 
                 ax2.axis((
                     df['time'][0] - timedelta(hours=1),
@@ -353,6 +356,7 @@ class ThermoProScan:
             button.on_clicked(reset)
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
+            # https://www.geeksforgeeks.org/data-visualization/adding-tooltips-to-a-timeseries-chart-hover-tool-in-python-bokeh/
             mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'Pression: {int(float(sel[1][1]) * float((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100.0) + ThermoProScan.MIN_HPA)} {sel[0].get_label()}'
             ))
@@ -456,27 +460,40 @@ class ThermoProScan:
             if open_weather_data:
                 json_data.update(open_weather_data)
 
-            json_data['humidex'] = ThermoProScan.get_humidex(json_data['temp_ext'], json_data['humidity'])
+            json_data['humidex'] = ThermoProScan.get_int_humidex(json_data['temp_ext'], json_data['humidity'])
 
+            log.info('----------------------------------------------')
             log.info(thermopro.ppretty(json_data, indent=4))
+            log.info('----------------------------------------------')
 
             is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
             with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
-                    writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'humidex'])
+                    writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
+                                     'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon'])
 
                 if json_data:
+                    print(json_data)
                     writer.writerow([
                         json_data["time"].strftime('%Y/%m/%d %H:%M:%S'),
                         json_data["temp_ext"],
                         int(json_data["humidity"]),
                         json_data.get('int_temp'),
+                        int(json_data.get('humidex')),
                         json_data.get('open_temp'),
-                        int(json_data.get('open_feels_like')),
+                        json_data.get('open_feels_like'),
                         int(json_data.get('open_humidity')),
                         int(json_data.get('open_pressure')),
-                        int(json_data.get('humidex'))
+                        int(json_data.get('open_clouds')),
+                        int(json_data.get('open_visibility')),
+                        json_data.get('open_wind_speed'),
+                        json_data.get('open_wind_gust'),
+                        int(json_data.get('open_wind_deg')),
+                        json_data.get('open_rain'),
+                        json_data.get('open_snow'),
+                        json_data.get('open_description'),
+                        json_data.get('open_icon')
                     ])
                 else:
                     writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
@@ -532,31 +549,31 @@ class ThermoProScan:
             log.error(traceback.format_exc())
 
     @staticmethod
-    def stop():
+    def cleanup_function():
         try:
-            log.info('ThermoProScan stopped')
+            log.info('ThermoProScan stopping...')
             schedule.clear()
+            log.info('ThermoProScan stopped')
             sys.exit()
-        except SystemExit as ex:
-            pass
+        except Exception as ex:
+            log.info(ex)
 
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
 
-    log.info('ThermoProScan')
     thermoProScan: ThermoProScan = ThermoProScan()
 
     # thermoProScan.load_neviweb()
     # sys.exit()
 
     # thermoProScan.load_open_weather()
-
+    #
     # csv_data: list[dict] = ThermoProScan.load_csv()
     # for data in csv_data:
     #     if data['humidex']:
     #         data['humidex'] = ThermoProScan.get_humidex(data['temp_ext'], data['humidity'])
-    #     print(data)
+    #         print(data)
     #         data['humidex'] = ThermoProScan.get_humidex(data['temp_ext'], data['humidity'])
     # keys = csv_data[0].keys()
     # print(keys)
