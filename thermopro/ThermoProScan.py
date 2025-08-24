@@ -384,7 +384,7 @@ class ThermoProScan:
                 ctypes.windll.user32.MessageBoxW(0, "csv_data is empty", 'Error', 16)
 
     @staticmethod
-    def clear_json_file() -> dict[str, Any] | None:
+    def clear_json_file():
         if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
             os.remove(ThermoProScan.OUTPUT_JSON_FILE)
 
@@ -445,6 +445,8 @@ class ThermoProScan:
         else:
             log.error(f'File {ThermoProScan.OUTPUT_JSON_FILE} not existing or empty.')
 
+        ThermoProScan.clear_json_file()
+
         del json_data['model']
         del json_data['subtype']
         del json_data['id']
@@ -462,6 +464,7 @@ class ThermoProScan:
         json_rtl_433: dict[str, Any] | None = ThermoProScan.call_rtl_433()
         if json_rtl_433:
             json_data.update(json_rtl_433)
+            json_data['humidex'] = ThermoProScan.get_int_humidex(json_data['temp_ext'], json_data['humidity'])
 
         neviweb_data: dict[str, Any] | None = ThermoProScan.load_neviweb()
         if neviweb_data:
@@ -470,8 +473,6 @@ class ThermoProScan:
         open_weather_data: dict[str, Any] | None = ThermoProScan.load_open_weather()
         if open_weather_data:
             json_data.update(open_weather_data)
-
-        json_data['humidex'] = ThermoProScan.get_int_humidex(json_data['temp_ext'], json_data['humidity'])
 
         log.info('----------------------------------------------')
         log.info(json.dumps(json_data, indent=4, sort_keys=True, default=str))
@@ -485,7 +486,7 @@ class ThermoProScan:
                                  'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon'])
 
             if json_data:
-                print(json_data)
+                # print(json_data)
                 writer.writerow([
                     json_data["time"].strftime('%Y/%m/%d %H:%M:%S'),
                     json_data["temp_ext"],
@@ -510,12 +511,11 @@ class ThermoProScan:
                 writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
             log.info("CSV file writen")
 
-            ThermoProScan.create_graph(False)
-            
             # if not is_new_file:
             #     ThermoProScan.save_csv()
 
         ThermoProScan.clear_json_file()
+        ThermoProScan.create_graph(False)
         log.info("End task")
 
     @staticmethod
@@ -565,8 +565,8 @@ class ThermoProScan:
             schedule.clear()
             log.info('ThermoProScan stopped')
             sys.exit()
-        except Exception as ex:
-            log.info(ex)
+        except SystemExit as ex:
+            pass
 
 
 if __name__ == '__main__':
