@@ -510,6 +510,8 @@ class ThermoProScan:
                 writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
             log.info("CSV file writen")
 
+            ThermoProScan.create_graph(False)
+            
             # if not is_new_file:
             #     ThermoProScan.save_csv()
 
@@ -528,7 +530,6 @@ class ThermoProScan:
         os.rename(ThermoProScan.OUTPUT_CSV_FILE + '.tmp', ThermoProScan.OUTPUT_CSV_FILE)
         if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
             os.remove(ThermoProScan.OUTPUT_JSON_FILE)
-        ThermoProScan.create_graph(False)
 
     @staticmethod
     def start(self):
