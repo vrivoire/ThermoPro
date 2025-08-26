@@ -11,8 +11,10 @@ import json
 import math
 import os
 import os.path
+import queue
 import subprocess
 import sys
+import threading
 import time
 import traceback
 from collections.abc import Sequence
@@ -87,7 +89,8 @@ class ThermoProScan:
         return []
 
     @staticmethod
-    def load_neviweb() -> dict[str, float] | None:
+    def load_neviweb(result_queue: queue.Queue):
+        log.info("------------------ Start load_neviweb ------------------")
         neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, None, None, None, None)
         try:
             log.info(f'login={neviweb_temperature.login()}')
@@ -96,7 +99,8 @@ class ThermoProScan:
             data: list = [float(gateway_data2['roomTemperatureDisplay']) for gateway_data2 in neviweb_temperature.gateway_data]
             temp_int: float = round(sum(data) / len(data), 1)
             log.info(f'temp_int={temp_int}, data={data}')
-            return {'int_temp': temp_int}
+
+            result_queue.put({'int_temp': temp_int})
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -106,8 +110,8 @@ class ThermoProScan:
 
     # https://home.openweathermap.org/statistics/onecall_30
     @staticmethod
-    def load_open_weather() -> dict[str, Any] | None:
-        # print(ThermoProScan.WEATHER_URL)
+    def load_open_weather(result_queue: queue.Queue):
+        log.info("------------------ Start load_open_weather ------------------")
         response = requests.get(ThermoProScan.WEATHER_URL)
         resp = response.json()
 
@@ -115,7 +119,6 @@ class ThermoProScan:
 
         if "cod" in resp:
             log.error(json.dumps(resp, indent=4))
-            return None
         elif "current" in resp:
             current = resp['current']
             data: dict[str, Any] = {
@@ -140,10 +143,10 @@ class ThermoProScan:
             }
             # print(current.get('rain'))
             # print(thermopro.ppretty(data, indent=4))
-            return data
+
+            result_queue.put(data)
         else:
             log.error(json.dumps(resp, indent=4))
-            return None
 
     @staticmethod
     def get_int_humidex(temp_ext: float, humidity: int) -> int | None:
@@ -392,8 +395,8 @@ class ThermoProScan:
             os.remove(ThermoProScan.OUTPUT_JSON_FILE)
 
     @staticmethod
-    def call_rtl_433() -> dict[str, Any] | None:
-        log.info("Start call_rtl_433")
+    def call_rtl_433(result_queue: queue.Queue):
+        log.info("------------------ Start call_rtl_433 ------------------")
         try:
             ThermoProScan.clear_json_file()
             log.info(f'ARGS={ThermoProScan.ARGS}')
@@ -411,9 +414,10 @@ class ThermoProScan:
             log.error(f'stderr: {completed_process.stderr}')
             json_rtl_433: dict[str, Any] = ThermoProScan.load_json()
 
+            json_rtl_433['humidex'] = ThermoProScan.get_int_humidex(json_rtl_433['temp_ext'], json_rtl_433['humidity'])
             log.info(f'json_data={json_rtl_433}')
 
-            return json_rtl_433
+            result_queue.put(json_rtl_433)
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned \n{timeoutExpired}")
             log.error(traceback.format_exc())
@@ -455,6 +459,7 @@ class ThermoProScan:
         del json_data['id']
         del json_data['channel']
         del json_data['battery_ok']
+        del json_data['button']
         return json_data
 
     @staticmethod
@@ -463,19 +468,27 @@ class ThermoProScan:
         log.info('--------------------------------------------------------------------------------')
         log.info("Start task")
         json_data: dict[str, Any] = {}
+        threads: list[threading.Thread] = []
+        result_queue: queue.Queue = queue.Queue()
 
-        json_rtl_433: dict[str, Any] | None = ThermoProScan.call_rtl_433()
-        if json_rtl_433:
-            json_data.update(json_rtl_433)
-            json_data['humidex'] = ThermoProScan.get_int_humidex(json_data['temp_ext'], json_data['humidity'])
+        thread: threading.Thread = threading.Thread(target=ThermoProScan.call_rtl_433, args=(result_queue,))
+        threads.append(thread)
+        thread.start()
 
-        neviweb_data: dict[str, Any] | None = ThermoProScan.load_neviweb()
-        if neviweb_data:
-            json_data.update(neviweb_data)
+        thread: threading.Thread = threading.Thread(target=ThermoProScan.load_neviweb, args=(result_queue,))
+        threads.append(thread)
+        thread.start()
 
-        open_weather_data: dict[str, Any] | None = ThermoProScan.load_open_weather()
-        if open_weather_data:
-            json_data.update(open_weather_data)
+        thread: threading.Thread = threading.Thread(target=ThermoProScan.load_open_weather, args=(result_queue,))
+        threads.append(thread)
+        thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        while not result_queue.empty():
+            result = result_queue.get()
+            json_data.update(result)
 
         log.info('----------------------------------------------')
         log.info(json.dumps(json_data, indent=4, sort_keys=True, default=str))
@@ -489,7 +502,6 @@ class ThermoProScan:
                                  'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi'])
 
             if json_data:
-                # print(json_data)
                 writer.writerow([
                     json_data["time"].strftime('%Y/%m/%d %H:%M:%S'),
                     json_data["temp_ext"],
@@ -516,9 +528,6 @@ class ThermoProScan:
             else:
                 writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
             log.info("CSV file writen")
-
-            # if not is_new_file:
-            #     ThermoProScan.save_csv()
 
         ThermoProScan.clear_json_file()
         ThermoProScan.create_graph(False)
@@ -600,5 +609,5 @@ if __name__ == '__main__':
     #     dict_writer.writerows(csv_data)
     #
     # sys.exit()
-
+    # thermoProScan.call_all()
     thermoProScan.start(thermoProScan)
