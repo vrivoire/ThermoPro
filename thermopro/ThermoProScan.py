@@ -11,7 +11,6 @@ import json
 import math
 import os
 import os.path
-import queue
 import subprocess
 import sys
 import threading
@@ -19,6 +18,7 @@ import time
 import traceback
 from collections.abc import Sequence
 from datetime import datetime, timedelta
+from queue import Queue
 from tkinter import PhotoImage
 from typing import Any
 
@@ -90,7 +90,7 @@ class ThermoProScan:
         return []
 
     @staticmethod
-    def load_neviweb(result_queue: queue.Queue):
+    def load_neviweb(result_queue: Queue):
         log.info("------------------ Start load_neviweb ------------------")
         neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, None, None, None, None)
         try:
@@ -111,7 +111,7 @@ class ThermoProScan:
 
     # https://home.openweathermap.org/statistics/onecall_30
     @staticmethod
-    def load_open_weather(result_queue: queue.Queue):
+    def load_open_weather(result_queue: Queue):
         log.info("------------------ Start load_open_weather ------------------")
         try:
             response = requests.get(ThermoProScan.WEATHER_URL)
@@ -406,7 +406,7 @@ class ThermoProScan:
             os.remove(ThermoProScan.OUTPUT_JSON_FILE)
 
     @staticmethod
-    def call_rtl_433(result_queue: queue.Queue):
+    def call_rtl_433(result_queue: Queue):
         log.info("------------------ Start call_rtl_433 ------------------")
         try:
             ThermoProScan.clear_json_file()
@@ -480,7 +480,7 @@ class ThermoProScan:
         log.info("Start task")
         json_data: dict[str, Any] = {}
         threads: list[threading.Thread] = []
-        result_queue: queue.Queue = queue.Queue()
+        result_queue: Queue = Queue()
 
         thread: threading.Thread = threading.Thread(target=ThermoProScan.call_rtl_433, args=(result_queue,))
         threads.append(thread)
