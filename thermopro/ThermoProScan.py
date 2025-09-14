@@ -56,9 +56,8 @@ class ThermoProScan:
 
     RTL_433_VERSION = '25.02'
     RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
-    SCHEDULE_DELAY = '60'
     THERMOPRO_TX2 = '162'
-    ARGS = [RTL_433_EXE, '-T', SCHEDULE_DELAY, '-R', THERMOPRO_TX2, '-F', f'json:{OUTPUT_JSON_FILE}']
+    ARGS = [RTL_433_EXE, '-E', 'quit', '-R', THERMOPRO_TX2, '-F', f'json:{OUTPUT_JSON_FILE}']
     DAYS = 7 * 2
 
     OPEN_LAT = 45.509  # Montreal
@@ -404,9 +403,11 @@ class ThermoProScan:
     def clear_json_file():
         if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
             os.remove(ThermoProScan.OUTPUT_JSON_FILE)
+            if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
+                ctypes.windll.user32.MessageBoxW(0, f'Unnable delete "{ThermoProScan.OUTPUT_JSON_FILE}"', "ThermoProGraph Error", 16)
 
     @staticmethod
-    def call_rtl_433(result_queue: Queue):
+    def load_rtl_433(result_queue: Queue):
         log.info("------------------ Start call_rtl_433 ------------------")
         try:
             ThermoProScan.clear_json_file()
@@ -414,7 +415,7 @@ class ThermoProScan:
             completed_process = subprocess.run(
                 ThermoProScan.ARGS,
                 capture_output=True,
-                timeout=70,
+                timeout=120,
                 encoding="utf-8",
                 check=False,
                 shell=True
@@ -423,8 +424,8 @@ class ThermoProScan:
             log.info(f'Return code: {completed_process.returncode}')
             log.info(f'stdout: {completed_process.stdout}')
             log.error(f'stderr: {completed_process.stderr}')
-            json_rtl_433: dict[str, Any] = ThermoProScan.load_json()
 
+            json_rtl_433: dict[str, Any] = ThermoProScan.load_json()
             json_rtl_433['humidex'] = ThermoProScan.get_int_humidex(json_rtl_433['temp_ext'], json_rtl_433['humidity'])
             log.info(f'json_data={json_rtl_433}')
 
@@ -450,27 +451,33 @@ class ThermoProScan:
         log.info('load_json')
 
         json_data: dict[str, Any] = {}
-        log.info(f'Loading file {ThermoProScan.OUTPUT_JSON_FILE}')
+        if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
+            log.info(f'Loading file {ThermoProScan.OUTPUT_JSON_FILE}')
 
-        if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE) and os.stat(ThermoProScan.OUTPUT_JSON_FILE).st_size > 2:
-            with open(ThermoProScan.OUTPUT_JSON_FILE, 'r') as file:
-                json_str = file.read()
-            json_str = json_str.splitlines()[0]
-            json_data = json.loads(json_str)
-            json_data['temp_ext'] = json_data['temperature_C']
-            del (json_data['temperature_C'])
-            json_data['time'] = datetime.strptime(json_data['time'], '%Y-%m-%d %H:%M:%S')
+            if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE) and os.stat(ThermoProScan.OUTPUT_JSON_FILE).st_size > 2:
+                with open(ThermoProScan.OUTPUT_JSON_FILE, 'r') as file:
+                    json_str = file.read()
+                json_str = json_str.splitlines()[0]
+                json_data = json.loads(json_str)
+
+                log.info(json.dumps(json_data, indent=4, sort_keys=True, default=str))
+
+                json_data['temp_ext'] = json_data['temperature_C']
+                del (json_data['temperature_C'])
+                del json_data['model']
+                del json_data['subtype']
+                del json_data['id']
+                del json_data['channel']
+                del json_data['battery_ok']
+                del json_data['button']
+                json_data['time'] = datetime.strptime(json_data['time'], '%Y-%m-%d %H:%M:%S')
+            else:
+                log.error(f'File {ThermoProScan.OUTPUT_JSON_FILE} not existing or empty.')
+
         else:
-            log.error(f'File {ThermoProScan.OUTPUT_JSON_FILE} not existing or empty.')
+            log.error(f"The file {ThermoProScan.OUTPUT_JSON_FILE} doesn't exist.")
 
         ThermoProScan.clear_json_file()
-
-        del json_data['model']
-        del json_data['subtype']
-        del json_data['id']
-        del json_data['channel']
-        del json_data['battery_ok']
-        del json_data['button']
         return json_data
 
     @staticmethod
@@ -482,7 +489,7 @@ class ThermoProScan:
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
 
-        thread: threading.Thread = threading.Thread(target=ThermoProScan.call_rtl_433, args=(result_queue,))
+        thread: threading.Thread = threading.Thread(target=ThermoProScan.load_rtl_433, args=(result_queue,))
         threads.append(thread)
         thread.start()
 
@@ -512,10 +519,9 @@ class ThermoProScan:
                     writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
                                      'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi'])
 
-                print(json_data.get('time').strftime('%Y/%m/%d %H:%M:%S') if json_data.get('time') else datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
                 if json_data:
                     writer.writerow([
-                        json_data.get('time').strftime('%Y/%m/%d %H:%M:%S') if json_data.get('time') else datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
+                        datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
                         json_data.get("temp_ext"),
                         int(json_data.get("humidity")) if json_data.get("humidity") else None,
                         json_data.get('int_temp'),
