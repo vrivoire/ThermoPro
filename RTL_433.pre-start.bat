@@ -1,0 +1,1 @@
+C:\Users\adele\Documents\NetBeansProjects\rtl_433-win-x64-nightly\rtl_433_64bit_static.exe -R 02 -R 162 -R 245 -F http:127.0.0.1:8433 -T 5
