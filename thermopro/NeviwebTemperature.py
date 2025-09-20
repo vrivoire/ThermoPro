@@ -5,7 +5,7 @@ import requests
 from requests import Response
 
 import thermopro
-from thermopro import log, ppretty
+from thermopro import log
 
 REQUESTS_TIMEOUT = 30
 HOST = "https://neviweb.com"
@@ -53,7 +53,6 @@ class NeviwebTemperature:
         self._timeout = timeout
         self._occupancyMode = None
         self.user = None
-
 
     def login(self):
         input_data: dict[str, str | int] = {
@@ -406,8 +405,6 @@ class NeviwebTemperature:
                 return resp
             except OSError as ex:
                 raise ex
-
-
 
 
 if __name__ == '__main__':

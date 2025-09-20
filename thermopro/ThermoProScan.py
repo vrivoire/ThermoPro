@@ -10,17 +10,15 @@ import atexit
 import csv
 import ctypes
 import json
-import math
 import os
 import os.path
-import subprocess
 import sys
 import threading
-import time
 import traceback
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from queue import Queue
+from time import sleep
 from tkinter import PhotoImage
 from typing import Any
 
@@ -39,6 +37,7 @@ from matplotlib.widgets import CheckButtons, Slider, Button
 import thermopro
 from thermopro import HOME_PATH, log
 from thermopro.NeviwebTemperature import NeviwebTemperature
+from thermopro.Rtl433Temperature import Rtl433Temperature
 
 sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
@@ -56,7 +55,10 @@ class ThermoProScan:
     OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
     LOCATION = f'{HOME_PATH}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
 
-    RTL_433_VERSION = '25.02'
+    # RTL_433_VERSION = '25.02'
+    RTL_433_VERSION = 'nightly'
+    HTTP_HOST = "127.0.0.1"
+    HTTP_PORT = 8433
     TIMEOUT = 300
     RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
 
@@ -153,16 +155,6 @@ class ThermoProScan:
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
-
-    @staticmethod
-    def get_int_humidex(temp_ext: float, humidity: int) -> int | None:
-        kelvin = temp_ext + 273
-        ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
-        etd = ets * humidity / 100
-        humidex: int = round(temp_ext + ((etd - 10) * 5 / 9))
-        if humidex < temp_ext:
-            humidex = round(temp_ext)
-        return humidex
 
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
     @staticmethod
@@ -407,118 +399,6 @@ class ThermoProScan:
                 ctypes.windll.user32.MessageBoxW(0, f'{ex}', "ThermoProGraph Error", 16)
 
     @staticmethod
-    def clean_rtl_433():
-        try:
-            completed_process = subprocess.run(
-                ['taskkill', '/F', '/T', '/IM', 'rtl_433_64bit_static.exe'],
-                capture_output=True,
-                timeout=10,
-                check=False,
-                shell=True
-            )
-            log.info(f'Return code: {completed_process.returncode}, {completed_process.stdout}, {completed_process.stderr}')
-
-            if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
-                os.remove(ThermoProScan.OUTPUT_JSON_FILE)
-                if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
-                    ctypes.windll.user32.MessageBoxW(0, f'Unnable delete "{ThermoProScan.OUTPUT_JSON_FILE}"', "ThermoProGraph Error", 16)
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-
-    @staticmethod
-    def load_json() -> dict[str, Any]:
-        log.info('load_json')
-
-        json_data: dict[str, Any] = {}
-        try:
-            if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
-                log.info(f'Loading file {ThermoProScan.OUTPUT_JSON_FILE}')
-
-                if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE) and os.stat(ThermoProScan.OUTPUT_JSON_FILE).st_size > 2:
-                    with open(ThermoProScan.OUTPUT_JSON_FILE, 'r') as file:
-                        json_str = file.read()
-                    json_str = json_str.splitlines()[0]
-                    json_data = json.loads(json_str)
-
-                    log.info(json.dumps(json_data, indent=4, sort_keys=True, default=str))
-
-                    json_data['temp_ext'] = json_data['temperature_C']
-                    for item in ['temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic']:
-                        try:
-                            del json_data[item]
-                        except KeyError as ex:
-                            pass
-
-                    json_data['time'] = datetime.strptime(json_data['time'], '%Y-%m-%d %H:%M:%S')
-                else:
-                    log.error(f'File {ThermoProScan.OUTPUT_JSON_FILE} not existing or empty.')
-            else:
-                log.error(f"The file {ThermoProScan.OUTPUT_JSON_FILE} doesn't exist.")
-        finally:
-            ThermoProScan.clean_rtl_433()
-        return json_data
-
-    @staticmethod
-    def load_rtl_433(result_queue: Queue):
-        log.info("------------------ Start call_rtl_433 ------------------")
-        thermopro_tx2 = '162'  # {"time" : "2025-09-17 06:05:23", "model" : "Thermopro-TX2",       "id" : 223, "channel" : 1, "battery_ok" : 1, "subtype" : 9, "temperature_C" : 13.100, "humidity" : 98, "button" : 0}
-        TFA_30_3197 = '02'  # {"time" : "2025-09-17 08:23:01", "model" : "Rubicson-Temperature", "id" : 142, "channel" : 1, "battery_ok" : 1, "temperature_C" : 23.300, "mic" : "CRC"}
-        json_rtl_433: dict[str, Any] = {}
-        temp_ext_list: list = []
-        sensors = [thermopro_tx2, TFA_30_3197]
-        for sensor_id in sensors:
-            args = [ThermoProScan.RTL_433_EXE, '-E', 'quit', '-T', f'{ThermoProScan.TIMEOUT}', '-R', sensor_id, '-F', f'json:{ThermoProScan.OUTPUT_JSON_FILE}']
-            try:
-                ThermoProScan.clean_rtl_433()
-
-                log.info(f'ARGS={args}')
-                completed_process = subprocess.run(
-                    args,
-                    capture_output=True,
-                    timeout=ThermoProScan.TIMEOUT,
-                    encoding="utf-8",
-                    check=False,
-                    shell=True
-                )
-                log.info(f'Return code: {completed_process.returncode}, {completed_process.stdout}, {completed_process.stderr}')
-
-                json_rtl_433.update(ThermoProScan.load_json())
-                json_rtl_433[f'sensor_{sensor_id}'] = json_rtl_433['temp_ext']
-                temp_ext_list.append(json_rtl_433['temp_ext'])
-
-                log.info(f'json_data={json_rtl_433}')
-
-            except subprocess.TimeoutExpired as timeoutExpired:
-                log.error(f"TimeoutExpired, returned \n{timeoutExpired}")
-                log.error(traceback.format_exc())
-
-            except subprocess.CalledProcessError as calledProcessError:
-                log.error(f"CalledProcessError, returned {calledProcessError.returncode}\n{calledProcessError}")
-                log.error(traceback.format_exc())
-
-            except subprocess.SubprocessError as subprocessError:
-                log.error(f"SubprocessError, returned \n{subprocessError}")
-                log.error(traceback.format_exc())
-
-            except Exception as exception:
-                log.error(exception)
-                log.error(traceback.format_exc())
-
-            finally:
-                ThermoProScan.clean_rtl_433()
-
-        # temp_ext: float = round(sum(temp_ext_list) / len(temp_ext_list), 1)
-        temp_ext: float = min(temp_ext_list)
-
-        log.info(f'temp_ext={temp_ext}, {temp_ext_list}')
-        json_rtl_433['temp_ext'] = temp_ext
-
-        if json_rtl_433['humidity']:
-            json_rtl_433['humidex'] = ThermoProScan.get_int_humidex(json_rtl_433['temp_ext'], json_rtl_433['humidity'])
-        result_queue.put(json_rtl_433)
-
-    @staticmethod
     def call_all() -> None:
         log.info('')
         log.info('--------------------------------------------------------------------------------')
@@ -527,7 +407,7 @@ class ThermoProScan:
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
 
-        thread: threading.Thread = threading.Thread(target=ThermoProScan.load_rtl_433, args=(result_queue,))
+        thread: threading.Thread = threading.Thread(target=Rtl433Temperature().call_rtl_433, args=(result_queue,))
         threads.append(thread)
         thread.start()
 
@@ -617,7 +497,7 @@ class ThermoProScan:
             while not os.path.exists(ThermoProScan.PATH) and i < 5:
                 log.warning(f'The path "{ThermoProScan.PATH}" not ready.')
                 i += 1
-                time.sleep(10)
+                sleep(10)
             if not os.path.exists(ThermoProScan.PATH):
                 ctypes.windll.user32.MessageBoxW(0, "Mapping not ready.", "Warning!", 16)
                 sys.exit()
@@ -626,7 +506,7 @@ class ThermoProScan:
             schedule.every().hour.at(":00").do(self.call_all)
             while True:
                 schedule.run_pending()
-                time.sleep(1)
+                sleep(1)
         except KeyboardInterrupt as ki:
             pass
             # log.error(f'{ki}')
@@ -649,7 +529,8 @@ class ThermoProScan:
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
-
+    log.info('ThermoProScan startup')
+    sleep(20)
     thermoProScan: ThermoProScan = ThermoProScan()
 
     # thermoProScan.load_neviweb()
