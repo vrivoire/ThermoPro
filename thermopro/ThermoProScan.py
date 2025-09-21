@@ -35,49 +35,26 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import CheckButtons, Slider, Button
 
 import thermopro
-from thermopro import HOME_PATH, log
+from constants import OUTPUT_CSV_FILE, WEATHER_URL, MIN_HPA, MAX_HPA, DAYS, LOCATION, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
+from thermopro import log, PATH
 from thermopro.NeviwebTemperature import NeviwebTemperature
-from thermopro.Rtl433Temperature import Rtl433Temperature
+from thermopro.Rtl433Temperature2 import Rtl433Temperature2
 
-sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
-from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
+
+# sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
+# from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
 
 
 class ThermoProScan:
 
     def __init__(self):
         log.info('Starting ThermoProScan')
-        atexit.register(self.cleanup_function)
-        schedule.clear()
+        atexit.register(self.__cleanup_function)
 
-    PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
-    OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
-    OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
-    LOCATION = f'{HOME_PATH}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
-
-    # RTL_433_VERSION = '25.02'
-    RTL_433_VERSION = 'nightly'
-    HTTP_HOST = "127.0.0.1"
-    HTTP_PORT = 8433
-    TIMEOUT = 300
-    RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
-
-    DAYS = 7 * 2
-
-    OPEN_LAT = 45.509  # Montreal
-    OPEN_LON = -73.588  # Montreal
-    # OPEN_LAT = 45.55064  # Angus
-    # OPEN_LON = -73.56062 # Angus
-    WEATHER_URL = f'https://api.openweathermap.org/data/3.0/onecall?lat={OPEN_LAT}&lon={OPEN_LON}&exclude=minutely,hourly,daily,alerts&appid={OPEN_WEATHER_API_KEY}&units=metric&lang=en'
-
-    MIN_HPA = 970
-    MAX_HPA = 1085
-
-    @staticmethod
-    def load_csv() -> list[dict]:
+    def __load_csv(self) -> list[dict]:
         log.info('load_csv')
-        if os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE):
-            result = pd.read_csv(ThermoProScan.OUTPUT_CSV_FILE)
+        if os.path.isfile(OUTPUT_CSV_FILE):
+            result = pd.read_csv(OUTPUT_CSV_FILE)
             result = result.astype({'time': 'datetime64[ns]'})
             result = result.astype({'temp_ext': 'float'})
             result = result.astype({'temp_int': 'float'})
@@ -89,11 +66,10 @@ class ThermoProScan:
             # print(result)
             return result.to_dict('records')
         else:
-            log.error(f'The path "{ThermoProScan.OUTPUT_CSV_FILE}" does not exit.')
+            log.error(f'The path "{OUTPUT_CSV_FILE}" does not exit.')
         return []
 
-    @staticmethod
-    def load_neviweb(result_queue: Queue):
+    def __load_neviweb(self, result_queue: Queue):
         log.info("------------------ Start load_neviweb ------------------")
         neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, None, None, None, None)
         try:
@@ -113,11 +89,10 @@ class ThermoProScan:
             neviweb_temperature.logout()
 
     # https://home.openweathermap.org/statistics/onecall_30
-    @staticmethod
-    def load_open_weather(result_queue: Queue):
+    def __load_open_weather(self, result_queue: Queue):
         log.info("------------------ Start load_open_weather ------------------")
         try:
-            response = requests.get(ThermoProScan.WEATHER_URL)
+            response = requests.get(WEATHER_URL)
             resp = response.json()
 
             log.info(json.dumps(resp, indent=4, sort_keys=True))
@@ -157,17 +132,15 @@ class ThermoProScan:
             log.error(traceback.format_exc())
 
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
-    @staticmethod
-    def create_graph(popup: bool) -> None:
+
+    def create_graph(self, popup: bool) -> None:
         try:
             log.info('create_graph')
-            csv_data = ThermoProScan.load_csv()
+            csv_data = self.__load_csv()
             if bool(csv_data):
-                # print(csv_data)
                 sorted_datas = sorted(csv_data, key=lambda d: d["time"])
                 df = pd.DataFrame(sorted_datas)
                 df.set_index('time')
-                # df['humidex'] = df.apply(lambda row: ThermoProScan.get_humidex(row.temp_ext, row.humidity), axis=1)
                 pandas.set_option('display.max_columns', None)
                 pandas.set_option('display.width', 1000)
                 log.info(f'\n{df}')
@@ -181,7 +154,7 @@ class ThermoProScan:
 
                 humidity, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='Ext. %')
                 open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
-                open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - ThermoProScan.MIN_HPA) / ((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100), color='xkcd:black', label='hPa')
+                open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
 
                 ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
                 ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
@@ -210,9 +183,9 @@ class ThermoProScan:
                                                   df['open_feels_like'].max(numeric_only=True) + 0.5
 
                                                   )))))
-                ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temp_ext'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
-                ax2.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['temp_int'].mean(), color='xkcd:red', alpha=0.3, label='°C')
-                ax1.plot(df["time"], df.rolling(window=f'{ThermoProScan.DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
+                ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['temp_ext'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
+                ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['temp_int'].mean(), color='xkcd:red', alpha=0.3, label='°C')
+                ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
                 plt.axhline(0, linewidth=1, color='black')
 
                 plt.axis((
@@ -231,7 +204,7 @@ class ThermoProScan:
                         f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['temp_int'][len(df['temp_int']) - 1]}°C, Ext.: {df['temp_ext'][len(df['temp_ext']) - 1]}°C, " \
                         + f"{int(df['humidity'][len(df['humidity']) - 1])}%, Humidex: {int(df['humidex'][len(df['humidex']) - 1])}, " \
                         + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {int(df['open_humidity'][len(df['open_humidity']) - 1])}%, Open Humidex: {int(df['open_feels_like'][len(df['open_feels_like']) - 1])}, " \
-                        + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {ThermoProScan.DAYS} days', fontsize=10)
+                        + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {DAYS} days', fontsize=10)
                 except Exception as ex:
                     log.error(ex)
                     log.error(traceback.format_exc())
@@ -285,10 +258,10 @@ class ThermoProScan:
                 def on_changed(val):
                     slider_position.valtext.set_text(num2date(val).date())
                     df2 = df.set_index(['time'])
-                    df2 = df2[num2date(val - ThermoProScan.DAYS).date():num2date(val + ThermoProScan.DAYS).date()]
+                    df2 = df2[num2date(val - DAYS).date():num2date(val + DAYS).date()]
 
                     window = (
-                        val - ThermoProScan.DAYS,
+                        val - DAYS,
                         val + 0.1,
                         min(df2['humidity'].min(numeric_only=True), df2['open_humidity'].min(numeric_only=True)) - 1,
                         max(df2['humidity'].min(numeric_only=True), df2['open_humidity'].min(numeric_only=True)) + 1
@@ -299,7 +272,7 @@ class ThermoProScan:
                     ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
                     window2 = (
-                        val - ThermoProScan.DAYS,
+                        val - DAYS,
                         val + 0.1,
                         df2['temp_ext'].min(numeric_only=True) - 1,
                         max(
@@ -368,7 +341,7 @@ class ThermoProScan:
 
                 # https://www.geeksforgeeks.org/data-visualization/adding-tooltips-to-a-timeseries-chart-hover-tool-in-python-bokeh/
                 mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                    f'Pression: {int(float(sel[1][1]) * float((ThermoProScan.MAX_HPA - ThermoProScan.MIN_HPA) / 100.0) + ThermoProScan.MIN_HPA)} {sel[0].get_label()}'
+                    f'Pression: {int(float(sel[1][1]) * float((MAX_HPA - MIN_HPA) / 100.0) + MIN_HPA)} {sel[0].get_label()}'
                 ))
                 # for line in all_lines:
                 #     if line.get_label() != 'Select All/None' and line.get_label() != 'hPa':
@@ -380,11 +353,11 @@ class ThermoProScan:
                 fig.canvas.manager.set_window_title('ThermoPro Graph')
                 dpi = fig.get_dpi()
                 fig.set_size_inches(1280.0 / float(dpi), 720.0 / float(dpi))
-                plt.savefig(ThermoProScan.PATH + 'ThermoProScan.png')
+                plt.savefig(PATH + 'ThermoProScan.png')
 
                 if popup:
                     manager = matplotlib.pyplot.get_current_fig_manager()
-                    img = PhotoImage(file=f'{ThermoProScan.LOCATION}ThermoPro.png')
+                    img = PhotoImage(file=f'{LOCATION}ThermoPro.png')
                     manager.window.tk.call('wm', 'iconphoto', manager.window._w, img)
                     plt.show()
 
@@ -398,8 +371,7 @@ class ThermoProScan:
             if popup:
                 ctypes.windll.user32.MessageBoxW(0, f'{ex}', "ThermoProGraph Error", 16)
 
-    @staticmethod
-    def call_all() -> None:
+    def __call_all(self) -> None:
         log.info('')
         log.info('--------------------------------------------------------------------------------')
         log.info("Start task")
@@ -407,15 +379,19 @@ class ThermoProScan:
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
 
-        thread: threading.Thread = threading.Thread(target=Rtl433Temperature().call_rtl_433, args=(result_queue,))
+        # Rtl433Temperature2
+        thread: threading.Thread = threading.Thread(target=Rtl433Temperature2().call_rtl_433, args=(result_queue,))
+        threads.append(thread)
+        thread.start()
+        # thread: threading.Thread = threading.Thread(target=Rtl433Temperature().call_rtl_433, args=(result_queue,))
+        # threads.append(thread)
+        # thread.start()
+
+        thread: threading.Thread = threading.Thread(target=self.__load_neviweb, args=(result_queue,))
         threads.append(thread)
         thread.start()
 
-        thread: threading.Thread = threading.Thread(target=ThermoProScan.load_neviweb, args=(result_queue,))
-        threads.append(thread)
-        thread.start()
-
-        thread: threading.Thread = threading.Thread(target=ThermoProScan.load_open_weather, args=(result_queue,))
+        thread: threading.Thread = threading.Thread(target=self.__load_open_weather, args=(result_queue,))
         threads.append(thread)
         thread.start()
 
@@ -429,14 +405,14 @@ class ThermoProScan:
         log.info(json.dumps(json_data, indent=4, sort_keys=True, default=str))
         log.info('----------------------------------------------')
 
-        is_new_file = False if (os.path.isfile(ThermoProScan.OUTPUT_CSV_FILE) and os.stat(ThermoProScan.OUTPUT_CSV_FILE).st_size > 0) else True
+        is_new_file = False if (os.path.isfile(OUTPUT_CSV_FILE) and os.stat(OUTPUT_CSV_FILE).st_size > 0) else True
         try:
-            with open(ThermoProScan.OUTPUT_CSV_FILE, "a", newline='') as csvfile:
+            with open(OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
                     writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
                                      'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
-                                     'sensor_162', 'sensor_02'])
+                                     'temp_ext_162', 'temp_ext_02', 'humidity_162', 'humidity_02'])
 
                 if json_data:
                     writer.writerow([
@@ -461,8 +437,10 @@ class ThermoProScan:
                         json_data.get("open_sunrise").strftime('%Y/%m/%d %H:%M:%S') if json_data.get('open_sunrise') else None,
                         json_data.get("open_sunset").strftime('%Y/%m/%d %H:%M:%S') if json_data.get('open_sunset') else None,
                         json_data.get('open_uvi'),
-                        json_data.get('sensor_162'),
-                        json_data.get('sensor_02')
+                        json_data.get('temp_ext_162'),
+                        json_data.get('temp_ext_02'),
+                        json_data.get('humidity_162'),
+                        json_data.get('humidity_02')
                     ])
                 else:
                     writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])
@@ -473,37 +451,33 @@ class ThermoProScan:
             log.error(json_data)
             log.error(traceback.format_exc())
 
-        ThermoProScan.create_graph(False)
+        self.create_graph(False)
         log.info("End task")
 
-    @staticmethod
-    def save_csv():
+    def __save_csv(self):
         log.info('save_csv()')
-        with open(ThermoProScan.OUTPUT_CSV_FILE, 'r') as r, open(ThermoProScan.OUTPUT_CSV_FILE + '.tmp', 'w') as o:
+        with open(OUTPUT_CSV_FILE, 'r') as r, open(ThermoProScan.OUTPUT_CSV_FILE + '.tmp', 'w') as o:
             for line in r:
                 line = line.strip()
                 if len(line) > 0:
                     o.write(line + '\n')
-        os.remove(ThermoProScan.OUTPUT_CSV_FILE)
-        os.rename(ThermoProScan.OUTPUT_CSV_FILE + '.tmp', ThermoProScan.OUTPUT_CSV_FILE)
-        if os.path.isfile(ThermoProScan.OUTPUT_JSON_FILE):
-            os.remove(ThermoProScan.OUTPUT_JSON_FILE)
+        os.remove(OUTPUT_CSV_FILE)
+        os.rename(OUTPUT_CSV_FILE + '.tmp', OUTPUT_CSV_FILE)
 
-    @staticmethod
     def start(self):
         try:
             log.info('ThermoProScan started')
             i = 0
-            while not os.path.exists(ThermoProScan.PATH) and i < 5:
-                log.warning(f'The path "{ThermoProScan.PATH}" not ready.')
+            while not os.path.exists(PATH) and i < 5:
+                log.warning(f'The path "{PATH}" not ready.')
                 i += 1
                 sleep(10)
-            if not os.path.exists(ThermoProScan.PATH):
+            if not os.path.exists(PATH):
                 ctypes.windll.user32.MessageBoxW(0, "Mapping not ready.", "Warning!", 16)
                 sys.exit()
 
-            self.call_all()
-            schedule.every().hour.at(":00").do(self.call_all)
+            self.__call_all()
+            schedule.every().hour.at(":00").do(self.__call_all)
             while True:
                 schedule.run_pending()
                 sleep(1)
@@ -516,8 +490,7 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    @staticmethod
-    def cleanup_function():
+    def __cleanup_function(self):
         try:
             log.info('ThermoProScan stopping...')
             schedule.clear()
@@ -529,8 +502,8 @@ class ThermoProScan:
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
-    log.info('ThermoProScan startup')
-    sleep(20)
+    log.info('ThermoProScan Starting...')
+    # sleep(20)
     thermoProScan: ThermoProScan = ThermoProScan()
 
     # thermoProScan.load_neviweb()
@@ -554,4 +527,4 @@ if __name__ == '__main__':
     #
     # sys.exit()
     # thermoProScan.call_all()
-    thermoProScan.start(thermoProScan)
+    thermoProScan.start()

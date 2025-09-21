@@ -1,10 +1,34 @@
 import logging as log
 import logging.handlers
 import os.path
+import subprocess
+import traceback
 
 HOME_PATH = f"{os.getenv('USERPROFILE')}/"
 LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
+PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
 LOG_NAME: str = ''
+
+
+def ping(name: str):
+    try:
+        command = ['ping', '-4', '-n', '1', f'{name}']
+        completed_process = subprocess.run(command, text=True, capture_output=True)
+        if "100%" in completed_process.stdout:
+            log.info(f"{name} is unreachable.")
+            return False
+        else:
+            log.info(f"{name} is reachable.")
+            return True
+
+    except subprocess.CalledProcessError as e:
+        log.error(f"Error executing ping command: {e}")
+    except FileNotFoundError:
+        log.error("Ping command not found. Ensure it's in your system's PATH.")
+    except Exception as ex:
+        log.error(ex)
+        log.error(traceback.format_exc())
+    return False
 
 
 def ppretty(value, tab_char='\t', return_char='\n', indent=0):

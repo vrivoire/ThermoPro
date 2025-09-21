@@ -1,0 +1,190 @@
+import json
+import math
+import os
+import subprocess
+import threading
+import traceback
+from queue import Queue
+from time import sleep
+from typing import Any
+
+import thermopro
+from constants import TIMEOUT, SENSORS, RTL_433_EXE, OUTPUT_JSON_FILE
+from thermopro import log
+
+
+class Rtl433Temperature2:
+
+    def __init__(self):
+        log.info('------------------ Start Rtl433Temperature2 ------------------')
+
+    def __find_rtl_433(self) -> bool:
+        alive: bool = False
+        try:
+            exe = RTL_433_EXE[RTL_433_EXE.rfind('/') + 1:]
+            args = ['tasklist', '/FI', f'IMAGENAME eq {exe}', '/FO', 'csv', '/nh']
+            completed_process = subprocess.run(
+                args,
+                capture_output=True,
+                timeout=10,
+                check=False,
+                shell=True,
+                text=True
+            )
+            # log.debug(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout}, stderr: {completed_process.stderr}')
+            alive = exe in completed_process.stdout
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+
+        # log.info(f'rtl_433 alive is {alive}')
+        return alive
+
+    def __kill_rtl_433(self) -> None:
+        exe = RTL_433_EXE[RTL_433_EXE.rfind('/') + 1:]
+        try:
+            if self.__find_rtl_433():
+                completed_process = subprocess.run(
+                    ['taskkill', '/F', '/T', '/IM', exe],
+                    capture_output=True,
+                    timeout=10,
+                    check=False,
+                    shell=True,
+                    text=True
+                )
+                log.info(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout}, stderr: {completed_process.stderr}')
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+
+    def __start_rtl_433(self, sensors: dict[str, str]):
+        args = [RTL_433_EXE, '-F', f'json:{OUTPUT_JSON_FILE}', '-T', f'{TIMEOUT}']
+        arguments: list[list[str]] = [['-R', sensors[sensor]] for sensor in sensors]
+        for argument in arguments:
+            args.append(argument[0])
+            args.append(argument[1])
+
+        try:
+            log.info(f'ARGS={args}')
+            completed_process = subprocess.run(
+                args,
+                capture_output=True,
+                timeout=TIMEOUT,
+                encoding="utf-8",
+                check=False,
+                shell=True,
+                text=True
+            )
+            log.info(f'Return code: {completed_process.returncode}, {completed_process.stdout}, {completed_process.stderr}')
+
+        except subprocess.TimeoutExpired as timeoutExpired:
+            log.error(f"TimeoutExpired, returned: {timeoutExpired}")
+            self.__kill_rtl_433()
+
+    def __delete_json_file(self):
+        if os.path.exists(OUTPUT_JSON_FILE):
+            try:
+                os.remove(OUTPUT_JSON_FILE)
+            except Exception as ex:
+                log.error(ex)
+
+    def __get_humidex(self, temp_ext: float, humidity: int) -> int | None:
+        kelvin = temp_ext + 273
+        ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
+        etd = ets * humidity / 100
+        humidex: int = round(temp_ext + ((etd - 10) * 5 / 9))
+        if humidex < temp_ext:
+            humidex = round(temp_ext)
+        return humidex
+
+    def call_rtl_433(self, result_queue: Queue):
+        sensors: dict[str, str] = dict(SENSORS)
+        json_rtl_433: dict[str, Any] = {}
+        humidity_list: list[int] = []
+        temp_ext_list: list[float] = []
+        temp_ext: float | None = None
+        humidity: int | None = None
+
+        self.__kill_rtl_433()
+        self.__delete_json_file()
+
+        try:
+            thread: threading.Thread = threading.Thread(target=self.__start_rtl_433, args=(sensors,))
+            thread.start()
+            sleep(2)
+
+            old_file_size_bytes = 0
+            while self.__find_rtl_433():
+                file_size_bytes = os.path.getsize(OUTPUT_JSON_FILE)
+                if file_size_bytes != old_file_size_bytes:
+                    lines: list[dict] = []
+                    with open(OUTPUT_JSON_FILE, 'r') as file:
+                        while True:
+                            line: str = file.readline().strip()
+                            if len(line) == 0:
+                                break
+                            data: dict = json.loads(line)
+                            lines.append(data)
+                            old_file_size_bytes = file_size_bytes
+
+                    for data in lines:
+                        if sensors.get(data['model']):
+                            log.info(f'data={data}')
+                            data['temp_ext'] = data['temperature_C']
+                            data[f'temp_ext_{sensors[data['model']]}'] = data['temp_ext']
+                            data[f'humidity_{sensors[data['model']]}'] = data['humidity'] if data.get('humidity') else None
+                            temp_ext_list.append(data['temp_ext'])
+                            humidity_list.append(data['humidity']) if data.get('humidity') else None
+
+                            try:
+                                del sensors[data['model']]
+                            except KeyError as ke:
+                                pass
+
+                            for item in ['temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic']:
+                                try:
+                                    del data[item]
+                                except KeyError as ex:
+                                    pass
+
+                            json_rtl_433.update(data)
+
+                    if len(sensors) == 0:
+                        break
+                sleep(1)
+        except subprocess.TimeoutExpired as timeoutExpired:
+            print(timeoutExpired)
+        except FileNotFoundError:
+            print(f"Error: '{OUTPUT_JSON_FILE}' not found. Please ensure the file exists.")
+        except json.JSONDecodeError:
+            print(f"Error: Could not decode JSON from '{OUTPUT_JSON_FILE}'. Check file format.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+        finally:
+            self.__kill_rtl_433()
+            self.__delete_json_file()
+
+            if len(temp_ext_list) > 0:
+                temp_ext: float = min(temp_ext_list)
+            log.info(f'temp_ext={temp_ext}, {temp_ext_list}')
+            json_rtl_433['temp_ext'] = temp_ext
+
+            if len(humidity_list) > 0:
+                humidity: int = int(sum(humidity_list) / len(humidity_list))
+            log.info(f'humidity={humidity}, {humidity_list}')
+            json_rtl_433['humidity'] = humidity
+
+            if json_rtl_433.get('humidity'):
+                json_rtl_433['humidex'] = self.__get_humidex(json_rtl_433['temp_ext'], json_rtl_433['humidity'])
+            log.info(f'json_rtl_433={json_rtl_433}')
+            result_queue.put(json_rtl_433)
+
+
+if __name__ == "__main__":
+    thermopro.set_up(__file__)
+    result_queue: Queue = Queue()
+    testJson: Rtl433Temperature2 = Rtl433Temperature2()
+    testJson.call_rtl_433(result_queue)
+
+    while not result_queue.empty():
+        print(result_queue.get())

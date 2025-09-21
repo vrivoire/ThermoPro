@@ -13,6 +13,8 @@ import thermopro
 from thermopro import log
 
 
+# from constants import RTL_433_VERSION, TIMEOUT, SENSORS, RTL_433_EXE
+
 class Rtl433Temperature:
 
     def __init__(self):
@@ -91,6 +93,10 @@ class Rtl433Temperature:
         url = f'http://{ThermoProScan.HTTP_HOST}:{ThermoProScan.HTTP_PORT}/stream'
         headers = {'Accept': 'application/json'}
 
+        log.info(f'RTL-433 started: {self.__find_rtl_433()}')
+        if not self.__find_rtl_433():
+            self.__start_rtl_433()
+
         response: requests.models.Response = requests.models.Response()
         response.status_code = 500
         while response.status_code != 200:
@@ -153,38 +159,39 @@ class Rtl433Temperature:
             stop: bool = False
 
             while not stop:
-                for chunk in self.__stream_lines():
-                    chunk = chunk.rstrip()
-                    if not chunk:
-                        continue
-                    data = json.loads(chunk)
-                    log.info(f'data={data}')
+                try:
+                    for chunk in self.__stream_lines():
+                        chunk = chunk.rstrip()
+                        if not chunk:
+                            continue
+                        data = json.loads(chunk)
+                        log.info(f'data={data}')
 
-                    if sensors.get(data['model']):
-                        data['temp_ext'] = data['temperature_C']
-                        data[f'sensor_{sensors[data['model']]}'] = data['temp_ext']
-                        temp_ext_list.append(data['temp_ext'])
-                        humidity_list.append(data['humidity']) if data.get('humidity') else None
+                        if sensors.get(data['model']):
+                            data['temp_ext'] = data['temperature_C']
+                            data[f'temp_ext_{sensors[data['model']]}'] = data['temp_ext']
+                            data[f'humidity_{sensors[data['model']]}'] = data['humidity'] if data.get('humidity') else None
+                            temp_ext_list.append(data['temp_ext'])
+                            humidity_list.append(data['humidity']) if data.get('humidity') else None
 
-                        try:
-                            del sensors[data['model']]
-                        except KeyError as ke:
-                            pass
-
-                        for item in ['temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic']:
                             try:
-                                del data[item]
-                            except KeyError as ex:
+                                del sensors[data['model']]
+                            except KeyError as ke:
                                 pass
 
-                        json_rtl_433.update(data)
+                            for item in ['temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic']:
+                                try:
+                                    del data[item]
+                                except KeyError as ex:
+                                    pass
 
-                        if len(sensors) == 0:
-                            stop = True
-                            break
+                            json_rtl_433.update(data)
 
-        except requests.ConnectionError as connectionError:
-            log.error(connectionError)
+                            if len(sensors) == 0:
+                                stop = True
+                                break
+                except requests.ConnectionError as connectionError:
+                    log.error(connectionError)
 
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(timeoutExpired)
