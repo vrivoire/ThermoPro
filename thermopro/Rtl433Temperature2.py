@@ -88,21 +88,21 @@ class Rtl433Temperature2:
             except Exception as ex:
                 log.error(ex)
 
-    def __get_humidex(self, temp_ext: float, humidity: int) -> int | None:
-        kelvin = temp_ext + 273
+    def __get_humidex(self, ext_temp: float, humidity: int) -> int | None:
+        kelvin = ext_temp + 273
         ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
         etd = ets * humidity / 100
-        humidex: int = round(temp_ext + ((etd - 10) * 5 / 9))
-        if humidex < temp_ext:
-            humidex = round(temp_ext)
+        humidex: int = round(ext_temp + ((etd - 10) * 5 / 9))
+        if humidex < ext_temp:
+            humidex = round(ext_temp)
         return humidex
 
     def call_rtl_433(self, result_queue: Queue):
         sensors: dict[str, dict[str, str | int]] = dict(SENSORS)
         json_rtl_433: dict[str, Any] = {}
         humidity_list: list[int] = []
-        temp_ext_list: list[float] = []
-        temp_ext: float | None = None
+        ext_temp_list: list[float] = []
+        ext_temp: float | None = None
         humidity: int | None = None
 
         self.__kill_rtl_433()
@@ -130,10 +130,10 @@ class Rtl433Temperature2:
                     for data in lines:
                         if sensors.get(data['model']):
                             log.info(f'data={data}')
-                            data['temp_ext'] = data['temperature_C']
-                            data[f'temp_ext_{sensors[data['model']]['protocol']}'] = data['temp_ext']
+                            data['ext_temp'] = data['temperature_C']
+                            data[f'ext_temp_{sensors[data['model']]['protocol']}'] = data['ext_temp']
                             data[f'humidity_{sensors[data['model']]['protocol']}'] = data['humidity'] if data.get('humidity') else None
-                            temp_ext_list.append(data['temp_ext'])
+                            ext_temp_list.append(data['ext_temp'])
                             humidity_list.append(data['humidity']) if data.get('humidity') else None
 
                             try:
@@ -164,10 +164,10 @@ class Rtl433Temperature2:
             self.__kill_rtl_433()
             self.__delete_json_file()
 
-            if len(temp_ext_list) > 0:
-                temp_ext: float = min(temp_ext_list)
-            log.info(f'temp_ext={temp_ext}, {temp_ext_list}')
-            json_rtl_433['temp_ext'] = temp_ext
+            if len(ext_temp_list) > 0:
+                ext_temp: float = min(ext_temp_list)
+            log.info(f'ext_temp={ext_temp}, {ext_temp_list}')
+            json_rtl_433['ext_temp'] = ext_temp
 
             if len(humidity_list) > 0:
                 humidity: int = int(sum(humidity_list) / len(humidity_list))
@@ -175,7 +175,7 @@ class Rtl433Temperature2:
             json_rtl_433['humidity'] = humidity
 
             if json_rtl_433.get('humidity'):
-                json_rtl_433['humidex'] = self.__get_humidex(json_rtl_433['temp_ext'], json_rtl_433['humidity'])
+                json_rtl_433['humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['humidity'])
             log.info(f'json_rtl_433={json_rtl_433}')
             result_queue.put(json_rtl_433)
 
