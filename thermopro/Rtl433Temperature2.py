@@ -52,14 +52,14 @@ class Rtl433Temperature2:
                     shell=True,
                     text=True
                 )
-                log.info(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout}, stderr: {completed_process.stderr}')
+                log.info(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout.replace('\n', ' ')}, stderr: {completed_process.stderr.replace('\n', ' ')}')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    def __start_rtl_433(self, sensors: dict[str, str]):
+    def __start_rtl_433(self, sensors: dict[str, dict[str, Any]]):
         args = [RTL_433_EXE, '-F', f'json:{OUTPUT_JSON_FILE}', '-T', f'{TIMEOUT}']
-        arguments: list[list[str]] = [['-R', sensors[sensor]] for sensor in sensors]
+        arguments: list[list[str]] = [['-R', sensors[sensor]['protocol']] for sensor in sensors]
         for argument in arguments:
             args.append(argument[0])
             args.append(argument[1])
@@ -75,7 +75,7 @@ class Rtl433Temperature2:
                 shell=True,
                 text=True
             )
-            log.info(f'Return code: {completed_process.returncode}, {completed_process.stdout}, {completed_process.stderr}')
+            log.info(f'Return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')
 
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned: {timeoutExpired}")
@@ -98,7 +98,7 @@ class Rtl433Temperature2:
         return humidex
 
     def call_rtl_433(self, result_queue: Queue):
-        sensors: dict[str, str] = dict(SENSORS)
+        sensors: dict[str, dict[str, str | int]] = dict(SENSORS)
         json_rtl_433: dict[str, Any] = {}
         humidity_list: list[int] = []
         temp_ext_list: list[float] = []
@@ -131,20 +131,20 @@ class Rtl433Temperature2:
                         if sensors.get(data['model']):
                             log.info(f'data={data}')
                             data['temp_ext'] = data['temperature_C']
-                            data[f'temp_ext_{sensors[data['model']]}'] = data['temp_ext']
-                            data[f'humidity_{sensors[data['model']]}'] = data['humidity'] if data.get('humidity') else None
+                            data[f'temp_ext_{sensors[data['model']]['protocol']}'] = data['temp_ext']
+                            data[f'humidity_{sensors[data['model']]['protocol']}'] = data['humidity'] if data.get('humidity') else None
                             temp_ext_list.append(data['temp_ext'])
                             humidity_list.append(data['humidity']) if data.get('humidity') else None
 
                             try:
                                 del sensors[data['model']]
-                            except KeyError as ke:
+                            except KeyError:
                                 pass
 
-                            for item in ['temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic']:
+                            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic']:
                                 try:
                                     del data[item]
-                                except KeyError as ex:
+                                except KeyError:
                                     pass
 
                             json_rtl_433.update(data)
@@ -153,13 +153,13 @@ class Rtl433Temperature2:
                         break
                 sleep(1)
         except subprocess.TimeoutExpired as timeoutExpired:
-            print(timeoutExpired)
+            log.error(timeoutExpired)
         except FileNotFoundError:
-            print(f"Error: '{OUTPUT_JSON_FILE}' not found. Please ensure the file exists.")
+            log.error(f"Error: '{OUTPUT_JSON_FILE}' not found. Please ensure the file exists.")
         except json.JSONDecodeError:
-            print(f"Error: Could not decode JSON from '{OUTPUT_JSON_FILE}'. Check file format.")
+            log.error(f"Error: Could not decode JSON from '{OUTPUT_JSON_FILE}'. Check file format.")
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            log.error(f"An unexpected error occurred: {e}")
         finally:
             self.__kill_rtl_433()
             self.__delete_json_file()

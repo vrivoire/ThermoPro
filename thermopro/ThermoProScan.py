@@ -69,24 +69,24 @@ class ThermoProScan:
             log.error(f'The path "{OUTPUT_CSV_FILE}" does not exit.')
         return []
 
-    def __load_neviweb(self, result_queue: Queue):
-        log.info("------------------ Start load_neviweb ------------------")
-        neviweb_temperature: NeviwebTemperature = NeviwebTemperature(None, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, None, None, None, None)
-        try:
-            log.info(f'login={neviweb_temperature.login()}')
-            log.info(f'network: {neviweb_temperature.get_network()}')
-            log.info(f'gateway_data: {neviweb_temperature.get_gateway_data()}')
-            data: list = [float(gateway_data2['roomTemperatureDisplay']) for gateway_data2 in neviweb_temperature.gateway_data]
-            temp_int: float = round(sum(data) / len(data), 1)
-            log.info(f'temp_int={temp_int}, data={data}')
-
-            result_queue.put({'int_temp': temp_int})
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-        finally:
-            log.info(f'logout={neviweb_temperature.logout()}')
-            neviweb_temperature.logout()
+    # def __load_neviweb(self, result_queue: Queue):
+    #     log.info("------------------ Start load_neviweb ------------------")
+    #     neviweb_temperature: NeviwebTemperature = NeviwebTemperature()
+    #     try:
+    #         log.info(f'login={neviweb_temperature.login()}')
+    #         log.info(f'network: {neviweb_temperature.get_network()}')
+    #         log.info(f'gateway_data: {neviweb_temperature.get_gateway_data()}')
+    #         data: list = [float(gateway_data2['roomTemperatureDisplay']) for gateway_data2 in neviweb_temperature.gateway_data]
+    #         temp_int: float = round(sum(data) / len(data), 1)
+    #         log.info(f'temp_int={temp_int}, data={data}')
+    #
+    #         result_queue.put({'int_temp': temp_int})
+    #     except Exception as ex:
+    #         log.error(ex)
+    #         log.error(traceback.format_exc())
+    #     finally:
+    #         log.info(f'logout={neviweb_temperature.logout()}')
+    #         neviweb_temperature.logout()
 
     # https://home.openweathermap.org/statistics/onecall_30
     def __load_open_weather(self, result_queue: Queue):
@@ -379,15 +379,11 @@ class ThermoProScan:
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
 
-        # Rtl433Temperature2
         thread: threading.Thread = threading.Thread(target=Rtl433Temperature2().call_rtl_433, args=(result_queue,))
         threads.append(thread)
         thread.start()
-        # thread: threading.Thread = threading.Thread(target=Rtl433Temperature().call_rtl_433, args=(result_queue,))
-        # threads.append(thread)
-        # thread.start()
 
-        thread: threading.Thread = threading.Thread(target=self.__load_neviweb, args=(result_queue,))
+        thread: threading.Thread = threading.Thread(target=NeviwebTemperature().load_neviweb, args=(result_queue,))
         threads.append(thread)
         thread.start()
 
@@ -412,7 +408,7 @@ class ThermoProScan:
                 if is_new_file:
                     writer.writerow(["time", "temp_ext", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
                                      'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
-                                     'temp_ext_162', 'temp_ext_02', 'humidity_162', 'humidity_02'])
+                                     'temp_ext_162', 'temp_ext_02', 'humidity_162', 'humidity_02', 'load_watt', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon'])
 
                 if json_data:
                     writer.writerow([
@@ -440,7 +436,13 @@ class ThermoProScan:
                         json_data.get('temp_ext_162'),
                         json_data.get('temp_ext_02'),
                         json_data.get('humidity_162'),
-                        json_data.get('humidity_02')
+                        json_data.get('humidity_02'),
+
+                        json_data.get('load_watt'),
+                        json_data.get('int_temp_bureau'),
+                        json_data.get('int_temp_chambre'),
+                        json_data.get('int_temp_salle-de-bain'),
+                        json_data.get('int_temp_salon'),
                     ])
                 else:
                     writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["temp_ext"], int(json_data["humidity"])])

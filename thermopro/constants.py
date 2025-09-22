@@ -12,7 +12,16 @@ OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
 # RTL_433_VERSION = '25.02'
 RTL_433_VERSION = 'nightly'
 TIMEOUT = 300
-SENSORS: dict[str, str] = {'Thermopro-TX2': '162', 'Rubicson-Temperature': '02'}
+SENSORS: dict[str, dict[str, str | int]] = {
+    'Thermopro-TX2': {
+        'protocol': '162',
+        'channel': 1
+    },
+    'Rubicson-Temperature': {
+        'protocol': '02',
+        'channel': 1
+    }
+}
 RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
 
 DAYS = 7 * 2
