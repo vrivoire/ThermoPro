@@ -13,6 +13,7 @@ from constants import TIMEOUT, SENSORS, RTL_433_EXE, OUTPUT_JSON_FILE
 from thermopro import log
 
 
+# rtl_433_64bit_static.exe -R 02 -R 162 -R 245 -f 433M -f 915M
 class Rtl433Temperature2:
 
     def __init__(self):
@@ -130,10 +131,10 @@ class Rtl433Temperature2:
                     for data in lines:
                         if sensors.get(data['model']):
                             log.info(f'data={data}')
-                            data['ext_temp'] = data['temperature_C']
-                            data[f'ext_temp_{sensors[data['model']]['protocol']}'] = data['ext_temp']
-                            data[f'humidity_{sensors[data['model']]['protocol']}'] = data['humidity'] if data.get('humidity') else None
-                            ext_temp_list.append(data['ext_temp'])
+                            # data['ext_temp'] = data['temperature_C']
+                            data[f'ext_temp_{sensors[data['model']]['protocol']}'] = data['temperature_C']
+                            data[f'ext_humidity_{sensors[data['model']]['protocol']}'] = data['humidity'] if data.get('humidity') else None
+                            ext_temp_list.append(data['temperature_C'])
                             humidity_list.append(data['humidity']) if data.get('humidity') else None
 
                             try:
@@ -141,7 +142,7 @@ class Rtl433Temperature2:
                             except KeyError:
                                 pass
 
-                            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic']:
+                            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity']:
                                 try:
                                     del data[item]
                                 except KeyError:
@@ -172,10 +173,10 @@ class Rtl433Temperature2:
             if len(humidity_list) > 0:
                 humidity: int = int(sum(humidity_list) / len(humidity_list))
             log.info(f'humidity={humidity}, {humidity_list}')
-            json_rtl_433['humidity'] = humidity
+            json_rtl_433['ext_humidity'] = humidity
 
-            if json_rtl_433.get('humidity'):
-                json_rtl_433['humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['humidity'])
+            if json_rtl_433.get('ext_humidity'):
+                json_rtl_433['ext_humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['ext_humidity'])
             log.info(f'json_rtl_433={json_rtl_433}')
             result_queue.put(json_rtl_433)
 

@@ -237,7 +237,7 @@ ATTR_AUX_HEAT_MIN_TIMEOFF = "auxHeatMinTimeOff"
 ATTR_HEAT_MIN_TIME_ON = "heatMinTimeOn"
 ATTR_HEAT_MIN_TIME_OFF = "heatMinTimeOff"
 
-WATT_ATTRIBUTE = [
+WATT_ATTRIBUTES = [
     ATTR_ROOM_TEMPERATURE,
     ATTR_PHASE_CONTROL,
     ATTR_KEY_DOUBLE_UP,
@@ -255,24 +255,24 @@ WATT_ATTRIBUTE = [
     ATTR_RSSI,
 ]
 
-ALL = [ATTR_ALERT, ATTR_SIGNATURE, ATTR_POWER_MODE, ATTR_MODE, ATTR_ONOFF, ATTR_ONOFF2, ATTR_INTENSITY, ATTR_INTENSITY_MIN, ATTR_WATTAGE, ATTR_WATTAGE_INSTANT, ATTR_WATTAGE_OVERRIDE, ATTR_SETPOINT_MODE, ATTR_ROOM_SETPOINT, ATTR_ROOM_SETPOINT_AWAY,
-       ATTR_ROOM_TEMPERATURE, ATTR_OUTPUT_PERCENT_DISPLAY, ATTR_ROOM_SETPOINT_MIN, ATTR_ROOM_SETPOINT_MAX, ATTR_GFCI_STATUS, ATTR_GFCI_ALERT, ATTR_WATER_LEAK_STATUS, ATTR_WATER_LEAK_ALARM_STATUS, ATTR_WATER_LEAK_DISCONECTED_STATUS, ATTR_POWER_SUPPLY,
-       ATTR_BATTERY_VOLTAGE, ATTR_BATTERY_STATUS, ATTR_BATTERY_TYPE, ATTR_FLOOR_MODE, ATTR_FLOOR_OUTPUT2, ATTR_FLOOR_AUX, ATTR_KEYPAD, ATTR_OCCUPANCY, ATTR_FLOOR_OUTPUT1, ATTR_LIGHT_WATTAGE, ATTR_OUTPUT1, ATTR_WIFI_WATTAGE, ATTR_WIFI_WATT_NOW, ATTR_WIFI,
-       ATTR_RSSI, ATTR_DISPLAY2, ATTR_WIFI_KEYPAD, ATTR_TIMER, ATTR_TIMER2, ATTR_DRSTATUS, ATTR_BACKLIGHT, ATTR_BACKLIGHT_AUTO_DIM, ATTR_LED_ON_INTENSITY, ATTR_LED_OFF_INTENSITY, ATTR_LED_ON_COLOR, ATTR_LED_OFF_COLOR, ATTR_STATE, ATTR_RED, ATTR_GREEN,
-       ATTR_BLUE, ATTR_TIME, ATTR_TEMP, ATTR_MOTOR_POS, ATTR_TEMP_ALARM, ATTR_LOW_TEMP_STATUS, ATTR_TEMPERATURE, ATTR_WATER_TEMPERATURE, ATTR_ROOM_TEMP_ALARM, ATTR_VALVE_CLOSURE, ATTR_LEAK_ALERT, ATTR_BATT_ALERT, ATTR_TEMP_ALERT, ATTR_FUEL_ALERT,
-       ATTR_REFUEL, ATTR_FUEL_PERCENT_ALERT, ATTR_CONF_CLOSURE, ATTR_MOTOR_TARGET, ATTR_FLOOR_AIR_LIMIT, ATTR_FLOOR_MAX, ATTR_FLOOR_MIN, ATTR_ROOM_TEMP_DISPLAY, ATTR_EARLY_START, ATTR_FLOOR_SENSOR, ATTR_AUX_CYCLE, ATTR_CYCLE, ATTR_CYCLE_OUTPUT2,
-       ATTR_PUMP_PROTEC, ATTR_PUMP_PROTEC_DURATION, ATTR_PUMP_PROTEC_PERIOD, ATTR_TYPE, ATTR_PHASE_CONTROL, ATTR_SYSTEM_MODE, ATTR_DRSETPOINT, ATTR_DRACTIVE, ATTR_OPTOUT, ATTR_SETPOINT, ATTR_INPUT_STATUS, ATTR_INPUT2_STATUS, ATTR_EXT_TEMP, ATTR_STATUS,
-       ATTR_ERROR_CODE_SET1, ATTR_FLOW_METER_CONFIG, ATTR_VALVE_INFO, ATTR_STM8_ERROR, ATTR_TANK_SIZE, ATTR_CONTROLLED_DEVICE, ATTR_COLD_LOAD_PICKUP_STATUS, ATTR_KEY_DOUBLE_UP, ATTR_ANGLE, ATTR_SAMPLING, ATTR_TANK_TYPE, ATTR_TANK_HEIGHT, ATTR_TANK_PERCENT,
-       ATTR_GAUGE_TYPE, ATTR_COOL_SETPOINT, ATTR_COOL_SETPOINT_MIN, ATTR_COOL_SETPOINT_MAX, ATTR_WATER_TEMP_MIN, ATTR_MIN_WATER_TEMP, ATTR_WATT_TIME_ON, ATTR_DR_WATER_TEMP_TIME, ATTR_WATER_TEMP_TIME, ATTR_FLOW_ALARM1, ATTR_FLOW_ALARM2, ATTR_AWAY_ACTION,
-       ATTR_FLOW_ENABLED, ATTR_FLOW_MODEL_CONFIG, ATTR_FLOW_ALARM_TIMER, ATTR_FLOW_THRESHOLD, ATTR_FLOW_ALARM1_LENGHT, ATTR_FLOW_ALARM1_PERIOD, ATTR_FLOW_ALARM1_OPTION, ATTR_DR_PROTEC_STATUS, ATTR_LEG_PROTEC_STATUS, ATTR_COLD_LOAD_PICKUP_REMAIN_TIME,
-       ATTR_COLD_LOAD_PICKUP_TEMP, ATTR_TEMP_ACTION_LOW, ATTR_BATT_ACTION_LOW, ATTR_NAME_1, ATTR_NAME_2, ATTR_OUTPUT_NAME_1, ATTR_OUTPUT_NAME_2, ATTR_WATER_TANK_ON, ATTR_HEAT_LOCK_TEMP, ATTR_COOL_LOCK_TEMP, ATTR_AVAIL_MODE, ATTR_FAN_SPEED, ATTR_FAN_CAP,
-       ATTR_FAN_SWING_VERT, ATTR_FAN_SWING_HORIZ, ATTR_FAN_SWING_CAP, ATTR_FAN_SWING_CAP_HORIZ, ATTR_FAN_SWING_CAP_VERT, ATTR_DISPLAY_CONF, ATTR_DISPLAY_CAP, ATTR_MODEL, ATTR_SOUND_CONF, ATTR_SOUND_CAP, ATTR_LANGUAGE, ATTR_MODE, ATTR_HC_DEV, ATTR_BALANCE_PT,
-       ATTR_BALANCE_PT_TEMP_LOW, ATTR_BALANCE_PT_TEMP_HIGH, ATTR_BATT_PERCENT_NORMAL, ATTR_BATT_STATUS_NORMAL, ATTR_BATT_INFO, ATTR_INPUT_1_ON_DELAY, ATTR_INPUT_2_ON_DELAY, ATTR_INPUT_1_OFF_DELAY, ATTR_INPUT_2_OFF_DELAY, ATTR_VALUE, ATTR_ACTIVE,
-       ATTR_ONOFF_NUM, ATTR_CLOSE_VALVE, ATTR_TRIGGER_ALARM, ATTR_DELAY, ATTR_INPUT_NUMBER, ATTR_COLD_LOAD_PICKUP, ATTR_HEAT_LOCKOUT_TEMP, ATTR_OCCUPANCY_SENSOR_DELAY, ATTR_LEAK_CLOSURE_CONFIG, ATTR_HUMID_DISPLAY, ATTR_HUMID_SETPOINT, ATTR_DUAL_STATUS,
-       ATTR_HEAT_SOURCE_TYPE, ATTR_AUX_HEAT_SOURCE_TYPE, ATTR_COOL_SETPOINT_AWAY, ATTR_FAN_FILTER_REMAIN, ATTR_AUX_HEAT_TIMEON, ATTR_AUX_HEAT_START_DELAY, ATTR_HEAT_INTERSTAGE_MIN_DELAY, ATTR_COOL_INTERSTAGE_MIN_DELAY, ATTR_BACK_LIGHT, ATTR_HEAT_COOL,
-       ATTR_VALVE_POLARITY, ATTR_HUMIDIFIER_TYPE, ATTR_COOL_CYCLE_LENGTH, ATTR_HEATCOOL_SETPOINT_MIN_DELTA, ATTR_TEMP_OFFSET_HEAT, ATTR_COOL_MIN_TIME_ON, ATTR_COOL_MIN_TIME_OFF, ATTR_WATER_TEMP_PROTEC, ATTR_OUTPUT_CONNECT_STATE, ATTR_HEAT_INSTALL_TYPE,
-       ATTR_HUMIDITY, ATTR_ACCESSORY_TYPE, ATTR_HUMID_SETPOINT_OFFSET, ATTR_HUMID_SETPOINT_MODE, ATTR_AIR_EX_MIN_TIME_ON, ATTR_HC_LOCK_STATUS, ATTR_DRAUXCONF, ATTR_DRFANCONF, ATTR_DRACCESORYCONF, ATTR_DRAIR_CURT_CONF, ATTR_INTERLOCK_ID, ATTR_HEAT_PURGE_TIME,
-       ATTR_COOL_PURGE_TIME, ATTR_AIR_CONFIG, ATTR_AIR_ACTIVATION_TEMP, ATTR_AIR_MAX_POWER_TEMP, ATTR_AUX_HEAT_MIN_TIMEOFF, ATTR_HEAT_MIN_TIME_ON, ATTR_HEAT_MIN_TIME_OFF]
+ALL_ATTRIBUTES = [ATTR_ALERT, ATTR_SIGNATURE, ATTR_POWER_MODE, ATTR_MODE, ATTR_ONOFF, ATTR_ONOFF2, ATTR_INTENSITY, ATTR_INTENSITY_MIN, ATTR_WATTAGE, ATTR_WATTAGE_INSTANT, ATTR_WATTAGE_OVERRIDE, ATTR_SETPOINT_MODE, ATTR_ROOM_SETPOINT, ATTR_ROOM_SETPOINT_AWAY,
+                  ATTR_ROOM_TEMPERATURE, ATTR_OUTPUT_PERCENT_DISPLAY, ATTR_ROOM_SETPOINT_MIN, ATTR_ROOM_SETPOINT_MAX, ATTR_GFCI_STATUS, ATTR_GFCI_ALERT, ATTR_WATER_LEAK_STATUS, ATTR_WATER_LEAK_ALARM_STATUS, ATTR_WATER_LEAK_DISCONECTED_STATUS, ATTR_POWER_SUPPLY,
+                  ATTR_BATTERY_VOLTAGE, ATTR_BATTERY_STATUS, ATTR_BATTERY_TYPE, ATTR_FLOOR_MODE, ATTR_FLOOR_OUTPUT2, ATTR_FLOOR_AUX, ATTR_KEYPAD, ATTR_OCCUPANCY, ATTR_FLOOR_OUTPUT1, ATTR_LIGHT_WATTAGE, ATTR_OUTPUT1, ATTR_WIFI_WATTAGE, ATTR_WIFI_WATT_NOW, ATTR_WIFI,
+                  ATTR_RSSI, ATTR_DISPLAY2, ATTR_WIFI_KEYPAD, ATTR_TIMER, ATTR_TIMER2, ATTR_DRSTATUS, ATTR_BACKLIGHT, ATTR_BACKLIGHT_AUTO_DIM, ATTR_LED_ON_INTENSITY, ATTR_LED_OFF_INTENSITY, ATTR_LED_ON_COLOR, ATTR_LED_OFF_COLOR, ATTR_STATE, ATTR_RED, ATTR_GREEN,
+                  ATTR_BLUE, ATTR_TIME, ATTR_TEMP, ATTR_MOTOR_POS, ATTR_TEMP_ALARM, ATTR_LOW_TEMP_STATUS, ATTR_TEMPERATURE, ATTR_WATER_TEMPERATURE, ATTR_ROOM_TEMP_ALARM, ATTR_VALVE_CLOSURE, ATTR_LEAK_ALERT, ATTR_BATT_ALERT, ATTR_TEMP_ALERT, ATTR_FUEL_ALERT,
+                  ATTR_REFUEL, ATTR_FUEL_PERCENT_ALERT, ATTR_CONF_CLOSURE, ATTR_MOTOR_TARGET, ATTR_FLOOR_AIR_LIMIT, ATTR_FLOOR_MAX, ATTR_FLOOR_MIN, ATTR_ROOM_TEMP_DISPLAY, ATTR_EARLY_START, ATTR_FLOOR_SENSOR, ATTR_AUX_CYCLE, ATTR_CYCLE, ATTR_CYCLE_OUTPUT2,
+                  ATTR_PUMP_PROTEC, ATTR_PUMP_PROTEC_DURATION, ATTR_PUMP_PROTEC_PERIOD, ATTR_TYPE, ATTR_PHASE_CONTROL, ATTR_SYSTEM_MODE, ATTR_DRSETPOINT, ATTR_DRACTIVE, ATTR_OPTOUT, ATTR_SETPOINT, ATTR_INPUT_STATUS, ATTR_INPUT2_STATUS, ATTR_EXT_TEMP, ATTR_STATUS,
+                  ATTR_ERROR_CODE_SET1, ATTR_FLOW_METER_CONFIG, ATTR_VALVE_INFO, ATTR_STM8_ERROR, ATTR_TANK_SIZE, ATTR_CONTROLLED_DEVICE, ATTR_COLD_LOAD_PICKUP_STATUS, ATTR_KEY_DOUBLE_UP, ATTR_ANGLE, ATTR_SAMPLING, ATTR_TANK_TYPE, ATTR_TANK_HEIGHT, ATTR_TANK_PERCENT,
+                  ATTR_GAUGE_TYPE, ATTR_COOL_SETPOINT, ATTR_COOL_SETPOINT_MIN, ATTR_COOL_SETPOINT_MAX, ATTR_WATER_TEMP_MIN, ATTR_MIN_WATER_TEMP, ATTR_WATT_TIME_ON, ATTR_DR_WATER_TEMP_TIME, ATTR_WATER_TEMP_TIME, ATTR_FLOW_ALARM1, ATTR_FLOW_ALARM2, ATTR_AWAY_ACTION,
+                  ATTR_FLOW_ENABLED, ATTR_FLOW_MODEL_CONFIG, ATTR_FLOW_ALARM_TIMER, ATTR_FLOW_THRESHOLD, ATTR_FLOW_ALARM1_LENGHT, ATTR_FLOW_ALARM1_PERIOD, ATTR_FLOW_ALARM1_OPTION, ATTR_DR_PROTEC_STATUS, ATTR_LEG_PROTEC_STATUS, ATTR_COLD_LOAD_PICKUP_REMAIN_TIME,
+                  ATTR_COLD_LOAD_PICKUP_TEMP, ATTR_TEMP_ACTION_LOW, ATTR_BATT_ACTION_LOW, ATTR_NAME_1, ATTR_NAME_2, ATTR_OUTPUT_NAME_1, ATTR_OUTPUT_NAME_2, ATTR_WATER_TANK_ON, ATTR_HEAT_LOCK_TEMP, ATTR_COOL_LOCK_TEMP, ATTR_AVAIL_MODE, ATTR_FAN_SPEED, ATTR_FAN_CAP,
+                  ATTR_FAN_SWING_VERT, ATTR_FAN_SWING_HORIZ, ATTR_FAN_SWING_CAP, ATTR_FAN_SWING_CAP_HORIZ, ATTR_FAN_SWING_CAP_VERT, ATTR_DISPLAY_CONF, ATTR_DISPLAY_CAP, ATTR_MODEL, ATTR_SOUND_CONF, ATTR_SOUND_CAP, ATTR_LANGUAGE, ATTR_MODE, ATTR_HC_DEV, ATTR_BALANCE_PT,
+                  ATTR_BALANCE_PT_TEMP_LOW, ATTR_BALANCE_PT_TEMP_HIGH, ATTR_BATT_PERCENT_NORMAL, ATTR_BATT_STATUS_NORMAL, ATTR_BATT_INFO, ATTR_INPUT_1_ON_DELAY, ATTR_INPUT_2_ON_DELAY, ATTR_INPUT_1_OFF_DELAY, ATTR_INPUT_2_OFF_DELAY, ATTR_VALUE, ATTR_ACTIVE,
+                  ATTR_ONOFF_NUM, ATTR_CLOSE_VALVE, ATTR_TRIGGER_ALARM, ATTR_DELAY, ATTR_INPUT_NUMBER, ATTR_COLD_LOAD_PICKUP, ATTR_HEAT_LOCKOUT_TEMP, ATTR_OCCUPANCY_SENSOR_DELAY, ATTR_LEAK_CLOSURE_CONFIG, ATTR_HUMID_DISPLAY, ATTR_HUMID_SETPOINT, ATTR_DUAL_STATUS,
+                  ATTR_HEAT_SOURCE_TYPE, ATTR_AUX_HEAT_SOURCE_TYPE, ATTR_COOL_SETPOINT_AWAY, ATTR_FAN_FILTER_REMAIN, ATTR_AUX_HEAT_TIMEON, ATTR_AUX_HEAT_START_DELAY, ATTR_HEAT_INTERSTAGE_MIN_DELAY, ATTR_COOL_INTERSTAGE_MIN_DELAY, ATTR_BACK_LIGHT, ATTR_HEAT_COOL,
+                  ATTR_VALVE_POLARITY, ATTR_HUMIDIFIER_TYPE, ATTR_COOL_CYCLE_LENGTH, ATTR_HEATCOOL_SETPOINT_MIN_DELTA, ATTR_TEMP_OFFSET_HEAT, ATTR_COOL_MIN_TIME_ON, ATTR_COOL_MIN_TIME_OFF, ATTR_WATER_TEMP_PROTEC, ATTR_OUTPUT_CONNECT_STATE, ATTR_HEAT_INSTALL_TYPE,
+                  ATTR_HUMIDITY, ATTR_ACCESSORY_TYPE, ATTR_HUMID_SETPOINT_OFFSET, ATTR_HUMID_SETPOINT_MODE, ATTR_AIR_EX_MIN_TIME_ON, ATTR_HC_LOCK_STATUS, ATTR_DRAUXCONF, ATTR_DRFANCONF, ATTR_DRACCESORYCONF, ATTR_DRAIR_CURT_CONF, ATTR_INTERLOCK_ID, ATTR_HEAT_PURGE_TIME,
+                  ATTR_COOL_PURGE_TIME, ATTR_AIR_CONFIG, ATTR_AIR_ACTIVATION_TEMP, ATTR_AIR_MAX_POWER_TEMP, ATTR_AUX_HEAT_MIN_TIMEOFF, ATTR_HEAT_MIN_TIME_ON, ATTR_HEAT_MIN_TIME_OFF]
 
 
 class NeviwebTemperature:
@@ -311,28 +311,80 @@ class NeviwebTemperature:
         self._occupancyMode = None
         self.user = None
 
+    def get_device_hourly_stats(self, device_id) -> list[dict[str, int]] | None:
+        """Get device power consumption (in Wh) for the last 24 hours."""
+        try:
+            raw_res = requests.get(
+                DEVICE_DATA_URL + str(device_id) + "/consumption/hourly",
+                headers=self._headers,
+                cookies=self._cookies,
+                timeout=self._timeout,
+            )
+        except OSError:
+            raise "Cannot get device hourly stats..."
+
+        self._cookies.update(raw_res.cookies)
+        data: list[dict[str, int]] = raw_res.json()
+        log.info(f'get_device_hourly_stats: {data}')
+        if "history" in data:
+            return data["history"]
+        else:
+            log.error(f"Hourly stat error: {data}")
+            return None
+
     def load_neviweb(self, result_queue: Queue):
         log.info("------------------ Start load_neviweb ------------------")
-        temp_int: float | None = None
-        load_watt: int | None = None
         result: dict = {}
         try:
             log.info(f'login={self.login()}')
-            log.info(f'network: {self.get_network()}')
-            log.info(f'gateway_data: {self.get_gateway_data()}')
+
+            self.get_network()
+            log.info(f'get_network: {self._network_name}')
+            # log.info(f'network: {json.dumps(self.get_network(), indent=4, sort_keys=True, default=str)}')
+
+            self.get_gateway_data()
+            log.info(f'gateway_data: {self.gateway_data}')
             # log.info(f"Received gateway data:\n{json.dumps(self.gateway_data, indent=4, sort_keys=True, default=str)}")
 
+            self.get_groups()
+            log.info(f"get_groups: {self.groups}")
+
+            for device in self.gateway_data:
+                columns = WATT_ATTRIBUTES
+                data: dict[str, Any] = self.get_device_attributes(device["id"], columns)
+                for name in columns:
+                    device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
+                for group in self.groups:
+                    if group['id'] == device['group$id']:
+                        log.info(f"Received '{group['name']}': {data}")
+
+            kwh_total = 0.0
+            for device in self.gateway_data:
+                device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device['id'])
+                for group in self.groups:
+                    if group['id'] == device['group$id']:
+                        kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
+                        kwh_total = kwh_total + kwh
+                        result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh
+            log.info(f'kwh_total: {kwh_total}')
+            result['kwh'] = kwh_total
+
             room_temperature_display_list: list = [float(gateway_data2['roomTemperature']) for gateway_data2 in self.gateway_data]
-            temp_int: float = round(sum(room_temperature_display_list) / len(room_temperature_display_list), 1)
-            log.info(f'temp_int={temp_int}, data={room_temperature_display_list}')
+            int_temp: float = round(sum(room_temperature_display_list) / len(room_temperature_display_list), 1)
+            log.info(f'int_temp={int_temp}, data={room_temperature_display_list}')
+
+            for device in self.gateway_data:
+                for group in self.groups:
+                    if group['id'] == device['group$id']:
+                        result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature']
+            result.update({'int_temp': int_temp})
 
             load_watt_list: list[int] = [int(gateway_data2['loadWatt']) for gateway_data2 in self.gateway_data]
             load_watt: int | None = sum(load_watt_list)
             log.info(f'load_watt={load_watt}, data={load_watt_list}')
+            result.update({'load_watt': load_watt})
 
-            for data in self.gateway_data:
-                result[f'int_temp_{str(data['displayName']).replace(' ', '-').lower()}'] = data['roomTemperature']
-            result.update({'int_temp': temp_int, 'load_watt': load_watt})
+            log.info(f'result={result}')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -407,7 +459,7 @@ class NeviwebTemperature:
                     timeout=self._timeout,
                 )
                 self.groups = raw_res.json()
-                log.info(f'Groups: {self.groups}')
+                # log.info(f'Groups: {self.groups}')
                 # log.info("Number of groups found on Neviweb: %s", len(self.groups))
                 # log.info("Updated groups data: %s", json.dumps(self.groups, indent=4))
             except OSError:
@@ -417,9 +469,7 @@ class NeviwebTemperature:
         """Get gateway id associated to the desired network."""
         # Http requests
         if self._account is None:
-            log.error(
-                "Account ID is empty check your username and passord to log into Neviweb..."
-            )
+            log.error("Account ID is empty check your username and passord to log into Neviweb...")
         else:
             try:
                 raw_res = requests.get(
@@ -608,17 +658,17 @@ class NeviwebTemperature:
             self.gateway_data3 = raw_res3.json()
             log.info("Gateway_data3 : %s", self.gateway_data3)
 
-        self.get_groups()
-        for i in range(len(self.gateway_data)):
-            data = self.groups[i]
-            self.gateway_data[i]['displayName'] = self.groups[i]['name']
+        # for i in range(len(self.gateway_data)):
+        #     data = self.groups[i]
+        #     self.gateway_data[i]['displayName'] = self.groups[i]['name']
 
-        for device in self.gateway_data:
-            data: dict[str, Any] = self.get_device_attributes(device["id"], WATT_ATTRIBUTE)
-            for name in ALL:
-                device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
-            log.info(f"1 Received signature data: {data}")
-
+        # for device in self.gateway_data:
+        #     columns = WATT_ATTRIBUTES
+        #     data: dict[str, Any] = self.get_device_attributes(device["id"], columns)
+        #     for name in columns:
+        #         device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
+        #     log.info(f"Received '{device['displayName']}': {data}")
+        # log.info(f"Received '{device['displayName']}': {json.dumps(data, indent=4, sort_keys=True, default=str)}")
         # if self._gateway_id2 is not None:
         #     for device in self.gateway_data2:
         #         data2 = self.get_device_attributes(device["id"], ALL)

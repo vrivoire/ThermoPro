@@ -57,12 +57,19 @@ class ThermoProScan:
             result = pd.read_csv(OUTPUT_CSV_FILE)
             result = result.astype({'time': 'datetime64[ns]'})
             result = result.astype({'ext_temp': 'float'})
-            result = result.astype({'temp_int': 'float'})
+            result = result.astype({'int_temp': 'float'})
             result = result.astype({'open_temp': 'float'})
             result = result.astype({'open_feels_like': 'float'})
-            result = result.astype({'open_humidity': 'Int64'})
-            result = result.astype({'open_pressure': 'Int64'})
-            result = result.astype({'humidex': 'Int64'})
+            try:
+                result = result.astype({'open_humidity': 'Int64'})
+            except Exception as ex:
+                result = result.astype({'open_humidity': 'float'})
+            try:
+                result = result.astype({'open_pressure': 'Int64'})
+            except Exception as ex:
+                result = result.astype({'open_pressure': 'float'})
+
+            result = result.astype({'ext_humidex': 'Int64'})
             # print(result)
             return result.to_dict('records')
         else:
@@ -77,10 +84,10 @@ class ThermoProScan:
     #         log.info(f'network: {neviweb_temperature.get_network()}')
     #         log.info(f'gateway_data: {neviweb_temperature.get_gateway_data()}')
     #         data: list = [float(gateway_data2['roomTemperatureDisplay']) for gateway_data2 in neviweb_temperature.gateway_data]
-    #         temp_int: float = round(sum(data) / len(data), 1)
-    #         log.info(f'temp_int={temp_int}, data={data}')
+    #         int_temp: float = round(sum(data) / len(data), 1)
+    #         log.info(f'int_temp={int_temp}, data={data}')
     #
-    #         result_queue.put({'int_temp': temp_int})
+    #         result_queue.put({'int_temp': int_temp})
     #     except Exception as ex:
     #         log.error(ex)
     #         log.error(traceback.format_exc())
@@ -152,7 +159,7 @@ class ThermoProScan:
                 ax1.grid(axis='y', color='blue', linewidth=0.2)
                 ax1.set_yticks(list(range(0, 101, 10)))
 
-                humidity, = ax1.plot(df["time"], df["humidity"], color='xkcd:royal blue', label='Ext. %')
+                ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
                 open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
                 open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
 
@@ -166,26 +173,26 @@ class ThermoProScan:
                 plt.xticks(rotation=45, ha='right', fontsize='9')
                 plt.gcf().autofmt_xdate()
 
-                humidex, = ax2.plot(df["time"], df["humidex"], color='xkcd:pink', label='Humidex')
+                ext_humidex, = ax2.plot(df["time"], df["ext_humidex"], color='xkcd:pink', label='Humidex')
                 open_feels_like, = ax2.plot(df["time"], df["open_feels_like"], color='xkcd:rose pink', label='OpenHumidex')
 
                 ext_temp, = ax2.plot(df["time"], df["ext_temp"], color='xkcd:scarlet', label='Ext. °C')
-                temp_int, = ax2.plot(df["time"], df["temp_int"], color='xkcd:red', label='Int. °C')
+                int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
                 open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
 
                 ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
                 ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
                 ax2.set_yticks(list(range(int(df['ext_temp'].min(numeric_only=True) - 0.5),
                                           int(max(df['ext_temp'].max(numeric_only=True) + 0.5,
-                                                  df['humidex'].max(numeric_only=True) + 0.5,
-                                                  df['temp_int'].max(numeric_only=True) + 0.5,
+                                                  df['ext_humidex'].max(numeric_only=True) + 0.5,
+                                                  df['int_temp'].max(numeric_only=True) + 0.5,
                                                   df['open_temp'].max(numeric_only=True) + 0.5,
                                                   df['open_feels_like'].max(numeric_only=True) + 0.5
 
                                                   )))))
                 ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
-                ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['temp_int'].mean(), color='xkcd:red', alpha=0.3, label='°C')
-                ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
+                ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:red', alpha=0.3, label='°C')
+                ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
                 plt.axhline(0, linewidth=1, color='black')
 
                 plt.axis((
@@ -193,16 +200,16 @@ class ThermoProScan:
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
                     df['ext_temp'].min(numeric_only=True) - 1,
                     max(df['ext_temp'].max(numeric_only=True) + 0.5,
-                        df['humidex'].max(numeric_only=True) + 0.5,
-                        df['temp_int'].max(numeric_only=True) + 0.5,
+                        df['ext_humidex'].max(numeric_only=True) + 0.5,
+                        df['int_temp'].max(numeric_only=True) + 0.5,
                         df['open_temp'].max(numeric_only=True) + 0.5,
                         df['open_feels_like'].max(numeric_only=True) + 0.5
                         )))
 
                 try:
                     plt.title(
-                        f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['temp_int'][len(df['temp_int']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
-                        + f"{int(df['humidity'][len(df['humidity']) - 1])}%, Humidex: {int(df['humidex'][len(df['humidex']) - 1])}, " \
+                        f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
+                        + f"{int(df['ext_humidity'][len(df['ext_humidity']) - 1])}%, Humidex: {(df['ext_humidex'][len(df['ext_humidex']) - 1])}, " \
                         + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {int(df['open_humidity'][len(df['open_humidity']) - 1])}%, Open Humidex: {int(df['open_feels_like'][len(df['open_feels_like']) - 1])}, " \
                         + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {DAYS} days', fontsize=10)
                 except Exception as ex:
@@ -241,7 +248,7 @@ class ThermoProScan:
                 select.set_figure(ext_temp.figure)
                 select.figure.set_canvas(ext_temp.figure.canvas)
 
-                all_lines: list[Line2D] = [select, open_pressure, temp_int, ext_temp, open_temp, humidity, open_humidity, humidex, open_feels_like]
+                all_lines: list[Line2D] = [select, open_pressure, int_temp, ext_temp, open_temp, ext_humidity, open_humidity, ext_humidex, open_feels_like]
                 lines_label: Sequence[str] = [str(line.get_label()) for line in all_lines]
                 lines_colors: Sequence[str] = [line.get_color() for line in all_lines]
                 lines_actives: Sequence[bool] = [line.get_visible() for line in all_lines]
@@ -263,8 +270,8 @@ class ThermoProScan:
                     window = (
                         val - DAYS,
                         val + 0.1,
-                        min(df2['humidity'].min(numeric_only=True), df2['open_humidity'].min(numeric_only=True)) - 1,
-                        max(df2['humidity'].min(numeric_only=True), df2['open_humidity'].min(numeric_only=True)) + 1
+                        min(df2['ext_humidity'].min(numeric_only=True), df2['open_humidity'].min(numeric_only=True)) - 1,
+                        max(df2['ext_humidity'].min(numeric_only=True), df2['open_humidity'].min(numeric_only=True)) + 1
                     )
                     ax1.axis(window)
                     ax1.set_yticks(list(range(0, 101, 10)))
@@ -277,8 +284,8 @@ class ThermoProScan:
                         df2['ext_temp'].min(numeric_only=True) - 1,
                         max(
                             df['ext_temp'].max(numeric_only=True) + 0.5,
-                            df['humidex'].max(numeric_only=True) + 0.5,
-                            df['temp_int'].max(numeric_only=True) + 0.5,
+                            df['ext_humidex'].max(numeric_only=True) + 0.5,
+                            df['int_temp'].max(numeric_only=True) + 0.5,
                             df['open_temp'].max(numeric_only=True) + 0.5,
                             df['open_feels_like'].max(numeric_only=True) + 0.5
                         ) + 1
@@ -287,8 +294,8 @@ class ThermoProScan:
                     ax2.set_yticks(list(range(int(df2['ext_temp'].min(numeric_only=True) - 1.1),
                                               int(max(
                                                   df['ext_temp'].max(numeric_only=True) + 0.5,
-                                                  df['humidex'].max(numeric_only=True) + 0.5,
-                                                  df['temp_int'].max(numeric_only=True) + 0.5,
+                                                  df['ext_humidex'].max(numeric_only=True) + 0.5,
+                                                  df['int_temp'].max(numeric_only=True) + 0.5,
                                                   df['open_temp'].max(numeric_only=True) + 0.5,
                                                   df['open_feels_like'].max(numeric_only=True) + 0.5
                                               ) + 1.1), 1)))
@@ -312,12 +319,12 @@ class ThermoProScan:
                         df['time'][0] - timedelta(hours=1),
                         df["time"][df["time"].size - 1] + timedelta(hours=1),
                         df['ext_temp'].min(numeric_only=True) - 1,
-                        max(df['ext_temp'].max(numeric_only=True), df['humidex'].max(numeric_only=True), df['temp_int'].max(numeric_only=True)) + 1
+                        max(df['ext_temp'].max(numeric_only=True), df['ext_humidex'].max(numeric_only=True), df['int_temp'].max(numeric_only=True)) + 1
                     ))
                     ax2.set_yticks(list(range(int(df['ext_temp'].min(numeric_only=True) - 1),
                                               int(max(df['ext_temp'].max(numeric_only=True),
-                                                      df['humidex'].max(numeric_only=True),
-                                                      df['temp_int'].max(numeric_only=True)
+                                                      df['ext_humidex'].max(numeric_only=True),
+                                                      df['int_temp'].max(numeric_only=True)
                                                       ) + 1), 1)))
                     fig.canvas.draw_idle()
 
@@ -403,20 +410,21 @@ class ThermoProScan:
 
         is_new_file = False if (os.path.isfile(OUTPUT_CSV_FILE) and os.stat(OUTPUT_CSV_FILE).st_size > 0) else True
         try:
+            cols = ["time", "ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
+                    'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
+                    'ext_temp_162', 'ext_temp_02', 'ext_humidity_162', 'ext_humidity_02', 'load_watt', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon']
             with open(OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
-                    writer.writerow(["time", "ext_temp", "humidity", 'temp_int', 'humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
-                                     'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
-                                     'ext_temp_162', 'ext_temp_02', 'humidity_162', 'humidity_02', 'load_watt', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon'])
+                    writer.writerow(cols)
 
                 if json_data:
                     writer.writerow([
                         datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
                         json_data.get("ext_temp"),
-                        int(json_data.get("humidity")) if json_data.get("humidity") else None,
+                        int(json_data.get("ext_humidity")) if json_data.get("ext_humidity") else None,
                         json_data.get('int_temp'),
-                        int(json_data.get('humidex')) if json_data.get("humidex") else None,
+                        int(json_data.get('ext_humidex')) if json_data.get("ext_humidex") else None,
                         json_data.get('open_temp'),
                         json_data.get('open_feels_like'),
                         int(json_data.get('open_humidity')) if json_data.get("open_humidity") else None,
@@ -435,17 +443,23 @@ class ThermoProScan:
                         json_data.get('open_uvi'),
                         json_data.get('ext_temp_162'),
                         json_data.get('ext_temp_02'),
-                        json_data.get('humidity_162'),
-                        json_data.get('humidity_02'),
+                        json_data.get('ext_humidity_162'),
+                        json_data.get('ext_humidity_02'),
 
                         json_data.get('load_watt'),
                         json_data.get('int_temp_bureau'),
                         json_data.get('int_temp_chambre'),
                         json_data.get('int_temp_salle-de-bain'),
                         json_data.get('int_temp_salon'),
+
+                        json_data.get('kwh'),
+                        json_data.get('kwh_bureau'),
+                        json_data.get('kwh_chambre'),
+                        json_data.get('kwh_salle-de-bain'),
+                        json_data.get('kwh_salon'),
                     ])
                 else:
-                    writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["ext_temp"], int(json_data["humidity"])])
+                    writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["ext_temp"], int(json_data["ext_humidity"])])
                 log.info("CSV file writen")
 
         except Exception as ex:
@@ -508,3 +522,7 @@ if __name__ == '__main__':
     thermoProScan: ThermoProScan = ThermoProScan()
     thermoProScan.start()
     sys.exit()
+# cols = ["time", "ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
+#         'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
+#         'ext_temp_162', 'ext_temp_02', 'ext_humidity_162', 'ext_humidity_02', 'load_watt', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon']
+# print(f'{[col for col in cols]},')
