@@ -18,8 +18,6 @@ from hydroqc.webuser import WebUser
 from thermopro import log
 
 
-# https://connexion.solutions.hydroquebec.com/32bf9b91-0a36-4385-b231-d9a8fa3b05ab/B2C_1A_PRD_signup_signin/SelfAsserted?tx=StateProperties=eyJUSUQiOiI1NjIxNzg5My01MTQxLTQxMWMtYTk3Mi1kYjQ1NWE1MjZhMWUifQ&p=B2C_1A_PRD_signup_signin
-# request_type=RESPONSE&signInName=rivoire.vincent%40gmail.com&password=Elcv753.
 class HydroQuébec:
 
     def __init__(self):
