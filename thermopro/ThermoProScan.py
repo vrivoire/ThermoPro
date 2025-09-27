@@ -1,11 +1,4 @@
 # start pyinstaller --onedir ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
-
-# C:\Users\ADELE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
-
-# https://github.com/merbanan/rtl_433
-
-# https://github.com/dvd-dev/hilo/
-
 import atexit
 import csv
 import ctypes
@@ -33,12 +26,19 @@ import schedule
 from matplotlib.dates import date2num, num2date
 from matplotlib.lines import Line2D
 from matplotlib.widgets import CheckButtons, Slider, Button
+from pandas import DataFrame
 
 import thermopro
-from constants import OUTPUT_CSV_FILE, WEATHER_URL, MIN_HPA, MAX_HPA, DAYS, LOCATION, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
+from constants import OUTPUT_CSV_FILE, WEATHER_URL, MIN_HPA, MAX_HPA, DAYS, LOCATION, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS
 from thermopro import log, PATH
+from thermopro.HydroQuébec import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
+
+
+# C:\Users\ADELE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+# https://github.com/merbanan/rtl_433
+# https://github.com/dvd-dev/hilo/
 
 
 # sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
@@ -51,7 +51,7 @@ class ThermoProScan:
         log.info('Starting ThermoProScan')
         atexit.register(self.__cleanup_function)
 
-    def __load_csv(self) -> list[dict]:
+    def load_csv(self) -> list[dict]:
         log.info('load_csv')
         if os.path.isfile(OUTPUT_CSV_FILE):
             result = pd.read_csv(OUTPUT_CSV_FILE)
@@ -70,34 +70,14 @@ class ThermoProScan:
                 result = result.astype({'open_pressure': 'float'})
 
             result = result.astype({'ext_humidex': 'Int64'})
-            # print(result)
             return result.to_dict('records')
         else:
             log.error(f'The path "{OUTPUT_CSV_FILE}" does not exit.')
         return []
 
-    # def __load_neviweb(self, result_queue: Queue):
-    #     log.info("------------------ Start load_neviweb ------------------")
-    #     neviweb_temperature: NeviwebTemperature = NeviwebTemperature()
-    #     try:
-    #         log.info(f'login={neviweb_temperature.login()}')
-    #         log.info(f'network: {neviweb_temperature.get_network()}')
-    #         log.info(f'gateway_data: {neviweb_temperature.get_gateway_data()}')
-    #         data: list = [float(gateway_data2['roomTemperatureDisplay']) for gateway_data2 in neviweb_temperature.gateway_data]
-    #         int_temp: float = round(sum(data) / len(data), 1)
-    #         log.info(f'int_temp={int_temp}, data={data}')
-    #
-    #         result_queue.put({'int_temp': int_temp})
-    #     except Exception as ex:
-    #         log.error(ex)
-    #         log.error(traceback.format_exc())
-    #     finally:
-    #         log.info(f'logout={neviweb_temperature.logout()}')
-    #         neviweb_temperature.logout()
-
     # https://home.openweathermap.org/statistics/onecall_30
     def __load_open_weather(self, result_queue: Queue):
-        log.info("------------------ Start load_open_weather ------------------")
+        log.info("----------------------- Start load_open_weather -----------------------")
         try:
             response = requests.get(WEATHER_URL)
             resp = response.json()
@@ -128,8 +108,6 @@ class ThermoProScan:
                     'open_sunset': datetime.fromtimestamp(current['sunset']),
                     'open_uvi': round(current['uvi'], 2)  # https://fr.wikipedia.org/wiki/Indice_UV
                 }
-                # print(current.get('rain'))
-                # print(thermopro.ppretty(data, indent=4))
 
                 result_queue.put(data)
             else:
@@ -143,14 +121,16 @@ class ThermoProScan:
     def create_graph(self, popup: bool) -> None:
         try:
             log.info('create_graph')
-            csv_data = self.__load_csv()
+            csv_data = self.load_csv()
             if bool(csv_data):
                 sorted_datas = sorted(csv_data, key=lambda d: d["time"])
                 df = pd.DataFrame(sorted_datas)
                 df.set_index('time')
+
                 pandas.set_option('display.max_columns', None)
                 pandas.set_option('display.width', 1000)
-                log.info(f'\n{df}')
+                pandas.set_option('display.max_rows', 1000)
+                log.info(f'\n{df[len(df) - 50:]}')
 
                 fig, ax1 = plt.subplots()
                 ax2 = ax1.twinx()
@@ -188,7 +168,6 @@ class ThermoProScan:
                                                   df['int_temp'].max(numeric_only=True) + 0.5,
                                                   df['open_temp'].max(numeric_only=True) + 0.5,
                                                   df['open_feels_like'].max(numeric_only=True) + 0.5
-
                                                   )))))
                 ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
                 ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:red', alpha=0.3, label='°C')
@@ -283,21 +262,21 @@ class ThermoProScan:
                         val + 0.1,
                         df2['ext_temp'].min(numeric_only=True) - 1,
                         max(
-                            df['ext_temp'].max(numeric_only=True) + 0.5,
-                            df['ext_humidex'].max(numeric_only=True) + 0.5,
-                            df['int_temp'].max(numeric_only=True) + 0.5,
-                            df['open_temp'].max(numeric_only=True) + 0.5,
-                            df['open_feels_like'].max(numeric_only=True) + 0.5
+                            df2['ext_temp'].max(numeric_only=True) + 0.5,
+                            df2['ext_humidex'].max(numeric_only=True) + 0.5,
+                            df2['int_temp'].max(numeric_only=True) + 0.5,
+                            df2['open_temp'].max(numeric_only=True) + 0.5,
+                            df2['open_feels_like'].max(numeric_only=True) + 0.5
                         ) + 1
                     )
                     ax2.axis(window2)
                     ax2.set_yticks(list(range(int(df2['ext_temp'].min(numeric_only=True) - 1.1),
                                               int(max(
-                                                  df['ext_temp'].max(numeric_only=True) + 0.5,
-                                                  df['ext_humidex'].max(numeric_only=True) + 0.5,
-                                                  df['int_temp'].max(numeric_only=True) + 0.5,
-                                                  df['open_temp'].max(numeric_only=True) + 0.5,
-                                                  df['open_feels_like'].max(numeric_only=True) + 0.5
+                                                  df2['ext_temp'].max(numeric_only=True) + 0.5,
+                                                  df2['ext_humidex'].max(numeric_only=True) + 0.5,
+                                                  df2['int_temp'].max(numeric_only=True) + 0.5,
+                                                  df2['open_temp'].max(numeric_only=True) + 0.5,
+                                                  df2['open_feels_like'].max(numeric_only=True) + 0.5
                                               ) + 1.1), 1)))
 
                     fig.canvas.draw_idle()
@@ -398,87 +377,86 @@ class ThermoProScan:
         threads.append(thread)
         thread.start()
 
+        thread: threading.Thread = threading.Thread(target=HydroQuébec().start, args=(result_queue,))
+        threads.append(thread)
+        thread.start()
+
         for thread in threads:
             thread.join()
 
         while not result_queue.empty():
             json_data.update(result_queue.get())
 
+        kwh_list = json_data['kwh_list']
+        del json_data['kwh_list']
+
         log.info('----------------------------------------------')
-        log.info(json.dumps(json_data, indent=4, sort_keys=True, default=str))
+        log.info(f'Got all new data:\n{json.dumps(json_data, indent=4, sort_keys=True, default=str)}')
         log.info('----------------------------------------------')
 
         is_new_file = False if (os.path.isfile(OUTPUT_CSV_FILE) and os.stat(OUTPUT_CSV_FILE).st_size > 0) else True
         try:
-            cols = ["time", "ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
-                    'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
-                    'ext_temp_162', 'ext_temp_02', 'ext_humidity_162', 'ext_humidity_02', 'load_watt', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon']
             with open(OUTPUT_CSV_FILE, "a", newline='') as csvfile:
                 writer = csv.writer(csvfile)
                 if is_new_file:
-                    writer.writerow(cols)
+                    writer.writerow(COLUMNS)
 
                 if json_data:
-                    writer.writerow([
-                        datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
-                        json_data.get("ext_temp"),
-                        int(json_data.get("ext_humidity")) if json_data.get("ext_humidity") else None,
-                        json_data.get('int_temp'),
-                        int(json_data.get('ext_humidex')) if json_data.get("ext_humidex") else None,
-                        json_data.get('open_temp'),
-                        json_data.get('open_feels_like'),
-                        int(json_data.get('open_humidity')) if json_data.get("open_humidity") else None,
-                        int(json_data.get('open_pressure')) if json_data.get("open_pressure") else None,
-                        int(json_data.get('open_clouds')) if json_data.get("open_clouds") else None,
-                        int(json_data.get('open_visibility')) if json_data.get("open_visibility") else None,
-                        json_data.get('open_wind_speed'),
-                        json_data.get('open_wind_gust'),
-                        int(json_data.get('open_wind_deg')) if json_data.get("open_wind_deg") else None,
-                        json_data.get('open_rain'),
-                        json_data.get('open_snow'),
-                        json_data.get('open_description'),
-                        json_data.get('open_icon'),
-                        json_data.get("open_sunrise").strftime('%Y/%m/%d %H:%M:%S') if json_data.get('open_sunrise') else None,
-                        json_data.get("open_sunset").strftime('%Y/%m/%d %H:%M:%S') if json_data.get('open_sunset') else None,
-                        json_data.get('open_uvi'),
-                        json_data.get('ext_temp_162'),
-                        json_data.get('ext_temp_02'),
-                        json_data.get('ext_humidity_162'),
-                        json_data.get('ext_humidity_02'),
+                    data: list[Any] = []
+                    for col in COLUMNS:
+                        if col == 'time':
+                            data.append(datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
+                        elif type(json_data.get(col)) == datetime:
+                            data.append(json_data.get(col).strftime('%Y/%m/%d %H:%M:%S')) if json_data.get(col) else data.append(None)
+                        elif type(json_data.get(col)) == float and pd.isna(json_data.get(col)):
+                            data.append(None)
+                        else:
+                            data.append(json_data.get(col)) if json_data.get(col) else data.append(None)
 
-                        json_data.get('load_watt'),
-                        json_data.get('int_temp_bureau'),
-                        json_data.get('int_temp_chambre'),
-                        json_data.get('int_temp_salle-de-bain'),
-                        json_data.get('int_temp_salon'),
+                    writer.writerow(data)
+                log.info("line CSV file writen")
 
-                        json_data.get('kwh'),
-                        json_data.get('kwh_bureau'),
-                        json_data.get('kwh_chambre'),
-                        json_data.get('kwh_salle-de-bain'),
-                        json_data.get('kwh_salon'),
-                    ])
-                else:
-                    writer.writerow([json_data["time"].strftime('%Y/%m/%d %H:%M:%S'), json_data["ext_temp"], int(json_data["ext_humidity"])])
-                log.info("CSV file writen")
-
+            kwh_df = self.set_kwh(kwh_list)
+            self.save_csv(kwh_df)
+            self.create_graph(False)
         except Exception as ex:
             log.error(ex)
             log.error(json_data)
             log.error(traceback.format_exc())
+        finally:
+            # kwh_df = self.set_kwh(kwh_list)
+            # self.save_csv(kwh_df)
+            # self.create_graph(False)
+            log.info("End task")
 
-        self.create_graph(False)
-        log.info("End task")
+    def save_csv(self, kwh_df: DataFrame | None) -> None:
+        log.info('Saving csv file...')
+        if kwh_df is None:
+            log.warning('kwh_df is empty')
+        else:
+            with open(OUTPUT_CSV_FILE + '.tmp', 'w', newline='') as writer:
+                writer = csv.writer(writer)
+                writer.writerow(COLUMNS)
+                for index, row in kwh_df.iterrows():
+                    data: list[Any] = []
+                    for col in COLUMNS:
+                        if col == 'time':
+                            data.append(row[col].strftime('%Y/%m/%d %H:%M:%S'))
+                        elif type(row[col]) == datetime:
+                            data.append(row[col].strftime('%Y/%m/%d %H:%M:%S')) if row[col] else data.append(None)
+                        elif type(row[col]) == float and pd.isna(row[col]):
+                            data.append(None)
+                        else:
+                            data.append(row[col]) if row[col] else data.append(None)
+                    writer.writerow(data)
 
-    def __save_csv(self):
-        log.info('save_csv()')
-        with open(OUTPUT_CSV_FILE, 'r') as r, open(ThermoProScan.OUTPUT_CSV_FILE + '.tmp', 'w') as o:
-            for line in r:
-                line = line.strip()
-                if len(line) > 0:
-                    o.write(line + '\n')
-        os.remove(OUTPUT_CSV_FILE)
-        os.rename(OUTPUT_CSV_FILE + '.tmp', OUTPUT_CSV_FILE)
+            if os.path.exists(OUTPUT_CSV_FILE):
+                try:
+                    os.remove(OUTPUT_CSV_FILE)
+                except Exception as ex:
+                    log.error(ex)
+            os.renames(OUTPUT_CSV_FILE + '.tmp', OUTPUT_CSV_FILE)
+            log.info('csv file saved.')
 
     def start(self):
         try:
@@ -499,9 +477,6 @@ class ThermoProScan:
                 sleep(1)
         except KeyboardInterrupt as ki:
             pass
-            # log.error(f'{ki}')
-            # log.error(traceback.format_exc())
-
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -515,6 +490,35 @@ class ThermoProScan:
         except SystemExit as ex:
             pass
 
+    # https://stackoverflow.com/questions/13148429/how-to-change-the-order-of-dataframe-columns
+    def set_kwh(self, kwh_list: list[dict[str, Any]]) -> DataFrame | None:
+        try:
+            if len(kwh_list) != 0:
+                csv_data = self.load_csv()
+                if bool(csv_data):
+                    sorted_datas = sorted(csv_data, key=lambda d: d["time"])
+                    df = pd.DataFrame(sorted_datas)
+                    df.set_index('time')
+
+                    start_date = datetime.now().replace(day=datetime.now().month - 2).strftime('%Y-%m-%d')
+                    end_date = datetime.now().replace(day=datetime.now().day + 1).strftime('%Y-%m-%d')
+                    filtered_df = df.loc[(df['time'] >= start_date) & (df['time'] <= end_date)]
+
+                    df['kwh_hydro_quebec'] = None
+                    for index, line1 in filtered_df.iterrows():
+                        day1 = line1['time'].strftime('%Y-%m-%d')
+                        hour1 = line1['time'].hour
+                        for line2 in kwh_list:
+                            day2 = line2.get('day').replace('/', '-')
+                            hour2 = datetime.strptime(line2.get('hour'), '%H:%M:%S').hour
+                            if hour2 == hour1 and day2 == day1:
+                                df.loc[index, 'kwh_hydro_quebec'] = line2.get('consoTotal')
+                    return df
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+        return None
+
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
@@ -522,6 +526,67 @@ if __name__ == '__main__':
     thermoProScan: ThermoProScan = ThermoProScan()
     thermoProScan.start()
     sys.exit()
+
+    # open_snow -> open_description
+    # open_description -> open_temp  open_feels_like
+    # open_icon -> open_sunrise
+    # int_temp_bureau -> open_visibility
+    # ext_temp_Thermopro-TX2 => open_sunrise
+
+    # open_sunset -> open_pressure
+    # ext_humidity_Rubicson-Temperature -> open_sunset
+    # ext_temp_Thermopro-TX2 -> open_sunrise
+
+    #
+    # 6591:8407
+    sorted_datas = sorted(thermoProScan.load_csv(), key=lambda d: d["time"])
+    df = pd.DataFrame(sorted_datas)
+    df.set_index('time')
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 1000)
+    pd.set_option('display.max_rows', None)
+    # log.info(f'kwh_df:\n{df[6590 - 5:8407 + 1]}')
+    # log.info(f'kwh_df:\n{df[6590 - 5:8407 + 1][['open_sunset', 'open_pressure', 'ext_humidity_Rubicson-Temperature']]}')
+    for index, row in df[6590 - 5:8407 + 1].iterrows():
+        # print(type(row['open_sunset']), float(row['open_sunset']))
+        # df.at[index, 'open_rain'] = None
+        # df.at[index, 'open_uvi'] = None
+        # df.at[index, 'open_wind_gust'] = None
+        # df.at[index, 'open_wind_deg'] = None
+        #
+        # df.at[index, 'int_temp'] = row['open_clouds']
+        # df.at[index, 'open_clouds'] = None
+        #
+        # df.at[index, 'open_visibility'] = row['open_wind_deg']
+        # df.at[index, 'int_temp_bureau'] = None
+        #
+        # df.at[index, 'open_visibility'] = row['int_temp_bureau']
+        # df.at[index, 'int_temp_bureau'] = None
+        #
+        # df.at[index, 'open_description'] = row['open_snow']
+        # df.at[index, 'open_snow'] = None
+        #
+        # df.at[index, 'open_humidity'] = float(row['open_icon'])
+        # df.at[index, 'open_icon'] = None
+        #
+        # df.at[index, 'open_pressure'] = float(row['open_sunset'])
+        # df.at[index, 'open_sunset'] = None
+        #
+        # df.at[index, 'open_sunset'] = row['ext_humidity_Rubicson-Temperature']
+        # df.at[index, 'ext_humidity_Rubicson-Temperature'] = None
+        #
+        # df.at[index, 'open_sunrise'] = row['ext_temp_Thermopro-TX2']
+        # df.at[index, 'ext_temp_Thermopro-TX2'] = None
+
+        # df.at[index, 'ext_humidex'] = float(row['open_wind_speed'])
+        # df.at[index, 'open_wind_speed'] = None
+        df.at[index, 'ext_humidex'] = None
+        pass
+    # pass
+    log.info(f'kwh_df:\n{df[6590 - 5:6590 + 5]}')
+    log.info(f'kwh_df:\n{df[8407 - 5:8407 + 5]}')
+    thermoProScan.save_csv(df)
+
 # cols = ["time", "ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
 #         'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
 #         'ext_temp_162', 'ext_temp_02', 'ext_humidity_162', 'ext_humidity_02', 'load_watt', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon']

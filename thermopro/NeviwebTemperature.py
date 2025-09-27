@@ -288,7 +288,7 @@ class NeviwebTemperature:
             ignore_miwi=None,
             timeout=REQUESTS_TIMEOUT
     ):
-        log.info('NeviwebTemperature')
+        log.info('      ----------------------- Starting NeviwebTemperature -----------------------')
         """Initialize the client object."""
         self.hass = hass
         self._email = username
@@ -333,7 +333,7 @@ class NeviwebTemperature:
             return None
 
     def load_neviweb(self, result_queue: Queue):
-        log.info("------------------ Start load_neviweb ------------------")
+        log.info("  ----------------------- Start load_neviweb -----------------------")
         result: dict = {}
         try:
             log.info(f'login={self.login()}')
@@ -366,8 +366,8 @@ class NeviwebTemperature:
                         kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
                         kwh_total = kwh_total + kwh
                         result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh
-            log.info(f'kwh_total: {kwh_total}')
-            result['kwh'] = kwh_total
+            log.info(f'kwh_neviweb: {kwh_total}')
+            result['kwh_neviweb'] = kwh_total
 
             room_temperature_display_list: list = [float(gateway_data2['roomTemperature']) for gateway_data2 in self.gateway_data]
             int_temp: float = round(sum(room_temperature_display_list) / len(room_temperature_display_list), 1)
@@ -379,10 +379,10 @@ class NeviwebTemperature:
                         result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature']
             result.update({'int_temp': int_temp})
 
-            load_watt_list: list[int] = [int(gateway_data2['loadWatt']) for gateway_data2 in self.gateway_data]
-            load_watt: int | None = sum(load_watt_list)
-            log.info(f'load_watt={load_watt}, data={load_watt_list}')
-            result.update({'load_watt': load_watt})
+            kwh_load_list: list[int] = [int(gateway_data2['loadWatt']) for gateway_data2 in self.gateway_data]
+            kwh_neviweb_load: float | None = round(sum(kwh_load_list) / 1000, 3)
+            log.info(f'kwh_neviweb_load={kwh_neviweb_load}, data={kwh_load_list}')
+            result.update({'kwh_neviweb_load': kwh_neviweb_load})
 
             log.info(f'result={result}')
         except Exception as ex:
