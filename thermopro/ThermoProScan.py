@@ -527,6 +527,9 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
+    print(COLUMNS)
+    print(COLUMNS2)
+
     # open_snow -> open_description
     # open_description -> open_temp  open_feels_like
     # open_icon -> open_sunrise
@@ -542,49 +545,49 @@ if __name__ == '__main__':
     sorted_datas = sorted(thermoProScan.load_csv(), key=lambda d: d["time"])
     df = pd.DataFrame(sorted_datas)
     df.set_index('time')
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', 1000)
-    pd.set_option('display.max_rows', None)
-    # log.info(f'kwh_df:\n{df[6590 - 5:8407 + 1]}')
-    # log.info(f'kwh_df:\n{df[6590 - 5:8407 + 1][['open_sunset', 'open_pressure', 'ext_humidity_Rubicson-Temperature']]}')
-    for index, row in df[6590 - 5:8407 + 1].iterrows():
-        # print(type(row['open_sunset']), float(row['open_sunset']))
-        # df.at[index, 'open_rain'] = None
-        # df.at[index, 'open_uvi'] = None
-        # df.at[index, 'open_wind_gust'] = None
-        # df.at[index, 'open_wind_deg'] = None
-        #
-        # df.at[index, 'int_temp'] = row['open_clouds']
-        # df.at[index, 'open_clouds'] = None
-        #
-        # df.at[index, 'open_visibility'] = row['open_wind_deg']
-        # df.at[index, 'int_temp_bureau'] = None
-        #
-        # df.at[index, 'open_visibility'] = row['int_temp_bureau']
-        # df.at[index, 'int_temp_bureau'] = None
-        #
-        # df.at[index, 'open_description'] = row['open_snow']
-        # df.at[index, 'open_snow'] = None
-        #
-        # df.at[index, 'open_humidity'] = float(row['open_icon'])
-        # df.at[index, 'open_icon'] = None
-        #
-        # df.at[index, 'open_pressure'] = float(row['open_sunset'])
-        # df.at[index, 'open_sunset'] = None
-        #
-        # df.at[index, 'open_sunset'] = row['ext_humidity_Rubicson-Temperature']
-        # df.at[index, 'ext_humidity_Rubicson-Temperature'] = None
-        #
-        # df.at[index, 'open_sunrise'] = row['ext_temp_Thermopro-TX2']
-        # df.at[index, 'ext_temp_Thermopro-TX2'] = None
-
-        # df.at[index, 'ext_humidex'] = float(row['open_wind_speed'])
-        # df.at[index, 'open_wind_speed'] = None
-        df.at[index, 'ext_humidex'] = None
-        pass
-    # pass
-    log.info(f'kwh_df:\n{df[6590 - 5:6590 + 5]}')
-    log.info(f'kwh_df:\n{df[8407 - 5:8407 + 5]}')
+    # pd.set_option('display.max_columns', None)
+    # pd.set_option('display.width', 1000)
+    # pd.set_option('display.max_rows', None)
+    # # log.info(f'kwh_df:\n{df[6590 - 5:8407 + 1]}')
+    # # log.info(f'kwh_df:\n{df[6590 - 5:8407 + 1][['open_sunset', 'open_pressure', 'ext_humidity_Rubicson-Temperature']]}')
+    # for index, row in df[6590 - 5:8407 + 1].iterrows():
+    #     # print(type(row['open_sunset']), float(row['open_sunset']))
+    #     # df.at[index, 'open_rain'] = None
+    #     # df.at[index, 'open_uvi'] = None
+    #     # df.at[index, 'open_wind_gust'] = None
+    #     # df.at[index, 'open_wind_deg'] = None
+    #     #
+    #     # df.at[index, 'int_temp'] = row['open_clouds']
+    #     # df.at[index, 'open_clouds'] = None
+    #     #
+    #     # df.at[index, 'open_visibility'] = row['open_wind_deg']
+    #     # df.at[index, 'int_temp_bureau'] = None
+    #     #
+    #     # df.at[index, 'open_visibility'] = row['int_temp_bureau']
+    #     # df.at[index, 'int_temp_bureau'] = None
+    #     #
+    #     # df.at[index, 'open_description'] = row['open_snow']
+    #     # df.at[index, 'open_snow'] = None
+    #     #
+    #     # df.at[index, 'open_humidity'] = float(row['open_icon'])
+    #     # df.at[index, 'open_icon'] = None
+    #     #
+    #     # df.at[index, 'open_pressure'] = float(row['open_sunset'])
+    #     # df.at[index, 'open_sunset'] = None
+    #     #
+    #     # df.at[index, 'open_sunset'] = row['ext_humidity_Rubicson-Temperature']
+    #     # df.at[index, 'ext_humidity_Rubicson-Temperature'] = None
+    #     #
+    #     # df.at[index, 'open_sunrise'] = row['ext_temp_Thermopro-TX2']
+    #     # df.at[index, 'ext_temp_Thermopro-TX2'] = None
+    #
+    #     # df.at[index, 'ext_humidex'] = float(row['open_wind_speed'])
+    #     # df.at[index, 'open_wind_speed'] = None
+    #     df.at[index, 'ext_humidex'] = None
+    #     pass
+    # # pass
+    # log.info(f'kwh_df:\n{df[6590 - 5:6590 + 5]}')
+    # log.info(f'kwh_df:\n{df[8407 - 5:8407 + 5]}')
     thermoProScan.save_csv(df)
 
 # cols = ["time", "ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
