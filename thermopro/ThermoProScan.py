@@ -52,7 +52,7 @@ class ThermoProScan:
         atexit.register(self.__cleanup_function)
 
     def load_csv(self) -> list[dict]:
-        log.info('load_csv')
+        log.info(f'load_csv, columns ({len(COLUMNS)}): {COLUMNS}')
         if os.path.isfile(OUTPUT_CSV_FILE):
             result = pd.read_csv(OUTPUT_CSV_FILE)
             result = result.astype({'time': 'datetime64[ns]'})
@@ -68,7 +68,7 @@ class ThermoProScan:
                 result = result.astype({'open_pressure': 'Int64'})
             except Exception as ex:
                 result = result.astype({'open_pressure': 'float'})
-
+            result = result.astype({'kwh_hydro_quebec': 'float'})
             result = result.astype({'ext_humidex': 'Int64'})
             return result.to_dict('records')
         else:
@@ -117,7 +117,6 @@ class ThermoProScan:
             log.error(traceback.format_exc())
 
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
-
     def create_graph(self, popup: bool) -> None:
         try:
             log.info('create_graph')
@@ -142,6 +141,10 @@ class ThermoProScan:
                 ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
                 open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
                 open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
+                # kwh_hydro_quebec = ax1.plot(df["time"], (df["kwh_hydro_quebec"] - df["kwh_hydro_quebec"].min()) / ((df["kwh_hydro_quebec"].max() - df["kwh_hydro_quebec"].min()) * 10), color='xkcd:gray', label='KWh')
+                kwh_hydro_quebec = ax1.plot(df["time"], df["kwh_hydro_quebec"] * 10, color='xkcd:gray', label='KWh')
+                kwh_hydro_quebec = kwh_hydro_quebec[0]
+                # print((df[8000:]["kwh_hydro_quebec"] - df["kwh_hydro_quebec"].min()) / ((df["kwh_hydro_quebec"].max() - df["kwh_hydro_quebec"].min()) / 10))
 
                 ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
                 ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
@@ -227,7 +230,7 @@ class ThermoProScan:
                 select.set_figure(ext_temp.figure)
                 select.figure.set_canvas(ext_temp.figure.canvas)
 
-                all_lines: list[Line2D] = [select, open_pressure, int_temp, ext_temp, open_temp, ext_humidity, open_humidity, ext_humidex, open_feels_like]
+                all_lines: list[Line2D] = [select, kwh_hydro_quebec, open_pressure, int_temp, ext_temp, open_temp, ext_humidity, open_humidity, ext_humidex, open_feels_like]
                 lines_label: Sequence[str] = [str(line.get_label()) for line in all_lines]
                 lines_colors: Sequence[str] = [line.get_color() for line in all_lines]
                 lines_actives: Sequence[bool] = [line.get_visible() for line in all_lines]
@@ -325,16 +328,13 @@ class ThermoProScan:
                 button.on_clicked(reset)
                 slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
-                # https://www.geeksforgeeks.org/data-visualization/adding-tooltips-to-a-timeseries-chart-hover-tool-in-python-bokeh/
+                # https://mplcursors.readthedocs.io/en/stable/index.html
                 mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                     f'Pression: {int(float(sel[1][1]) * float((MAX_HPA - MIN_HPA) / 100.0) + MIN_HPA)} {sel[0].get_label()}'
                 ))
-                # for line in all_lines:
-                #     if line.get_label() != 'Select All/None' and line.get_label() != 'hPa':
-                #         print(line)
-                #         mplcursors.cursor(line, hover=True).connect("add", lambda sel: sel.annotation.set_text(
-                #             f'{{sel[0].get_label()}}: {sel[1][1]}'
-                #         ))
+                mplcursors.cursor(kwh_hydro_quebec, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                    f'{round(float(sel[1][1]) / 10, 3)} {sel[0].get_label()}'
+                ))
 
                 fig.canvas.manager.set_window_title('ThermoPro Graph')
                 dpi = fig.get_dpi()
@@ -434,12 +434,19 @@ class ThermoProScan:
         if kwh_df is None:
             log.warning('kwh_df is empty')
         else:
+            columns = list(COLUMNS)
+            # NE PAS EFFACER
+            # columns = sorted(columns)
+            # columns.remove('time')
+            # columns = ['time'] + columns
+            # print(columns)
+
             with open(OUTPUT_CSV_FILE + '.tmp', 'w', newline='') as writer:
                 writer = csv.writer(writer)
-                writer.writerow(COLUMNS)
+                writer.writerow(columns)
                 for index, row in kwh_df.iterrows():
                     data: list[Any] = []
-                    for col in COLUMNS:
+                    for col in columns:
                         if col == 'time':
                             data.append(row[col].strftime('%Y/%m/%d %H:%M:%S'))
                         elif type(row[col]) == datetime:
@@ -527,9 +534,16 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
-    print(COLUMNS)
-    print(COLUMNS2)
+    # s = ''
+    # for col in COLUMNS:
+    #     s += col + ','
+    # print(s)
+    # thermoProScan.load_csv()
 
+    # s = ''
+    # for col in COLUMNS:
+    #     s += col + ','
+    # print(s)
     # open_snow -> open_description
     # open_description -> open_temp  open_feels_like
     # open_icon -> open_sunrise
@@ -542,9 +556,9 @@ if __name__ == '__main__':
 
     #
     # 6591:8407
-    sorted_datas = sorted(thermoProScan.load_csv(), key=lambda d: d["time"])
-    df = pd.DataFrame(sorted_datas)
-    df.set_index('time')
+    # sorted_datas = sorted(thermoProScan.load_csv(), key=lambda d: d["time"])
+    # df = pd.DataFrame(sorted_datas)
+    # df.set_index('time')
     # pd.set_option('display.max_columns', None)
     # pd.set_option('display.width', 1000)
     # pd.set_option('display.max_rows', None)
@@ -588,7 +602,7 @@ if __name__ == '__main__':
     # # pass
     # log.info(f'kwh_df:\n{df[6590 - 5:6590 + 5]}')
     # log.info(f'kwh_df:\n{df[8407 - 5:8407 + 5]}')
-    thermoProScan.save_csv(df)
+    # thermoProScan.save_csv(df)
 
 # cols = ["time", "ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
 #         'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',

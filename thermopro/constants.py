@@ -5,11 +5,13 @@ from thermopro import HOME_PATH, PATH
 sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
-COLUMNS: list[str] = ['time'] + sorted(["ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
-                                        'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
-                                        'ext_temp_Rubicson-Temperature', 'ext_temp_Thermopro-TX2', 'ext_humidity_Rubicson-Temperature', 'ext_humidity_Thermopro-TX2', 'kwh_neviweb_load', 'int_temp_bureau',
-                                        'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_neviweb', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'ext_temp_Thermopro-TX2C',
-                                        'ext_humidity_Thermopro-TX2C', 'kwh_hydro_quebec'])
+COLUMNS: list[str] = (['time'] +
+                      sorted(["ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
+                              'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
+                              'ext_temp_Thermopro-TX2', 'ext_humidity_Thermopro-TX2', 'kwh_neviweb_load', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon',
+                              'kwh_neviweb', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon',
+                              'kwh_hydro_quebec']) +
+                      ['ext_temp_Acurite-609TXC', 'ext_humidity_Acurite-609TXC'])
 
 OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
 LOCATION = f'{HOME_PATH}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
@@ -26,9 +28,9 @@ SENSORS: list[dict[str, list[str] | dict[str, dict[str, str]]]] = [
             'Thermopro-TX2': {
                 'protocol': '162'
             },
-            # 'Geevon-TX16-3': {
-            #     'protocol': '261'
-            # }
+            'Acurite-609TXC': {
+                'protocol': '11'
+            }
         }
     }
 ]

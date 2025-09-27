@@ -364,7 +364,7 @@ class NeviwebTemperature:
                 for group in self.groups:
                     if group['id'] == device['group$id']:
                         kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
-                        kwh_total = kwh_total + kwh
+                        kwh_total += kwh
                         result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh
             log.info(f'kwh_neviweb: {kwh_total}')
             result['kwh_neviweb'] = kwh_total
