@@ -2,7 +2,7 @@ import sys
 
 from thermopro import HOME_PATH, PATH
 
-sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
+sys.path.append(f'{HOME_PATH}/Documents/BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
 COLUMNS: list[str] = (['time'] +
@@ -14,16 +14,18 @@ COLUMNS: list[str] = (['time'] +
                       ['ext_temp_Acurite-609TXC', 'ext_humidity_Acurite-609TXC'])
 
 OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
-LOCATION = f'{HOME_PATH}\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\'
-
 OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
+BKP_PATH = f'{PATH}bkp/'
+LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
+
+OUTPUT_RTL_433_FILE = f"{PATH}rtl_433.json"
 # RTL_433_VERSION = '25.02'
 RTL_433_VERSION = 'nightly'
 TIMEOUT = 300
 RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
 SENSORS: list[dict[str, list[str] | dict[str, dict[str, str]]]] = [
     {
-        'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_JSON_FILE}', '-T', f'{TIMEOUT}'],
+        'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}'],
         'sensors': {
             'Thermopro-TX2': {
                 'protocol': '162'

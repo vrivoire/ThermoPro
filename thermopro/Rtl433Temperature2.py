@@ -9,7 +9,7 @@ from time import sleep
 from typing import Any
 
 import thermopro
-from constants import TIMEOUT, SENSORS, RTL_433_EXE, OUTPUT_JSON_FILE
+from constants import TIMEOUT, SENSORS, RTL_433_EXE, OUTPUT_RTL_433_FILE
 from thermopro import log
 
 
@@ -77,9 +77,9 @@ class Rtl433Temperature2:
             self.__kill_rtl_433()
 
     def __delete_json_file(self):
-        if os.path.exists(OUTPUT_JSON_FILE):
+        if os.path.exists(OUTPUT_RTL_433_FILE):
             try:
-                os.remove(OUTPUT_JSON_FILE)
+                os.remove(OUTPUT_RTL_433_FILE)
             except Exception as ex:
                 log.error(ex)
 
@@ -127,10 +127,10 @@ class Rtl433Temperature2:
             try:
                 old_file_size_bytes = 0
                 while self.__find_rtl_433():
-                    file_size_bytes = os.path.getsize(OUTPUT_JSON_FILE)
+                    file_size_bytes = os.path.getsize(OUTPUT_RTL_433_FILE)
                     if file_size_bytes != old_file_size_bytes:
                         lines: list[dict] = []
-                        with open(OUTPUT_JSON_FILE, 'r') as file:
+                        with open(OUTPUT_RTL_433_FILE, 'r') as file:
                             while True:
                                 line: str = file.readline().strip()
                                 if len(line) == 0:
@@ -166,9 +166,9 @@ class Rtl433Temperature2:
             except subprocess.TimeoutExpired as timeoutExpired:
                 log.error(timeoutExpired)
             except FileNotFoundError:
-                log.error(f"Error: '{OUTPUT_JSON_FILE}' not found. Please ensure the file exists.")
+                log.error(f"Error: '{OUTPUT_RTL_433_FILE}' not found. Please ensure the file exists.")
             except json.JSONDecodeError:
-                log.error(f"Error: Could not decode JSON from '{OUTPUT_JSON_FILE}'. Check file format.")
+                log.error(f"Error: Could not decode JSON from '{OUTPUT_RTL_433_FILE}'. Check file format.")
             except Exception as e:
                 log.error(f"An unexpected error occurred: {e}")
                 log.error(traceback.format_exc())
@@ -176,11 +176,17 @@ class Rtl433Temperature2:
         self.__kill_rtl_433()
         self.__delete_json_file()
 
+        for s in prepare_call[0][0]:
+            json_rtl_433[f'ext_temp_{s}'] = None
+            json_rtl_433[f'ext_humidity_{s}'] = None
+
+        ext_temp: float | None = None
         if len(ext_temp_list) > 0:
             ext_temp: float = min(ext_temp_list)
         log.info(f'ext_temp={ext_temp}, {ext_temp_list}')
         json_rtl_433['ext_temp'] = ext_temp
 
+        humidity: int | None = None
         if len(humidity_list) > 0:
             humidity: int = int(sum(humidity_list) / len(humidity_list))
         log.info(f'ext_humidity={humidity}, {humidity_list}')
