@@ -16,6 +16,7 @@ COLUMNS: list[str] = (['time'] +
 OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
 OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
 BKP_PATH = f'{PATH}bkp/'
+BKP_DAYS = 5
 LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
 
 OUTPUT_RTL_433_FILE = f"{PATH}rtl_433.json"

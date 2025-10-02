@@ -33,7 +33,7 @@ from matplotlib.widgets import CheckButtons, Slider, Button
 from pandas import DataFrame
 
 import thermopro
-from constants import OUTPUT_CSV_FILE, WEATHER_URL, MIN_HPA, MAX_HPA, DAYS, LOCATION, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, OUTPUT_JSON_FILE
+from constants import OUTPUT_CSV_FILE, WEATHER_URL, MIN_HPA, MAX_HPA, DAYS, LOCATION, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, OUTPUT_JSON_FILE, BKP_DAYS
 from thermopro import log, PATH
 from thermopro.HydroQuébec import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
@@ -544,11 +544,6 @@ class ThermoProScan:
         try:
             file_name: str = OUTPUT_CSV_FILE[OUTPUT_CSV_FILE.rfind('/') + 1: OUTPUT_CSV_FILE.rfind('.csv')]
 
-            old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(weeks=1, days=1)).strftime('%Y-%m-%d')}.zip'
-            if os.path.isfile(old_zip_file_name):
-                log.info(f'Deleting 1 week old: {old_zip_file_name}')
-                os.remove(old_zip_file_name)
-
             out_file_csv: str = BKP_PATH + file_name + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + '.csv'
             out_file_json: str = BKP_PATH + file_name + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + '.json'
             log.info(f'copy from: {OUTPUT_CSV_FILE} to {out_file_csv}')
@@ -574,8 +569,17 @@ class ThermoProScan:
 
             log.info(f"Zip file created at: {zip_file_name}, files deleted: {[file[file.replace('\\', '/').rfind('/') + 1:] for file in matching_files_csv]} | {[file[file.replace('\\', '/').rfind('/') + 1:] for file in matching_files_json]}")
 
-            [os.remove(matching_file) for matching_file in matching_files_csv]
-            [os.remove(matching_file) for matching_file in matching_files_json]
+            try:
+                [os.remove(matching_file) for matching_file in matching_files_csv]
+                [os.remove(matching_file) for matching_file in matching_files_json]
+                old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS + 1)).strftime('%Y-%m-%d')}.zip'
+                if os.path.isfile(old_zip_file_name):
+                    log.info(f'Deleting 1 week old: {old_zip_file_name}')
+                    os.remove(old_zip_file_name)
+            except Exception as ex:
+                log.error(ex)
+                log.error(traceback.format_exc())
+
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())

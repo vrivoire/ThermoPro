@@ -235,7 +235,7 @@ class HydroClient:
             return json.loads(data)
         except json.decoder.JSONDecodeError as exp:
             self._logger.error(f"JSON received: {data}")
-            raise HydroQcHTTPError("Bad JSON format") from exp
+            raise HydroQcHTTPError(f"Bad JSON format, data: {data}") from exp
 
     def get_token_data(self) -> IDTokenTyping | None:
         """Decode id token data."""
