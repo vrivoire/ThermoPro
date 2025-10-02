@@ -429,7 +429,7 @@ class ThermoProScan:
             log.error(traceback.format_exc())
         finally:
             try:
-                self.save_bkp()
+                self.save_bkp(df)
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
@@ -540,7 +540,7 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    def save_bkp(self) -> None:
+    def save_bkp(self, df: DataFrame) -> None:
         try:
             file_name: str = OUTPUT_CSV_FILE[OUTPUT_CSV_FILE.rfind('/') + 1: OUTPUT_CSV_FILE.rfind('.csv')]
 
@@ -580,6 +580,12 @@ class ThermoProScan:
                 log.error(ex)
                 log.error(traceback.format_exc())
 
+            pandas.set_option('display.max_columns', None)
+            pandas.set_option('display.width', None)
+            pandas.set_option('display.max_rows', None)
+            with open(f'{POIDS_PRESSION_PATH}ThermoProScan.txt', 'w') as file:
+                file.write(f'{df}')
+            log.info(f'File {POIDS_PRESSION_PATH}ThermoProScan.txt saved.')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
