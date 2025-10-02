@@ -6,9 +6,9 @@ import traceback
 
 HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
 LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
-PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
+POIDS_PRESSION_PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
 LOG_NAME: str = ''
-# POIDS_PRESSION
+
 
 def ping(name: str):
     try:

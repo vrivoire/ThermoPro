@@ -34,7 +34,7 @@ from pandas import DataFrame
 
 import thermopro
 from constants import OUTPUT_CSV_FILE, WEATHER_URL, MIN_HPA, MAX_HPA, DAYS, LOCATION, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, OUTPUT_JSON_FILE, BKP_DAYS
-from thermopro import log, PATH
+from thermopro import log, POIDS_PRESSION_PATH
 from thermopro.HydroQuébec import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
@@ -110,7 +110,7 @@ class ThermoProScan:
 
             pandas.set_option('display.max_columns', None)
             pandas.set_option('display.width', 1000)
-            pandas.set_option('display.max_rows', 1000)
+            pandas.set_option('display.max_rows', 50)
             log.info(f'\n{df[len(df) - 50:]}')
 
             fig, ax1 = plt.subplots()
@@ -324,7 +324,7 @@ class ThermoProScan:
             fig.canvas.manager.set_window_title('ThermoPro Graph')
             dpi = fig.get_dpi()
             fig.set_size_inches(1280.0 / float(dpi), 720.0 / float(dpi))
-            plt.savefig(PATH + 'ThermoProScan.png')
+            plt.savefig(POIDS_PRESSION_PATH + 'ThermoProScan.png')
 
             if popup:
                 manager = matplotlib.pyplot.get_current_fig_manager()
@@ -482,11 +482,11 @@ class ThermoProScan:
         try:
             log.info('ThermoProScan started')
             i = 0
-            while not os.path.exists(PATH) and i < 5:
-                log.warning(f'The path "{PATH}" not ready.')
+            while not os.path.exists(POIDS_PRESSION_PATH) and i < 5:
+                log.warning(f'The path "{POIDS_PRESSION_PATH}" not ready.')
                 i += 1
                 sleep(10)
-            if not os.path.exists(PATH):
+            if not os.path.exists(POIDS_PRESSION_PATH):
                 ctypes.windll.user32.MessageBoxW(0, "Mapping not ready.", "Warning!", 16)
                 sys.exit()
 

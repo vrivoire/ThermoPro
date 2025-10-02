@@ -1,6 +1,6 @@
 import sys
 
-from thermopro import HOME_PATH, PATH
+from thermopro import HOME_PATH, POIDS_PRESSION_PATH
 
 sys.path.append(f'{HOME_PATH}/Documents/BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
@@ -13,13 +13,13 @@ COLUMNS: list[str] = (['time'] +
                               'kwh_hydro_quebec']) +
                       ['ext_temp_Acurite-609TXC', 'ext_humidity_Acurite-609TXC'])
 
-OUTPUT_CSV_FILE = f"{PATH}ThermoProScan.csv"
-OUTPUT_JSON_FILE = f"{PATH}ThermoProScan.json"
-BKP_PATH = f'{PATH}bkp/'
+OUTPUT_CSV_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.csv"
+OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
+BKP_PATH = f'{POIDS_PRESSION_PATH}bkp/'
 BKP_DAYS = 5
 LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
 
-OUTPUT_RTL_433_FILE = f"{PATH}rtl_433.json"
+OUTPUT_RTL_433_FILE = f"{POIDS_PRESSION_PATH}rtl_433.json"
 # RTL_433_VERSION = '25.02'
 RTL_433_VERSION = 'nightly'
 TIMEOUT = 300
