@@ -123,9 +123,11 @@ class ThermoProScan:
             ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
             open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
             open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
-            # kwh_hydro_quebec = ax1.plot(df["time"], (df["kwh_hydro_quebec"] - df["kwh_hydro_quebec"].min()) / ((df["kwh_hydro_quebec"].max() - df["kwh_hydro_quebec"].min()) * 10), color='xkcd:gray', label='KWh')
-            kwh_hydro_quebec = ax1.plot(df["time"], df["kwh_hydro_quebec"] * 10, color='xkcd:gray', label='KWh')
+            kwh_hydro_quebec = ax1.plot(df["time"], df["kwh_hydro_quebec"] * 10, color='gray', label='KWh')
+            # print(type(kwh_hydro_quebec[1]), len(kwh_hydro_quebec))
             kwh_hydro_quebec = kwh_hydro_quebec[0]
+            # print(type(kwh_hydro_quebec))
+
             # print((df[8000:]["kwh_hydro_quebec"] - df["kwh_hydro_quebec"].min()) / ((df["kwh_hydro_quebec"].max() - df["kwh_hydro_quebec"].min()) / 10))
 
             ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
@@ -230,15 +232,11 @@ class ThermoProScan:
                 slider_position.valtext.set_text(num2date(val).date())
                 df2: DataFrame = df.set_index(['time'])
                 df2 = df2[num2date(val - DAYS).date():num2date(val + DAYS).date()]
-                # print(df2)
-                # self.tutu(df2)
-
-                # print(f'toto\n{df2}')
                 window = (
                     val - DAYS,
                     val + 0.1,
-                    min(df2['ext_humidity'].min(numeric_only=True), df2['open_humidity'].min(numeric_only=True)) - 1,
-                    max(df2['ext_humidity'].max(numeric_only=True), df2['open_humidity'].max(numeric_only=True)) + 1
+                    0,
+                    100
                 )
                 ax1.axis(window)
                 ax1.set_yticks(list(range(0, 101, 10)))
@@ -349,7 +347,6 @@ class ThermoProScan:
         json_data: dict[str, Any] = {}
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
-        # df: DataFrame | None = None
 
         thread: threading.Thread = threading.Thread(target=Rtl433Temperature2().call_rtl_433, args=(result_queue,))
         threads.append(thread)
@@ -386,36 +383,34 @@ class ThermoProScan:
         log.info(f'Got all new data:\n{json.dumps(json_data, indent=4, sort_keys=True, default=str)}')
         log.info('----------------------------------------------')
 
-        is_new_file = False if (os.path.isfile(OUTPUT_CSV_FILE) and os.stat(OUTPUT_CSV_FILE).st_size > 0) else True
         try:
             df: DataFrame = self.load_json()
-            with open(OUTPUT_CSV_FILE, "a", newline='') as csvfile:
-                writer = csv.writer(csvfile)
-                if is_new_file:
-                    writer.writerow(COLUMNS)
-
-                if json_data:
-                    data: list[Any] = []
-                    data_dict: dict[str, Any] = {}
-                    for col in COLUMNS:
-                        if col == 'time':
-                            data.append(datetime.now().strftime('%Y/%m/%d %H:%M:%S'))
-                            data_dict[col] = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
-                        elif type(json_data.get(col)) == datetime:
-                            data.append(json_data.get(col).strftime('%Y/%m/%d %H:%M:%S')) if json_data.get(col) else data.append(None)
-                            data_dict[col] = json_data.get(col).strftime('%Y/%m/%d %H:%M:%S')
-                        elif type(json_data.get(col)) == float and pd.isna(json_data.get(col)):
-                            data.append(None)
+            if json_data:
+                # data: list[Any] = []
+                data_dict: dict[str, Any] = {}
+                for col in COLUMNS:
+                    if col == 'time':
+                        data_dict[col] = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+                    elif type(json_data.get(col)) == datetime:
+                        data_dict[col] = json_data.get(col).strftime('%Y/%m/%d %H:%M:%S')
+                    elif type(json_data.get(col)) == float and pd.isna(json_data.get(col)):
+                        pass
+                    elif json_data.get(col) is None:
+                        pass
+                    else:
+                        if type(json_data.get(col)) == float:
+                            data_dict[col] = round(json_data.get(col), 2)
+                        elif type(json_data.get(col)) == int:
+                            data_dict[col] = int(json_data.get(col))
                         else:
-                            data.append(json_data.get(col)) if json_data.get(col) else data.append(None)
-                            if json_data.get(col) is not None:
-                                data_dict[col] = json_data.get(col)
+                            data_dict[col] = json_data.get(col)
 
-                    df.loc[len(df)] = data_dict
-                    for col in ['time', 'open_sunrise', 'open_sunset']:
-                        df = df.astype({col: 'datetime64[ns]'})
-                    writer.writerow(data)
-                log.info("line CSV file writen")
+                df.loc[len(df)] = data_dict
+                for col in ['time', 'open_sunrise', 'open_sunset']:
+                    df = df.astype({col: 'datetime64[ns]'})
+
+                for col in ['ext_humidity', 'open_humidity']:
+                    pass
 
             self.set_kwh(kwh_dict, df)
 
@@ -519,7 +514,6 @@ class ThermoProScan:
                 start_date = datetime.strptime(keys[0][0:10], "%Y-%m-%d")
                 end_date = datetime.now()
                 log.info(f'Setting hydro KWH, kwh_list size: {len(keys)}, first: {keys[0][0:10]}, last: {keys[len(keys) - 1][0:10]}')
-                log.info(f'start_date: {start_date.strftime('%Y-%m-%d %H:%M:%S')}, end_date: {end_date.strftime('%Y-%m-%d %H:%M:%S')}')
                 filtered_df = df.loc[(df['time'] >= start_date) & (df['time'] <= end_date)]
                 filtered_df['time'].astype('datetime64[ns]')
                 filtered_df.set_index('time')
@@ -572,9 +566,9 @@ class ThermoProScan:
             try:
                 [os.remove(matching_file) for matching_file in matching_files_csv]
                 [os.remove(matching_file) for matching_file in matching_files_json]
-                old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS + 1)).strftime('%Y-%m-%d')}.zip'
+                old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
                 if os.path.isfile(old_zip_file_name):
-                    log.info(f'Deleting 1 week old: {old_zip_file_name}')
+                    log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
                     os.remove(old_zip_file_name)
             except Exception as ex:
                 log.error(ex)
@@ -652,7 +646,6 @@ class ThermoProScan:
             all_columns2 = ['time'] + all_columns2
             df2 = df2[all_columns2]
             df2 = df2.sort_values(by='time', ascending=True)
-            # print(df2[8000:])
             return df2
         except Exception as ex:
             log.error(ex)

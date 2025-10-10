@@ -22,42 +22,47 @@ class HydroQuébec:
     def __init__(self):
         log.info('              ----------------------- Starting HydroQuébec -----------------------')
 
-    async def __get_kwh_list(self, result_queue: Queue) -> None:
-        webuser: WebUser | None = None
+    async def __get_kwh_list(self,
+            result_queue: Queue,
+            weeks=4
+    ) -> None:
+
+        web_user: WebUser | None = None
         kwh_dict: dict[str, float] = {}
         try:
-            webuser = WebUser(HYDRO_EMAIL, HYDRO_PASSWORD, verify_ssl=False, log_level="ERROR", http_log_level="ERROR")
-            await webuser.login()
-            log.info(f'Login: {await webuser.login()}')
-            await webuser.get_info()
+            web_user = WebUser(HYDRO_EMAIL, HYDRO_PASSWORD, verify_ssl=False, log_level="ERROR", http_log_level="ERROR")
+            await web_user.login()
+            log.info(f'Login: {await web_user.login()}')
+            await web_user.get_info()
 
-            customer = webuser.customers[0]
+            customer = web_user.customers[0]
             await customer.get_info()
-            contract: Contract = webuser.customers[0].accounts[0].contracts[0]
+            contract: Contract = web_user.customers[0].accounts[0].contracts[0]
 
             try:
-                start_date = datetime.now() - relativedelta(months=1)
-                end_date = datetime.now()
-                log.info(f'start_date: {start_date.strftime('%Y-%m-%d %H:%M:%S')}, end_date: {end_date.strftime('%Y-%m-%d %H:%M:%S')}')
-                string: StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
-                df = pd.read_csv(string, sep=';')
-                log.info('Data parsed')
-                df['Date et heure'].astype('datetime64[ns]')
-                df.set_index('Date et heure')
-                df_reversed = df[::-1].reset_index(drop=True)
-                df_reversed['Date et heure'].astype('datetime64[ns]')
-                df_reversed.set_index('Date et heure')
-                df_reversed = df_reversed.sort_values(by='Date et heure', ascending=True)
+                for week in range(0, weeks):
+                    start_date = datetime.now() - relativedelta(weeks=week)
+                    end_date = datetime.now() - relativedelta(weeks=week - 1)
+                    log.info(f'start_date: {start_date.isoformat()}, end_date: {end_date.isoformat()}')
+                    string: StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
+                    df = pd.read_csv(string, sep=';')
+                    log.info('Data parsed')
+                    df['Date et heure'].astype('datetime64[ns]')
+                    df.set_index('Date et heure')
+                    df_reversed = df[::-1].reset_index(drop=True)
+                    df_reversed['Date et heure'].astype('datetime64[ns]')
+                    df_reversed.set_index('Date et heure')
+                    df_reversed = df_reversed.sort_values(by='Date et heure', ascending=True)
 
-                log.info('Creating kwh_dict...')
-                for index, row in df_reversed.iterrows():
-                    splited = row['Date et heure'].split(' ')
-                    kwh: float = 0.0
-                    if type(row['kWh']) == str:
-                        kwh = float(str(row['kWh']).replace(',', '.'))
-                    elif type(row['kWh']) == float:
-                        kwh = float(row['kWh'])
-                    kwh_dict[f'{splited[0]} {splited[1][0:2]}'] = kwh
+                    log.info('Creating kwh_dict...')
+                    for index, row in df_reversed.iterrows():
+                        splited = row['Date et heure'].split(' ')
+                        kwh: float = 0.0
+                        if type(row['kWh']) == str:
+                            kwh = float(str(row['kWh']).replace(',', '.'))
+                        elif type(row['kWh']) == float:
+                            kwh = float(row['kWh'])
+                        kwh_dict[f'{splited[0]} {splited[1][0:2]}'] = kwh
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
@@ -69,7 +74,7 @@ class HydroQuébec:
                     date_jour: str = data.get('dateJour')
                     liste_donnees_conso_energie_horaire: list[ConsumpHourlyResultTyping] = data.get('listeDonneesConsoEnergieHoraire')
                     for data in liste_donnees_conso_energie_horaire:
-                        kwh_dict[f'{date_jour} {data.get('heure')[0:2]}'] = data.get('consoTotal')
+                        kwh_dict[f'{date_jour} {data.get('heure')[0:2]}'] = float(data.get('consoTotal'))
                 else:
                     log.error('ERROR today_hourly_consumption')
                     log.error(f'today_hourly_consumption: {thermopro.ppretty(today_hourly_consumption)}')
@@ -84,8 +89,8 @@ class HydroQuébec:
             log.error(exp)
             log.error(traceback.format_exc())
         finally:
-            if webuser:
-                await webuser.close_session()
+            if web_user:
+                await web_user.close_session()
                 log.info('Session closed')
             data = dict(sorted(kwh_dict))
             result_queue.put({'kwh_dict': data})
