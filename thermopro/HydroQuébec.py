@@ -24,7 +24,7 @@ class HydroQuébec:
 
     async def __get_kwh_list(self,
             result_queue: Queue,
-            weeks=4
+            weeks=3
     ) -> None:
 
         web_user: WebUser | None = None

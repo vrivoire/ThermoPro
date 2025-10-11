@@ -123,12 +123,6 @@ class ThermoProScan:
             ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
             open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
             open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
-            kwh_hydro_quebec = ax1.plot(df["time"], df["kwh_hydro_quebec"] * 10, color='gray', label='KWh')
-            # print(type(kwh_hydro_quebec[1]), len(kwh_hydro_quebec))
-            kwh_hydro_quebec = kwh_hydro_quebec[0]
-            # print(type(kwh_hydro_quebec))
-
-            # print((df[8000:]["kwh_hydro_quebec"] - df["kwh_hydro_quebec"].min()) / ((df["kwh_hydro_quebec"].max() - df["kwh_hydro_quebec"].min()) / 10))
 
             ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
@@ -146,6 +140,7 @@ class ThermoProScan:
             ext_temp, = ax2.plot(df["time"], df["ext_temp"], color='xkcd:scarlet', label='Ext. °C')
             int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
             open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
+            kwh_hydro_quebec, = ax2.plot(df["time"], (df["kwh_hydro_quebec"] * 10), color='gray', label='KWh')
 
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
@@ -206,7 +201,6 @@ class ThermoProScan:
                         line2 = all_lines[i]
                         line2.set_visible(line.get_visible())
                         line2.figure.canvas.draw_idle()
-                        # print(line2.get_visible())
                         check.set_active(i, line.get_visible())
                 check.eventson = True
 
@@ -313,10 +307,10 @@ class ThermoProScan:
 
             # https://mplcursors.readthedocs.io/en/stable/index.html
             mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'Pression: {int(float(sel[1][1]) * float((MAX_HPA - MIN_HPA) / 100.0) + MIN_HPA)} {sel[0].get_label()}'
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {int(float(sel[1][1]) * float((MAX_HPA - MIN_HPA) / 100.0) + MIN_HPA)} {sel[0].get_label()}'
             ))
             mplcursors.cursor(kwh_hydro_quebec, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{round(float(sel[1][1]) / 10, 3)} {sel[0].get_label()}'
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]) / 10, 3)} {sel[0].get_label()}'
             ))
 
             fig.canvas.manager.set_window_title('ThermoPro Graph')
@@ -574,12 +568,6 @@ class ThermoProScan:
                 log.error(ex)
                 log.error(traceback.format_exc())
 
-            pandas.set_option('display.max_columns', None)
-            pandas.set_option('display.width', None)
-            pandas.set_option('display.max_rows', None)
-            with open(f'{POIDS_PRESSION_PATH}ThermoProScan.txt', 'w') as file:
-                file.write(f'{df}')
-            log.info(f'File {POIDS_PRESSION_PATH}ThermoProScan.txt saved.')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
