@@ -100,12 +100,6 @@ class ThermoProScan:
     def create_graph(self, popup: bool) -> None:
         try:
             log.info('create_graph')
-            # csv_data = self.load_csv()
-            # if bool(csv_data):
-            # sorted_datas = sorted(csv_data, key=lambda d: d["time"])
-            # df = pd.DataFrame(sorted_datas)
-            # df.set_index('time')
-
             df = self.load_json()
 
             pandas.set_option('display.max_columns', None)
@@ -123,6 +117,7 @@ class ThermoProScan:
             ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
             open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
             open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
+            kwh_hydro_quebec, = ax1.plot(df["time"], (df["kwh_hydro_quebec"] * 10), color='gray', label='KWh')
 
             ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
@@ -136,11 +131,9 @@ class ThermoProScan:
 
             ext_humidex, = ax2.plot(df["time"], df["ext_humidex"], color='xkcd:pink', label='Humidex')
             open_feels_like, = ax2.plot(df["time"], df["open_feels_like"], color='xkcd:rose pink', label='OpenHumidex')
-
             ext_temp, = ax2.plot(df["time"], df["ext_temp"], color='xkcd:scarlet', label='Ext. °C')
             int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
             open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
-            kwh_hydro_quebec, = ax2.plot(df["time"], (df["kwh_hydro_quebec"] * 10), color='gray', label='KWh')
 
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
@@ -154,7 +147,7 @@ class ThermoProScan:
             ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
             ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:red', alpha=0.3, label='°C')
             ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
-            plt.axhline(0, linewidth=1, color='black')
+            plt.axhline(0, linewidth=0.5, color='black')
 
             plt.axis((
                 df['time'][0] - timedelta(hours=1),
@@ -196,7 +189,7 @@ class ThermoProScan:
                 line.figure.canvas.draw_idle()
 
                 check.eventson = False
-                if label == 'Select All/None':
+                if label == 'All/None':
                     for i in range(len(all_lines)):
                         line2 = all_lines[i]
                         line2.set_visible(line.get_visible())
@@ -204,7 +197,7 @@ class ThermoProScan:
                         check.set_active(i, line.get_visible())
                 check.eventson = True
 
-            select: Line2D = Line2D([1], [1], label='Select All/None', color='black')
+            select: Line2D = Line2D([1], [1], label='All/None', color='black')
             select.set_figure(ext_temp.figure)
             select.figure.set_canvas(ext_temp.figure.canvas)
 
@@ -213,7 +206,7 @@ class ThermoProScan:
             lines_colors: Sequence[str] = [line.get_color() for line in all_lines]
             lines_actives: Sequence[bool] = [line.get_visible() for line in all_lines]
             check = CheckButtons(
-                ax=ax1.inset_axes((0.0, 0.0, 0.14, 0.3)),
+                ax=ax1.inset_axes((0.0, 0.0, 0.1, 0.3), zorder=-10),
                 labels=lines_label,
                 actives=lines_actives,
                 label_props={'color': lines_colors},
@@ -278,13 +271,22 @@ class ThermoProScan:
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
                     df['ext_temp'].min(numeric_only=True) - 1,
-                    max(df['ext_temp'].max(numeric_only=True), df['ext_humidex'].max(numeric_only=True), df['int_temp'].max(numeric_only=True)) + 1
+                    max(
+                        df['ext_temp'].max(numeric_only=True) + 0.5,
+                        df['ext_humidex'].max(numeric_only=True) + 0.5,
+                        df['int_temp'].max(numeric_only=True) + 0.5,
+                        df['open_temp'].max(numeric_only=True) + 0.5,
+                        df['open_feels_like'].max(numeric_only=True) + 0.5
+                    ) + 1
                 ))
-                ax2.set_yticks(list(range(int(df['ext_temp'].min(numeric_only=True) - 1),
-                                          int(max(df['ext_temp'].max(numeric_only=True),
-                                                  df['ext_humidex'].max(numeric_only=True),
-                                                  df['int_temp'].max(numeric_only=True)
-                                                  ) + 1), 1)))
+                ax2.set_yticks(list(range(int(df['ext_temp'].min(numeric_only=True) - 1.1),
+                                          int(max(
+                                              df['ext_temp'].max(numeric_only=True) + 0.5,
+                                              df['ext_humidex'].max(numeric_only=True) + 0.5,
+                                              df['int_temp'].max(numeric_only=True) + 0.5,
+                                              df['open_temp'].max(numeric_only=True) + 0.5,
+                                              df['open_feels_like'].max(numeric_only=True) + 0.5
+                                          ) + 1.1), 1)))
                 fig.canvas.draw_idle()
 
             slider_position = Slider(

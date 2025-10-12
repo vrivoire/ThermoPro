@@ -38,7 +38,7 @@ SENSORS: list[dict[str, list[str] | dict[str, dict[str, str]]]] = [
     }
 ]
 
-DAYS = 7 * 2
+DAYS = 7 * 4
 
 OPEN_LAT = 45.509  # Montreal
 OPEN_LON = -73.588  # Montreal

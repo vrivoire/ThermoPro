@@ -1,9 +1,11 @@
+import ctypes
 import json
 import math
 import os
 import subprocess
 import threading
 import traceback
+from datetime import datetime
 from queue import Queue
 from time import sleep
 from typing import Any
@@ -112,6 +114,7 @@ class Rtl433Temperature2:
         json_rtl_433: dict[str, Any] = {}
         humidity_list: list[int] = []
         ext_temp_list: list[float] = []
+        threads: list[threading.Thread] = []
 
         prepare_call: list[list[list[str]]] = self.__prepare_call()
         for toto in prepare_call:
@@ -142,6 +145,12 @@ class Rtl433Temperature2:
                         for data in lines:
                             if data['model'] in sensors_list:
                                 log.info(f'data={data}')
+                                
+                                if data.get('battery_ok') == 0 and datetime.now().strftime("%H") == '00':
+                                    thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Sensor {data.get('model')}'s battery is weak...", "RTL 433 Warning", 0x30))
+                                    thread.start()
+                                    threads.append(thread)
+
                                 data[f'ext_temp_{data['model']}'] = data['temperature_C']
                                 data[f'ext_humidity_{data['model']}'] = data['humidity'] if data.get('humidity') else None
                                 ext_temp_list.append(data['temperature_C'])
@@ -195,7 +204,13 @@ class Rtl433Temperature2:
         if json_rtl_433.get('ext_humidity'):
             json_rtl_433['ext_humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['ext_humidity'])
         log.info(f'json_rtl_433={json_rtl_433}')
+
         result_queue.put(json_rtl_433)
+
+        if len(threads) > 0:
+            for thread in threads:
+                thread.join(60)
+            log.info("Threads stopped.")
 
 
 if __name__ == "__main__":
