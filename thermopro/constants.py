@@ -6,12 +6,13 @@ sys.path.append(f'{HOME_PATH}/Documents/BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
 COLUMNS: list[str] = (['time'] +
-                      sorted(["ext_temp", "ext_humidity", 'int_temp', 'ext_humidex', 'open_temp', 'open_feels_like', 'open_humidity', 'open_pressure', 'open_clouds', 'open_visibility',
-                              'open_wind_speed', 'open_wind_gust', 'open_wind_deg', 'open_rain', 'open_snow', 'open_description', 'open_icon', 'open_sunrise', 'open_sunset', 'open_uvi',
-                              'ext_temp_Thermopro-TX2', 'ext_humidity_Thermopro-TX2', 'kwh_neviweb_load', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon',
-                              'kwh_neviweb', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon',
-                              'kwh_hydro_quebec']) +
-                      ['ext_temp_Acurite-609TXC', 'ext_humidity_Acurite-609TXC'])
+                      sorted(
+                          ['ext_humidex', 'ext_humidity', 'ext_humidity_Acurite-609TXC', 'ext_humidity_Thermopro-TX2', 'ext_temp', 'ext_temp_Acurite-609TXC', 'ext_temp_Thermopro-TX2', 'int_temp', 'int_temp_bureau',
+                           'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_hydro_quebec', 'kwh_neviweb', 'kwh_neviweb_load', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds',
+                           'open_description', 'open_feels_like', 'open_humidity', 'open_icon', 'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi', 'open_visibility', 'open_wind_deg',
+                           'open_wind_gust', 'open_wind_speed']
+                      )
+                      )
 
 OUTPUT_CSV_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.csv"
 OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
@@ -38,7 +39,7 @@ SENSORS: list[dict[str, list[str] | dict[str, dict[str, str]]]] = [
     }
 ]
 
-DAYS = 7 * 4
+DAYS = 30.437  # https://www.britannica.com/science/time/Standard-time
 
 OPEN_LAT = 45.509  # Montreal
 OPEN_LON = -73.588  # Montreal

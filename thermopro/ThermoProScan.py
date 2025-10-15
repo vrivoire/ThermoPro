@@ -144,10 +144,13 @@ class ThermoProScan:
                                               df['open_temp'].max(numeric_only=True) + 0.5,
                                               df['open_feels_like'].max(numeric_only=True) + 0.5
                                               )))))
-            ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='°C')
-            ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:red', alpha=0.3, label='°C')
-            ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='%')
-            plt.axhline(0, linewidth=0.5, color='black')
+
+            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
+            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
+            mean_ext_humidity, = ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='Mean %')
+            mean_kwh_hydro_quebec, = ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['kwh_hydro_quebec'].mean() * 10, color='xkcd:warm grey', alpha=0.3, label='Mean KWh')
+
+            plt.axhline(0, linewidth=0.5, color='black', zorder=-10)
 
             plt.axis((
                 df['time'][0] - timedelta(hours=1),
@@ -165,7 +168,7 @@ class ThermoProScan:
                     f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
                     + f"{int(df['ext_humidity'][len(df['ext_humidity']) - 1])}%, Humidex: {(df['ext_humidex'][len(df['ext_humidex']) - 1])}, " \
                     + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {int(df['open_humidity'][len(df['open_humidity']) - 1])}%, Open Humidex: {int(df['open_feels_like'][len(df['open_feels_like']) - 1])}, " \
-                    + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {DAYS} days', fontsize=10)
+                    + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {int(DAYS)} days', fontsize=10)
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
@@ -307,11 +310,23 @@ class ThermoProScan:
             button.on_clicked(reset)
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
-            # https://mplcursors.readthedocs.io/en/stable/index.html
+            # https://mplcursors.readthedocs.io/en/stable/index.html                        
             mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {int(float(sel[1][1]) * float((MAX_HPA - MIN_HPA) / 100.0) + MIN_HPA)} {sel[0].get_label()}'
             ))
+            mplcursors.cursor(mean_ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+            mplcursors.cursor(mean_int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+            mplcursors.cursor(mean_ext_humidity, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
             mplcursors.cursor(kwh_hydro_quebec, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]) / 10, 3)} {sel[0].get_label()}'
+            ))
+            mplcursors.cursor(mean_kwh_hydro_quebec, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]) / 10, 3)} {sel[0].get_label()}'
             ))
 
@@ -326,10 +341,6 @@ class ThermoProScan:
                 manager.window.tk.call('wm', 'iconphoto', manager.window._w, img)
                 plt.show()
 
-            # else:
-            #     log.warning('csv_data is empty')
-            #     if popup:
-            #         ctypes.windll.user32.MessageBoxW(0, "csv_data is empty", 'ThermoProGraph Error', 16)
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -382,7 +393,6 @@ class ThermoProScan:
         try:
             df: DataFrame = self.load_json()
             if json_data:
-                # data: list[Any] = []
                 data_dict: dict[str, Any] = {}
                 for col in COLUMNS:
                     if col == 'time':
@@ -404,9 +414,6 @@ class ThermoProScan:
                 df.loc[len(df)] = data_dict
                 for col in ['time', 'open_sunrise', 'open_sunset']:
                     df = df.astype({col: 'datetime64[ns]'})
-
-                for col in ['ext_humidity', 'open_humidity']:
-                    pass
 
             self.set_kwh(kwh_dict, df)
 
@@ -606,37 +613,44 @@ class ThermoProScan:
 
     def load_json(self) -> DataFrame | None:
         try:
+            df: DataFrame
             if os.path.exists(OUTPUT_JSON_FILE):
                 log.info(f'Loading file {OUTPUT_JSON_FILE}')
-                df2: DataFrame = pandas.read_json(OUTPUT_JSON_FILE)
+                df: DataFrame = pandas.read_json(OUTPUT_JSON_FILE)
             elif os.path.exists(OUTPUT_CSV_FILE):
                 log.info(f'Loading file {OUTPUT_CSV_FILE}')
-                df2: DataFrame = pandas.read_csv(OUTPUT_CSV_FILE)
+                df: DataFrame = pandas.read_csv(OUTPUT_CSV_FILE)
             else:
                 raise f"The files {OUTPUT_JSON_FILE} and {OUTPUT_CSV_FILE} do not exist."
 
             columns = list(COLUMNS)
-            # for col in columns:
-            #     df2[col] = df2[col].fillna(None)
             for col in ['time', 'open_sunrise', 'open_sunset']:
-                df2 = df2.astype({col: 'datetime64[ns]'})
+                df = df.astype({col: 'datetime64[ns]'})
                 columns.remove(col)
             for col in ['ext_humidity', 'ext_humidity_Acurite-609TXC', 'ext_humidity_Thermopro-TX2', 'open_humidity', 'open_pressure', 'open_wind_deg']:
-                df2[col] = df2[col].round().astype('Int64')
+                df[col] = df[col].round().astype('Int64')
                 columns.remove(col)
             for col in ['open_description', 'open_icon']:
-                df2[col] = df2[col].astype(str)
+                df[col] = df[col].astype(str)
                 columns.remove(col)
             for col in columns:
-                df2[col] = df2[col].astype('float64')
+                df[col] = df[col].astype('float64')
 
-            df2.set_index('time')
-            all_columns2: list[str] = sorted(df2.columns.tolist())
+            df.set_index('time')
+            all_columns2: list[str] = sorted(df.columns.tolist())
             all_columns2.remove('time')
             all_columns2 = ['time'] + all_columns2
-            df2 = df2[all_columns2]
-            df2 = df2.sort_values(by='time', ascending=True)
-            return df2
+            df = df[all_columns2]
+            df = df.sort_values(by='time', ascending=True)
+
+            df_conditional_drop = df.drop(df[
+                                              (df['time'].dt.minute >= 6) &
+                                              (df['time'].dt.minute <= 59) &
+                                              (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
+                                              ].index)
+            log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
+            df = df_conditional_drop.reset_index(drop=True)
+            return df
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
