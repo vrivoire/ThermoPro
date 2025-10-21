@@ -435,6 +435,9 @@ class ThermoProScan:
 
     def save_json(self, df: DataFrame):
         df.to_json(OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
+        # for orient in ['columns', 'index', 'split', 'table']:
+        #     print(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json')
+        #     df.to_json(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json', orient=orient, indent=4, date_format='iso')
         log.info('JSON saved')
 
     def save_csv(self, df: DataFrame | None) -> bool:
@@ -539,36 +542,30 @@ class ThermoProScan:
 
     def save_bkp(self, df: DataFrame) -> None:
         try:
-            file_name: str = OUTPUT_CSV_FILE[OUTPUT_CSV_FILE.rfind('/') + 1: OUTPUT_CSV_FILE.rfind('.csv')]
+            in_file_list: list[str] = [files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] + [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))]
+            log.info(f'Files to bkp: {in_file_list}')
 
-            out_file_csv: str = BKP_PATH + file_name + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + '.csv'
-            out_file_json: str = BKP_PATH + file_name + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + '.json'
-            log.info(f'copy from: {OUTPUT_CSV_FILE} to {out_file_csv}')
-            shutil.copy2(OUTPUT_CSV_FILE, out_file_csv)
-            log.info(f'copy from: {OUTPUT_JSON_FILE} to {out_file_json}')
-            shutil.copy2(OUTPUT_JSON_FILE, out_file_json)
+            out_file_list: list[str] = [BKP_PATH + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
 
-            matching_files_csv: list[str] = glob.glob(os.path.join(BKP_PATH, file_name + '*.csv'))
-            matching_files_json: list[str] = glob.glob(os.path.join(BKP_PATH, file_name + '*.json'))
+            for i, name in enumerate(in_file_list):
+                shutil.copy2(in_file_list[i], out_file_list[i])
+
+            file_name = 'ThermoProScan'
             zip_file_name = f'{BKP_PATH}{file_name}_{datetime.now().strftime("%Y-%m-%d")}.zip'
             with zipfile.ZipFile(zip_file_name, "a", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
-                for file in matching_files_csv:
-                    zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
-                for file in matching_files_json:
+                for file in out_file_list:
                     zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
 
-                original: float = 0.0
-                compressed: float = 0.0
-                for info in zip_file.infolist():
-                    original += info.file_size / 1024
-                    compressed += info.compress_size / 1024
-                log.info(f"Zipped {len(zip_file.infolist())} files, original: {round(original, 2)} Ko, compressed: {round(compressed, 2)} Ko. ratio: {round(100 - (compressed / original) * 100, 2)}%")
-
-            log.info(f"Zip file created at: {zip_file_name}, files deleted: {[file[file.replace('\\', '/').rfind('/') + 1:] for file in matching_files_csv]} | {[file[file.replace('\\', '/').rfind('/') + 1:] for file in matching_files_json]}")
+                    original: float = 0.0
+                    compressed: float = 0.0
+                    for info in zip_file.infolist():
+                        original += info.file_size / 1024
+                        compressed += info.compress_size / 1024
+                log.info(f"Zipped files, original: {round(original, 2)} Ko, compressed: {round(compressed, 2)} Ko. ratio: {round(100 - (compressed / original) * 100, 2)}%")
+                log.info(f"Zip file created at: {zip_file_name}")
 
             try:
-                [os.remove(matching_file) for matching_file in matching_files_csv]
-                [os.remove(matching_file) for matching_file in matching_files_json]
+                [os.remove(out_file) for out_file in out_file_list]
                 old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
                 if os.path.isfile(old_zip_file_name):
                     log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
@@ -576,7 +573,6 @@ class ThermoProScan:
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
-
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -698,60 +694,5 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
-    try:
-        pandas.set_option('display.max_columns', None)
-        pandas.set_option('display.width', 1000)
-        pandas.set_option('display.max_rows', 1000)
-
-        thermoProScan.save_bkp()
-        # compare_df()
-        sys.exit()
-
-        df: DataFrame = thermoProScan.load_json()
-        print(df.columns)
-        print(df.info())
-        print(df)
-        df.to_json(OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
-
-        # for orient in ['index', 'split', 'values', 'table']:
-        #     output_json_file = OUTPUT_JSON_FILE[0:len(OUTPUT_JSON_FILE) - 5] + '_' + orient + '.json'
-        #     print(output_json_file)
-        #     df.to_json(output_json_file, orient=orient, indent=4, date_format='iso')
-        sys.exit()
-
-        # data: list[dict[str, Any]] = thermoProScan.load_csv()
-        # df = pd.DataFrame(data)
-
-        # df = pandas.read_csv(OUTPUT_CSV_FILE)
-        # print(df)
-        # # df = pandas.read_json(OUTPUT_JSON_FILE)
-        #
-        for col in ['time', 'open_sunrise', 'open_sunset']:
-            df = df.astype({col: 'datetime64[ns]'})
-        for col in ['ext_humidity', 'ext_humidity_Acurite-609TXC', 'ext_humidity_Thermopro-TX2', 'open_humidity', 'open_pressure', 'open_wind_deg']:
-            df[col] = df[col].round().astype('Int64')
-
-        df.set_index('time')
-        all_columns: list[str] = sorted(df.columns.tolist())
-        all_columns.remove('time')
-        all_columns = ['time'] + all_columns
-        df = df[all_columns]
-        df = df.sort_values(by=all_columns, ascending=True)
-
-        # df = thermoProScan.load_json()
-
-        df.to_json(OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
-
-        print(df)
-
-    except Exception as ex:
-        log.error(ex)
-        log.error(traceback.format_exc())
-
-    # result_queue: Queue = Queue()
-    # thermoProScan.load_open_weather(result_queue)
-    #
-    # while not result_queue.empty():
-    #     print(result_queue.get())
-
-    # bkp dans git
+    df = thermoProScan.load_json()
+    thermoProScan.save_json(df)

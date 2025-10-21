@@ -18,6 +18,8 @@ from typing import Any, cast
 
 import aiohttp
 import yarl
+from pkce import generate_pkce_pair
+
 from hydroqc.error import HydroQcError, HydroQcHTTPError
 from hydroqc.hydro_api.cache import CCached
 from hydroqc.hydro_api.consts import (
@@ -72,7 +74,6 @@ from hydroqc.types import (
     PeriodDataTyping,
 )
 from hydroqc.utils import EST_TIMEZONE
-from pkce import generate_pkce_pair
 
 
 class HydroClient:
@@ -81,14 +82,14 @@ class HydroClient:
     _cookie_jar: aiohttp.CookieJar
 
     def __init__(
-            self,
-            username: str,
-            password: str,
-            timeout: int = REQUESTS_TIMEOUT,
-            verify_ssl: bool = True,
-            session: aiohttp.ClientSession | None = None,
-            log_level: str | None = "INFO",
-            diag_folder: str | None = None,
+        self,
+        username: str,
+        password: str,
+        timeout: int = REQUESTS_TIMEOUT,
+        verify_ssl: bool = True,
+        session: aiohttp.ClientSession | None = None,
+        log_level: str | None = "INFO",
+        diag_folder: str | None = None,
     ):
         """Initialize the client object."""
         self.username: str = username
@@ -142,15 +143,15 @@ class HydroClient:
         return f"Hydroqc/{hydroqc_version} (dev@hydroqc.ca; https://gitlab.com/hydroqc) {os_name}"
 
     async def http_request(
-            self,
-            url: str,
-            method: str,
-            params: dict[str, Any] | None = None,
-            data: str | dict[str, Any] | None = None,
-            headers: dict[str, str] | None = None,
-            verify_ssl: bool | None = None,
-            status: int | None = 200,
-            url_encoded: bool = False,
+        self,
+        url: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        data: str | dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        verify_ssl: bool | None = None,
+        status: int | None = 200,
+        url_encoded: bool = False,
     ) -> aiohttp.ClientResponse:
         """Make an HTTP request."""
         if params is None:
@@ -223,19 +224,19 @@ class HydroClient:
             self._logger.exception("Exception in http_request")
             data = await raw_res.text()
             self._logger.debug(data)
-            print(raw_res)
-            raise HydroQcHTTPError(f"Error Fetching {url} - {raw_res.status}, {raw_res}", raw_res.status)
+            raise HydroQcHTTPError(
+                f"Error Fetching {url} - {raw_res.status}", raw_res.status
+            )
 
         return raw_res
 
     def _load_json(self, data: str | bytes) -> Any:
         """Safely read json, raise a HydroQcHTTPError when parsing fails."""
         try:
-            # print(f"********** {data}")
             return json.loads(data)
         except json.decoder.JSONDecodeError as exp:
-            self._logger.error(f"JSON received: {data}")
-            raise HydroQcHTTPError(f"Bad JSON format, data: {data}") from exp
+            self._logger.debug("JSON received : ", data)
+            raise HydroQcHTTPError("Bad JSON format") from exp
 
     def get_token_data(self) -> IDTokenTyping | None:
         """Decode id token data."""
@@ -258,7 +259,7 @@ class HydroClient:
             )
 
     async def _get_customer_http_headers(
-            self, applicant_id: str, customer_id: str, force_refresh: bool = False
+        self, applicant_id: str, customer_id: str, force_refresh: bool = False
     ) -> dict[str, str]:
         """Prepare http headers for customer url queries."""
         headers = {
@@ -396,14 +397,14 @@ class HydroClient:
 
         # Set the HTTP request parameters
         url = (
-                "https://connexion.solutions.hydroquebec.com/32bf9b91-0a36-4385-b231-d9a8fa3b05ab"
-                + "/B2C_1A_PRD_signup_signin/api/CombinedSigninAndSignup/"
-                + "confirmed?rememberMe=false&csrf_token="
-                + csrf_token
-                + "&tx="
-                + transid
-                + "&p="
-                + AZB2C_POLICY
+            "https://connexion.solutions.hydroquebec.com/32bf9b91-0a36-4385-b231-d9a8fa3b05ab"
+            + "/B2C_1A_PRD_signup_signin/api/CombinedSigninAndSignup/"
+            + "confirmed?rememberMe=false&csrf_token="
+            + csrf_token
+            + "&tx="
+            + transid
+            + "&p="
+            + AZB2C_POLICY
         )
         headers = {
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -435,8 +436,8 @@ class HydroClient:
 
         # Set the HTTP request parameters
         url = (
-                "https://connexion.solutions.hydroquebec.com/32bf9b91-0a36-4385-b231-d9a8fa3b05ab/"
-                + "b2c_1a_prd_signup_signin/oauth2/v2.0/token"
+            "https://connexion.solutions.hydroquebec.com/32bf9b91-0a36-4385-b231-d9a8fa3b05ab/"
+            + "b2c_1a_prd_signup_signin/oauth2/v2.0/token"
         )
         headers = {"content-type": "application/x-www-form-urlencoded", "accept": "*/*"}
 
@@ -522,7 +523,7 @@ class HydroClient:
         return self._selected_contract
 
     async def _create_web_session(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> None:
         """Create a web session from a OAuth access_token."""
         self._logger.debug("Creating new web session %s", contract_id)
@@ -544,7 +545,7 @@ class HydroClient:
         self.web_session_expiry = self.access_token_expiry
 
     async def _select_contract(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> None:
         """Create a web session from a OAuth access_token and select a customer on the Home page.
 
@@ -584,7 +585,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def get_customer_info(
-            self, applicant_id: str, customer_id: str
+        self, applicant_id: str, customer_id: str
     ) -> InfoAccountTyping:
         """Fetch customer data."""
         self._logger.info("Fetching customer info: c-%s", customer_id)
@@ -601,7 +602,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def get_periods_info(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> list[PeriodDataTyping]:
         """Fetch all periods info."""
         await self._select_contract(applicant_id, customer_id, contract_id)
@@ -618,7 +619,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def get_account_info(
-            self, applicant_id: str, customer_id: str, account_id: str
+        self, applicant_id: str, customer_id: str, account_id: str
     ) -> ListAccountsContractsTyping:
         """Fetch account data."""
         self._logger.info("Fetching account info: c-%s - a-%s", customer_id, account_id)
@@ -633,7 +634,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def list_account_contract(
-            self, applicant_id: str, customer_id: str
+        self, applicant_id: str, customer_id: str
     ) -> AccountContractSummaryTyping:
         """Get all  account_contract linked to a customer."""
         headers = await self._get_customer_http_headers(applicant_id, customer_id)
@@ -643,7 +644,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def get_contract_info(
-            self, applicant_id: str, customer_id: str, account_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, account_id: str, contract_id: str
     ) -> ContractTyping:
         """Fetch contract data."""
         self._logger.info(
@@ -675,7 +676,7 @@ class HydroClient:
 
     @CCached(ttl=3600)
     async def get_cpc_credit(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> CPCDataTyping:
         """Return information about CPC option (winter credit).
 
@@ -695,7 +696,7 @@ class HydroClient:
 
     @CCached(ttl=900)
     async def get_outages(
-            self, consumption_location_id: str
+        self, consumption_location_id: str
     ) -> OutageListTyping | None:
         """Return outages for a given consumption location id."""
         response = await self.http_request(OUTAGES + consumption_location_id, "get")
@@ -703,7 +704,7 @@ class HydroClient:
         return res[0] if res else None
 
     async def get_today_hourly_consumption(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> ConsumpHourlyTyping:
         """Return latest consumption info (about 2h delay it seems).
 
@@ -728,7 +729,7 @@ class HydroClient:
 
     @CCached(ttl=3600)
     async def get_hourly_consumption(
-            self, applicant_id: str, customer_id: str, contract_id: str, date_wanted: date
+        self, applicant_id: str, customer_id: str, contract_id: str, date_wanted: date
     ) -> ConsumpHourlyTyping:
         """Return hourly consumption for a specific day.
 
@@ -754,12 +755,12 @@ class HydroClient:
 
     @CCached(ttl=43200)
     async def get_daily_consumption(
-            self,
-            applicant_id: str,
-            customer_id: str,
-            contract_id: str,
-            start_date: date,
-            end_date: date,
+        self,
+        applicant_id: str,
+        customer_id: str,
+        contract_id: str,
+        start_date: date,
+        end_date: date,
     ) -> ConsumpDailyTyping:
         """Return daily consumption for a specific day.
 
@@ -788,7 +789,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def get_monthly_consumption(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> ConsumpMonthlyTyping:
         """Fetch data of the current year.
 
@@ -813,7 +814,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def get_annual_consumption(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> ConsumpAnnualTyping:
         """Fetch data of the current year.
 
@@ -834,7 +835,7 @@ class HydroClient:
 
     @CCached(ttl=21600)
     async def get_dpc_data(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> DPCDataTyping:
         """Fetch FlexD data of the current year.
 
@@ -850,7 +851,7 @@ class HydroClient:
 
     @CCached(ttl=3600)
     async def get_dpc_peak_data(
-            self, applicant_id: str, customer_id: str, contract_id: str
+        self, applicant_id: str, customer_id: str, contract_id: str
     ) -> DPCPeakListDataTyping:
         """Fetch FlexD data of the current year.
 
@@ -869,14 +870,14 @@ class HydroClient:
         return data
 
     async def get_consumption_csv(
-            self,
-            applicant_id: str,
-            customer_id: str,
-            contract_id: str,
-            start_date: date,
-            end_date: date,
-            option: str,
-            raw_output: bool = False,
+        self,
+        applicant_id: str,
+        customer_id: str,
+        contract_id: str,
+        start_date: date,
+        end_date: date,
+        option: str,
+        raw_output: bool = False,
     ) -> Iterator[list[str | int | float]] | StringIO:
         """Download one of the history CSV on the portrait-de-consommation page.
 
@@ -903,11 +904,11 @@ class HydroClient:
         return data_csv
 
     async def get_consumption_overview_csv(
-            self,
-            applicant_id: str,
-            customer_id: str,
-            contract_id: str,
-            raw_output: bool = False,
+        self,
+        applicant_id: str,
+        customer_id: str,
+        contract_id: str,
+        raw_output: bool = False,
     ) -> Iterator[list[str | int | float]] | StringIO:
         """Download the overview by consumption period CSV on the portrait-de-consommation page."""
         await self._select_contract(applicant_id, customer_id, contract_id)
@@ -922,8 +923,8 @@ class HydroClient:
 
     @CCached(ttl=300)
     async def get_open_data_peaks(
-            self,
-            offer: OpenDataPeakEventOffer | None = None,
+        self,
+        offer: OpenDataPeakEventOffer | None = None,
     ) -> list[OpenDataPeakEvent]:
         """Get the list of peak event from open data url."""
         await self._get_httpsession()

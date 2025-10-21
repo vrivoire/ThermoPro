@@ -94,7 +94,7 @@ class Rtl433Temperature2:
             humidex = round(ext_temp)
         return humidex
 
-    def __prepare_call(self) -> list[list[list[str]]]:
+    def __prepare_calls(self) -> list[list[list[str]]]:
         sensors: list[dict[str, list[str] | dict[str, dict[str, str]]]] = list(SENSORS)
         array: list[list[list[str]]] = []
         for sensor in sensors:
@@ -102,7 +102,6 @@ class Rtl433Temperature2:
             name_list: list[str] = []
 
             for name in sensor['sensors']:
-                # print(f'{name}: {sensor['sensors'][name]['protocol']}')
                 name_list.append(name)
                 args.append('-R')
                 args.append(sensor['sensors'][name]['protocol'])
@@ -116,10 +115,10 @@ class Rtl433Temperature2:
         ext_temp_list: list[float] = []
         threads: list[threading.Thread] = []
 
-        prepare_call: list[list[list[str]]] = self.__prepare_call()
-        for toto in prepare_call:
-            sensors_list: list[str] = toto[0]
-            args: list[str] = toto[1]
+        prepare_calls: list[list[list[str]]] = self.__prepare_calls()
+        for prepare_call in prepare_calls:
+            sensors_list: list[str] = prepare_call[0]
+            args: list[str] = prepare_call[1]
 
             self.__kill_rtl_433()
             self.__delete_json_file()
@@ -145,7 +144,7 @@ class Rtl433Temperature2:
                         for data in lines:
                             if data['model'] in sensors_list:
                                 log.info(f'data={data}')
-                                
+
                                 if data.get('battery_ok') == 0 and datetime.now().strftime("%H") == '00':
                                     thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Sensor {data.get('model')}'s battery is weak...", "RTL 433 Warning", 0x30))
                                     thread.start()
@@ -185,7 +184,7 @@ class Rtl433Temperature2:
         self.__kill_rtl_433()
         self.__delete_json_file()
 
-        for s in prepare_call[0][0]:
+        for s in prepare_calls[0][0]:
             json_rtl_433[f'ext_temp_{s}'] = None
             json_rtl_433[f'ext_humidity_{s}'] = None
 
