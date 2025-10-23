@@ -434,6 +434,7 @@ class ThermoProScan:
             log.info("End task")
 
     def save_json(self, df: DataFrame):
+        df = self.set_astype(df)
         df.to_json(OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
         # for orient in ['columns', 'index', 'split', 'table']:
         #     print(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json')
@@ -441,6 +442,7 @@ class ThermoProScan:
         log.info('JSON saved')
 
     def save_csv(self, df: DataFrame | None) -> bool:
+        df = self.set_astype(df)
         log.info('Saving csv file...')
         if df is None:
             log.warning('kwh_df is empty')
@@ -619,25 +621,7 @@ class ThermoProScan:
             else:
                 raise f"The files {OUTPUT_JSON_FILE} and {OUTPUT_CSV_FILE} do not exist."
 
-            columns = list(COLUMNS)
-            for col in ['time', 'open_sunrise', 'open_sunset']:
-                df = df.astype({col: 'datetime64[ns]'})
-                columns.remove(col)
-            for col in ['ext_humidity', 'ext_humidity_Acurite-609TXC', 'ext_humidity_Thermopro-TX2', 'open_humidity', 'open_pressure', 'open_wind_deg']:
-                df[col] = df[col].round().astype('Int64')
-                columns.remove(col)
-            for col in ['open_description', 'open_icon']:
-                df[col] = df[col].astype(str)
-                columns.remove(col)
-            for col in columns:
-                df[col] = df[col].astype('float64')
-
-            df.set_index('time')
-            all_columns2: list[str] = sorted(df.columns.tolist())
-            all_columns2.remove('time')
-            all_columns2 = ['time'] + all_columns2
-            df = df[all_columns2]
-            df = df.sort_values(by='time', ascending=True)
+            df = self.set_astype(df)
 
             df_conditional_drop = df.drop(df[
                                               (df['time'].dt.minute >= 6) &
@@ -646,11 +630,37 @@ class ThermoProScan:
                                               ].index)
             log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
             df = df_conditional_drop.reset_index(drop=True)
+
+            # for col in COLUMNS:
+            #     print(col, df[col].dtypes)
+
             return df
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
         return None
+
+    def set_astype(self, df: DataFrame) -> DataFrame:
+        columns = list(COLUMNS)
+        for col in ['time', 'open_sunrise', 'open_sunset']:
+            df = df.astype({col: 'datetime64[ns]'})
+            columns.remove(col)
+        for col in ['ext_humidex', 'ext_humidity', 'ext_humidity_Acurite-609TXC', 'ext_humidity_Thermopro-TX2', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg']:
+            df[col] = df[col].round().astype('Int64')
+            columns.remove(col)
+        for col in ['open_description', 'open_icon']:
+            df[col] = df[col].astype(str)
+            columns.remove(col)
+        for col in columns:
+            df[col] = df[col].astype('float64')
+
+        df.set_index('time')
+        all_columns2: list[str] = sorted(df.columns.tolist())
+        all_columns2.remove('time')
+        all_columns2 = ['time'] + all_columns2
+        df = df[all_columns2]
+        df = df.sort_values(by='time', ascending=True)
+        return df
 
 
 # def compare_df():
@@ -695,4 +705,4 @@ if __name__ == '__main__':
     sys.exit()
 
     df = thermoProScan.load_json()
-    thermoProScan.save_json(df)
+    # thermoProScan.save_json(df)
