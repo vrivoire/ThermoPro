@@ -325,7 +325,7 @@ class NeviwebTemperature:
 
         self._cookies.update(raw_res.cookies)
         data: list[dict[str, int]] = raw_res.json()
-        log.info(f'get_device_hourly_stats: {data}')
+        # log.info(f'get_device_hourly_stats: {data}')
         if "history" in data:
             return data["history"]
         else:
@@ -339,24 +339,17 @@ class NeviwebTemperature:
             log.info(f'login={self.login()}')
 
             self.get_network()
-            log.info(f'get_network: {self._network_name}')
-            # log.info(f'network: {json.dumps(self.get_network(), indent=4, sort_keys=True, default=str)}')
-
+            # log.info(f'get_network: {self._network_name}')
             self.get_gateway_data()
-            log.info(f'gateway_data: {self.gateway_data}')
-            # log.info(f"Received gateway data:\n{json.dumps(self.gateway_data, indent=4, sort_keys=True, default=str)}")
-
+            # log.info(f'gateway_data: {self.gateway_data}')
             self.get_groups()
-            log.info(f"get_groups: {self.groups}")
+            # log.info(f"get_groups: {self.groups}")
 
             for device in self.gateway_data:
                 columns = WATT_ATTRIBUTES
                 data: dict[str, Any] = self.get_device_attributes(device["id"], columns)
                 for name in columns:
                     device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
-                for group in self.groups:
-                    if group['id'] == device['group$id']:
-                        log.info(f"Received '{group['name']}': {data}")
 
             kwh_total = 0.0
             for device in self.gateway_data:
@@ -377,13 +370,9 @@ class NeviwebTemperature:
                 for group in self.groups:
                     if group['id'] == device['group$id']:
                         result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature']
+                        log.info(f'{group['name']}: {device["roomTemperature"]}°C, {round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)}KWh')
             result.update({'int_temp': int_temp})
-
-            kwh_load_list: list[int] = [int(gateway_data2['loadWatt']) for gateway_data2 in self.gateway_data]
-            kwh_neviweb_load: float | None = round(sum(kwh_load_list) / 1000, 3)
-            log.info(f'kwh_neviweb_load={kwh_neviweb_load}, data={kwh_load_list}')
-            result.update({'kwh_neviweb_load': kwh_neviweb_load})
-
+            result.update({'room_temperature_display_list': room_temperature_display_list})
             log.info(f'result={result}')
         except Exception as ex:
             log.error(ex)

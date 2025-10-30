@@ -11,7 +11,7 @@ from time import sleep
 from typing import Any
 
 import thermopro
-from constants import TIMEOUT, SENSORS, RTL_433_EXE, OUTPUT_RTL_433_FILE
+from constants import TIMEOUT, SENSORS, RTL_433_EXE, OUTPUT_RTL_433_FILE, SENSORS_TX7B
 from thermopro import log
 
 
@@ -86,23 +86,25 @@ class Rtl433Temperature2:
                 log.error(ex)
 
     def __get_humidex(self, ext_temp: float, humidity: int) -> int | None:
-        kelvin = ext_temp + 273
-        ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
-        etd = ets * humidity / 100
-        humidex: int = round(ext_temp + ((etd - 10) * 5 / 9))
-        if humidex < ext_temp:
-            humidex = round(ext_temp)
-        return humidex
+        if ext_temp and humidity:
+            kelvin = ext_temp + 273
+            ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
+            etd = ets * humidity / 100
+            humidex: int = round(ext_temp + ((etd - 10) * 5 / 9))
+            if humidex < ext_temp:
+                humidex = round(ext_temp)
+            return humidex
+        return None
 
     def __prepare_calls(self) -> list[list[list[str]]]:
-        sensors: list[dict[str, list[str] | dict[str, dict[str, str]]]] = list(SENSORS)
+        sensors: list[dict[str, list[str | tuple[str, str]] | dict[str, dict[str, str]]]] = list(SENSORS)
         array: list[list[list[str]]] = []
         for sensor in sensors:
             args: list[str] = sensor['args']
-            name_list: list[str] = []
+            name_list: list[tuple[str, str]] = []
 
             for name in sensor['sensors']:
-                name_list.append(name)
+                name_list.append((name, sensor['sensors'][name]['kind']))
                 args.append('-R')
                 args.append(sensor['sensors'][name]['protocol'])
             array.append([name_list, args])
@@ -111,15 +113,55 @@ class Rtl433Temperature2:
 
     def call_rtl_433(self, result_queue: Queue):
         json_rtl_433: dict[str, Any] = {}
-        humidity_list: list[int] = []
+        ext_humidity_list: list[int] = []
         ext_temp_list: list[float] = []
+        int_humidity_list: list[int] = []
+        int_temp_list: list[float] = []
         threads: list[threading.Thread] = []
 
         prepare_calls: list[list[list[str]]] = self.__prepare_calls()
+
         for prepare_call in prepare_calls:
             sensors_list: list[str] = prepare_call[0]
             args: list[str] = prepare_call[1]
+            self.__kill_rtl_433()
+            self.__delete_json_file()
 
+            try:
+                thread: threading.Thread = threading.Thread(target=self.__start_rtl_433, args=(SENSORS_TX7B[1:],))
+                thread.start()
+                sleep(2)
+                data1: dict = {}
+                old_file_size_bytes = 0
+                while self.__find_rtl_433():
+                    file_size_bytes = os.path.getsize(OUTPUT_RTL_433_FILE)
+                    if file_size_bytes != old_file_size_bytes:
+                        with open(OUTPUT_RTL_433_FILE, 'r') as file:
+                            while True:
+                                line: str = file.readline().strip()
+                                if len(line) == 0:
+                                    break
+                                data1.update(json.loads(line))
+                                log.info(f'data1={data1}')
+                                data1.update(self.fill_dict(data1, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, 'ext'))
+                                self.warn_battery(data1, threads)
+
+                                for key in list(data1.keys()):
+                                    if key.find('TX7B') == -1:
+                                        del data1[key]
+                                json_rtl_433.update(data1)
+                                self.__kill_rtl_433()
+                                self.__delete_json_file()
+                    sleep(2)
+            except subprocess.TimeoutExpired as timeoutExpired:
+                log.error(timeoutExpired)
+            except FileNotFoundError:
+                log.error(f"Error: '{OUTPUT_RTL_433_FILE}' not found. Please ensure the file exists.")
+            except json.JSONDecodeError:
+                log.error(f"Error: Could not decode JSON from '{OUTPUT_RTL_433_FILE}'. Check file format.")
+            except Exception as e:
+                log.error(f"An unexpected error occurred: {e}")
+                log.error(traceback.format_exc())
             self.__kill_rtl_433()
             self.__delete_json_file()
 
@@ -142,25 +184,23 @@ class Rtl433Temperature2:
                                 old_file_size_bytes = file_size_bytes
 
                         for data in lines:
-                            if data['model'] in sensors_list:
+                            if len(sensors_list) > 0 and data.get('model') in [s[0] for s in sensors_list][0]:
                                 log.info(f'data={data}')
+                                kind: str
+                                for s in sensors_list:
+                                    if data['model'] == s[0]:
+                                        kind = s[1]
 
-                                if data.get('battery_ok') == 0 and datetime.now().strftime("%H") == '00':
-                                    thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Sensor {data.get('model')}'s battery is weak...", "RTL 433 Warning", 0x30))
-                                    thread.start()
-                                    threads.append(thread)
+                                self.warn_battery(data, threads)
 
-                                data[f'ext_temp_{data['model']}'] = data['temperature_C']
-                                data[f'ext_humidity_{data['model']}'] = data['humidity'] if data.get('humidity') else None
-                                ext_temp_list.append(data['temperature_C'])
-                                humidity_list.append(data['humidity']) if data.get('humidity') else None
+                                data = self.fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, kind)
 
                                 try:
-                                    sensors_list.remove(data['model'])
+                                    sensors_list.remove((data['model'], kind))
                                 except KeyError:
                                     pass
 
-                                for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity']:
+                                for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status']:
                                     try:
                                         del data[item]
                                     except KeyError:
@@ -187,21 +227,17 @@ class Rtl433Temperature2:
         for s in prepare_calls[0][0]:
             json_rtl_433[f'ext_temp_{s}'] = None
             json_rtl_433[f'ext_humidity_{s}'] = None
+            json_rtl_433[f'int_temp_{s}'] = None
+            json_rtl_433[f'int_humidity_{s}'] = None
 
-        ext_temp: float | None = None
-        if len(ext_temp_list) > 0:
-            ext_temp: float = min(ext_temp_list)
-        log.info(f'ext_temp={ext_temp}, {ext_temp_list}')
-        json_rtl_433['ext_temp'] = ext_temp
-
-        humidity: int | None = None
-        if len(humidity_list) > 0:
-            humidity: int = int(sum(humidity_list) / len(humidity_list))
-        log.info(f'ext_humidity={humidity}, {humidity_list}')
-        json_rtl_433['ext_humidity'] = humidity
+        self.get_mean('ext', ext_humidity_list, ext_temp_list, json_rtl_433)
+        self.get_mean('int', int_humidity_list, int_temp_list, json_rtl_433)
 
         if json_rtl_433.get('ext_humidity'):
             json_rtl_433['ext_humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['ext_humidity'])
+        if json_rtl_433.get('int_humidity'):
+            json_rtl_433['int_humidex'] = self.__get_humidex(json_rtl_433['int_temp'], json_rtl_433['int_humidity'])
+
         log.info(f'json_rtl_433={json_rtl_433}')
 
         result_queue.put(json_rtl_433)
@@ -211,6 +247,37 @@ class Rtl433Temperature2:
                 thread.join(60)
             log.info("Threads stopped.")
 
+    def warn_battery(self, data1: dict, threads: list[threading.Thread]):
+        if data1.get('battery_ok') == 0 and datetime.now().strftime("%H") == '00':
+            thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Sensor {data1.get('model')}'s battery is weak...", "RTL 433 Warning", 0x30))
+            thread.start()
+            threads.append(thread)
+
+    def fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
+        data[f'{kind}_temp_{data['model']}'] = data['temperature_C']
+        data[f'{kind}_humidity_{data['model']}'] = data['humidity'] if data.get('humidity') else None
+
+        if kind == 'ext':
+            ext_temp_list.append(data['temperature_C']) if data.get('temperature_C') else None
+            ext_humidity_list.append(data['humidity']) if data.get('humidity') else None
+        else:
+            int_temp_list.append(data['temperature_C']) if data.get('temperature_C') else None
+            int_humidity_list.append(data['humidity']) if data.get('humidity') else None
+        return data
+
+    def get_mean(self, kind: str, humidity_list: list[int], temp_list: list[float], json_rtl_433: dict[str, Any]):
+        temp: float | None = None
+        if len(temp_list) > 0:
+            temp: float = min(temp_list)
+        log.info(f'{kind}_temp={temp}, {temp_list}')
+        json_rtl_433[f'{kind}_temp'] = temp
+
+        humidity: int | None = None
+        if len(humidity_list) > 0:
+            humidity: int = int(sum(humidity_list) / len(humidity_list))
+        log.info(f'{kind}_humidity={humidity}, {humidity_list}')
+        json_rtl_433[f'{kind}_humidity'] = humidity
+
 
 if __name__ == "__main__":
     thermopro.set_up(__file__)
@@ -219,4 +286,4 @@ if __name__ == "__main__":
     testJson.call_rtl_433(result_queue)
 
     while not result_queue.empty():
-        print(result_queue.get())
+        print(thermopro.ppretty(result_queue.get()))

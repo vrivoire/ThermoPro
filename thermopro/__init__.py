@@ -4,10 +4,20 @@ import os.path
 import subprocess
 import traceback
 
+import pandas
+from pandas import DataFrame
+
 HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
 LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
 POIDS_PRESSION_PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
 LOG_NAME: str = ''
+
+
+def show_df(df: DataFrame):
+    pandas.set_option('display.max_columns', None)
+    pandas.set_option('display.width', 1000)
+    pandas.set_option('display.max_rows', 50)
+    log.info(f'DataFrame len: {len(df)}\n{df[len(df) - 50:]}')
 
 
 def ping(name: str):

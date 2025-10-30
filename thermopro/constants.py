@@ -5,14 +5,15 @@ from thermopro import HOME_PATH, POIDS_PRESSION_PATH
 sys.path.append(f'{HOME_PATH}/Documents/BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
-COLUMNS: list[str] = (['time'] +
+COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_humidex', 'ext_temp', 'ext_humidity', 'int_humidex', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb'] +
                       sorted(
-                          ['ext_humidex', 'ext_humidity', 'ext_humidity_Acurite-609TXC', 'ext_humidity_Thermopro-TX2', 'ext_temp', 'ext_temp_Acurite-609TXC', 'ext_temp_Thermopro-TX2', 'int_temp', 'int_temp_bureau',
-                           'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_hydro_quebec', 'kwh_neviweb', 'kwh_neviweb_load', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds',
-                           'open_description', 'open_feels_like', 'open_humidity', 'open_icon', 'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi', 'open_visibility', 'open_wind_deg',
-                           'open_wind_gust', 'open_wind_speed']
-                      )
-                      )
+                          ['ext_humidity_Thermopro-TX2', 'ext_temp_Thermopro-TX2', 'int_temp_bureau',
+                           'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds',
+                           'open_description', 'open_humidity', 'open_icon', 'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi', 'open_visibility', 'open_wind_deg',
+                           'open_wind_gust', 'open_wind_speed', 'int_humidity_Acurite-609TXC', 'int_temp_Acurite-609TXC', 'ext_humidity_ThermoPro-TX7B', 'ext_temp_ThermoPro-TX7B']
+                      ))
+
+print(COLUMNS)
 
 OUTPUT_CSV_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.csv"
 OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
@@ -30,14 +31,17 @@ SENSORS: list[dict[str, list[str] | dict[str, dict[str, str]]]] = [
         'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}'],
         'sensors': {
             'Thermopro-TX2': {
-                'protocol': '162'
+                'protocol': '162',
+                'kind': 'ext'
             },
             'Acurite-609TXC': {
-                'protocol': '11'
+                'protocol': '11',
+                'kind': 'int'
             }
         }
     }
 ]
+SENSORS_TX7B: list = ['ThermoPro-TX7B', RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-f', '915M', '-Y', 'classic', '-s', '250k']
 
 DAYS = 30.437  # https://www.britannica.com/science/time/Standard-time
 
