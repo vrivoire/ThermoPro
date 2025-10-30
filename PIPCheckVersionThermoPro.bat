@@ -6,8 +6,8 @@ echo .
 call .venv\Scripts\activate.bat
 echo .
 pip list -v
-echo .
-pip-review
+rem echo .
+rem pip-review
 echo .
 pip-review --interactive
 echo .
