@@ -184,7 +184,13 @@ class ThermoProGraph:
                 window2 = (
                     val - DAYS,
                     val + 0.1,
-                    df2['ext_temp'].min(numeric_only=True) - 1,
+                    min(
+                        df2['ext_temp'].min(numeric_only=True) - 0.5,
+                        df2['ext_humidex'].min(numeric_only=True) - 0.5,
+                        df2['int_temp'].min(numeric_only=True) - 0.5,
+                        df2['open_temp'].min(numeric_only=True) - 0.5,
+                        df2['open_feels_like'].min(numeric_only=True) + 0.5
+                    ) - 1,
                     max(
                         df2['ext_temp'].max(numeric_only=True) + 0.5,
                         df2['ext_humidex'].max(numeric_only=True) + 0.5,
@@ -194,14 +200,21 @@ class ThermoProGraph:
                     ) + 1
                 )
                 ax2.axis(window2)
-                ax2.set_yticks(list(range(int(df2['ext_temp'].min(numeric_only=True) - 1.1),
-                                          int(max(
-                                              df2['ext_temp'].max(numeric_only=True) + 0.5,
-                                              df2['ext_humidex'].max(numeric_only=True) + 0.5,
-                                              df2['int_temp'].max(numeric_only=True) + 0.5,
-                                              df2['open_temp'].max(numeric_only=True) + 0.5,
-                                              df2['open_feels_like'].max(numeric_only=True) + 0.5
-                                          ) + 1.1), 1)))
+                ax2.set_yticks(list(range(
+                    int(min(
+                        df2['ext_temp'].min(numeric_only=True) - 0.5,
+                        df2['ext_humidex'].min(numeric_only=True) - 0.5,
+                        df2['int_temp'].min(numeric_only=True) - 0.5,
+                        df2['open_temp'].min(numeric_only=True) - 0.5,
+                        df2['open_feels_like'].min(numeric_only=True) + 0.5
+                    ) - 1),
+                    int(max(
+                        df2['ext_temp'].max(numeric_only=True) + 0.5,
+                        df2['ext_humidex'].max(numeric_only=True) + 0.5,
+                        df2['int_temp'].max(numeric_only=True) + 0.5,
+                        df2['open_temp'].max(numeric_only=True) + 0.5,
+                        df2['open_feels_like'].max(numeric_only=True) + 0.5
+                    ) + 1.1), 1)))
 
                 fig.canvas.draw_idle()
 
@@ -521,7 +534,7 @@ class ThermoProGraph:
 if __name__ == '__main__':
     thermopro.set_up(__file__)
     thermoProGraph: ThermoProGraph = ThermoProGraph()
-    thermoProGraph.create_graph_temperature()
+    # thermoProGraph.create_graph_temperature()
     if len(sys.argv) == 2:
         arg = sys.argv[1]
         log.info(f"The command line argument is: {arg}")

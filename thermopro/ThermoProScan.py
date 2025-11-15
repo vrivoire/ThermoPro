@@ -166,12 +166,16 @@ class ThermoProScan:
 
             self.save_csv(df)
             self.save_json(df)
+            self.save_bkp(df)
 
             show_df(df)
         except Exception as ex:
             log.error(ex)
             log.error(thermopro.ppretty(json_data))
             log.error(traceback.format_exc())
+            thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Genaral Error\n{ex}", "Genaral Error", 0x30))
+            thread.start()
+            threads.append(thread)
         log.info("End task")
 
     def save_json(self, df: DataFrame):
