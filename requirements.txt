@@ -1,6 +1,6 @@
 aiocache==0.12.3
 aiohappyeyeballs==2.6.1
-aiohttp==3.11.12
+aiohttp==3.13.2
 aiosignal==1.4.0
 altgraph==0.17.4
 asgiref==3.10.0
@@ -13,6 +13,7 @@ Django==5.2.8
 django-scheduler==0.10.1
 fonttools==4.60.1
 frozenlist==1.8.0
+Hydro-Quebec-API-Wrapper==4.1.0
 icalendar==6.3.2
 idna==3.11
 kiwisolver==1.4.9
