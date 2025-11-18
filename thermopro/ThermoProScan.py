@@ -89,13 +89,12 @@ class ThermoProScan:
 
     def __call_all(self) -> None:
         json_data: dict[str, Any] = {}
+        threads: list[threading.Thread] = []
+        result_queue: Queue = Queue()
         try:
             log.info('')
             log.info('--------------------------------------------------------------------------------')
             log.info("Start task")
-
-            threads: list[threading.Thread] = []
-            result_queue: Queue = Queue()
 
             thread: threading.Thread = threading.Thread(target=Rtl433Temperature2().call_rtl_433, args=(result_queue,))
             threads.append(thread)
@@ -367,7 +366,7 @@ class ThermoProScan:
             df = ThermoProScan.set_astype(df)
 
             df_conditional_drop = df.drop(df[
-                                              (df['time'].dt.minute >= 6) &
+                                              (df['time'].dt.minute >= 7) &
                                               (df['time'].dt.minute <= 59) &
                                               (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
                                               ].index)
@@ -387,7 +386,9 @@ class ThermoProScan:
         for col in ['time', 'open_sunrise', 'open_sunset']:
             df = df.astype({col: 'datetime64[ns]'})
             columns.remove(col)
-        for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'ext_humidity_Thermopro-TX2', 'int_humidity_Acurite-609TXC', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg']:
+        for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'ext_humidity_Thermopro-TX2',
+                    'int_humidity_Acurite-609TXC', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility',
+                    'open_wind_deg']:
             try:
                 df[col] = df[col].round().astype('Int64')
             except KeyError as ex:

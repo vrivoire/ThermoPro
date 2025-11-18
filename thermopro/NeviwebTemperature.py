@@ -1,3 +1,4 @@
+import math
 import traceback
 from queue import Queue
 from typing import Any
@@ -331,55 +332,6 @@ class NeviwebTemperature:
         else:
             log.error(f"Hourly stat error: {data}")
             return None
-
-    def load_neviweb(self, result_queue: Queue):
-        log.info("  ----------------------- Start load_neviweb -----------------------")
-        result: dict = {}
-        try:
-            log.info(f'login={self.login()}')
-
-            self.get_network()
-            # log.info(f'get_network: {self._network_name}')
-            self.get_gateway_data()
-            # log.info(f'gateway_data: {self.gateway_data}')
-            self.get_groups()
-            # log.info(f"get_groups: {self.groups}")
-
-            for device in self.gateway_data:
-                columns = WATT_ATTRIBUTES
-                data: dict[str, Any] = self.get_device_attributes(device["id"], columns)
-                for name in columns:
-                    device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
-
-            kwh_total = 0.0
-            for device in self.gateway_data:
-                device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device['id'])
-                for group in self.groups:
-                    if group['id'] == device['group$id']:
-                        kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
-                        kwh_total += kwh
-                        result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh
-            log.info(f'kwh_neviweb: {kwh_total}')
-            result['kwh_neviweb'] = kwh_total
-
-            room_temperature_display_list: list = [float(gateway_data2['roomTemperature']) for gateway_data2 in self.gateway_data]
-            int_temp: float = round(sum(room_temperature_display_list) / len(room_temperature_display_list), 1)
-            log.info(f'int_temp={int_temp}, data={room_temperature_display_list}')
-
-            for device in self.gateway_data:
-                for group in self.groups:
-                    if group['id'] == device['group$id']:
-                        result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature']
-                        log.info(f'{group['name']}: {device["roomTemperature"]}°C, {round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)}KWh')
-            result.update({'int_temp': int_temp})
-            result.update({'room_temperature_display_list': room_temperature_display_list})
-            log.info(f'result={result}')
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-        finally:
-            log.info(f'logout={self.logout()}')
-            result_queue.put(result)
 
     def login(self):
         input_data: dict[str, str | int] = {
@@ -724,6 +676,57 @@ class NeviwebTemperature:
                 return resp
             except OSError as ex:
                 raise ex
+
+    def load_neviweb(self, result_queue: Queue):
+        log.info("  ----------------------- Start load_neviweb -----------------------")
+        result: dict = {}
+        try:
+            log.info(f'login={self.login()}')
+
+            self.get_network()
+            # log.info(f'get_network: {self._network_name}')
+            self.get_gateway_data()
+            # log.info(f'gateway_data: {self.gateway_data}')
+            self.get_groups()
+            # log.info(f"get_groups: {self.groups}")
+
+            for device in self.gateway_data:
+                columns = WATT_ATTRIBUTES
+                data: dict[str, Any] = self.get_device_attributes(device["id"], columns)
+                for name in columns:
+                    device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
+
+            kwh_total = 0.0
+            device_hourly_stats_list: list[dict[str, int]] | None = []
+            for device in self.gateway_data:
+                device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device['id'])
+                for group in self.groups:
+                    if group['id'] == device['group$id']:
+                        kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
+                        kwh_total += kwh
+                        result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh if not math.isnan(kwh) else 0.0
+            result['kwh_neviweb'] = kwh_total if not math.isnan(kwh_total) else 0.0
+            log.info(f'kwh_neviweb: {result['kwh_neviweb']}')
+
+            room_temperature_display_list: list = [float(gateway_data2['roomTemperature']) for gateway_data2 in self.gateway_data]
+            int_temp: float = round(sum(room_temperature_display_list) / len(room_temperature_display_list), 1)
+            log.info(f'int_temp={int_temp}, data={room_temperature_display_list}')
+            result.update({'int_temp': int_temp})
+            result.update({'room_temperature_display_list': room_temperature_display_list})
+
+            for device in self.gateway_data:
+                for group in self.groups:
+                    if group['id'] == device['group$id']:
+                        result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
+                        log.info(f'{group['name']}: {device["roomTemperature"]}°C, {round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)} KWh')
+
+            log.info(f'result={result}')
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+        finally:
+            log.info(f'logout={self.logout()}')
+            result_queue.put(result)
 
 
 if __name__ == '__main__':

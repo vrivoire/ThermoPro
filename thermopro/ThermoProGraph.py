@@ -51,7 +51,7 @@ class ThermoProGraph:
             ax1.set_yticks(list(range(0, 101, 10)))
 
             ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
-            int_humidity, = ax1.plot(df["time"], df["int_humidity"], color='xkcd:blue', label='Int.. %')
+            int_humidity, = ax1.plot(df["time"], df["int_humidity"], color='xkcd:blue', label='Int. %')
             open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
             open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
 
@@ -73,13 +73,6 @@ class ThermoProGraph:
 
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
-            ax2.set_yticks(list(range(int(df['ext_temp'].min(numeric_only=True) - 0.5),
-                                      int(max(df['ext_temp'].max(numeric_only=True) + 0.5,
-                                              df['ext_humidex'].max(numeric_only=True) + 0.5,
-                                              df['int_temp'].max(numeric_only=True) + 0.5,
-                                              df['open_temp'].max(numeric_only=True) + 0.5,
-                                              df['open_feels_like'].max(numeric_only=True) + 0.5
-                                              )))))
 
             mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
             mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
@@ -98,18 +91,6 @@ class ThermoProGraph:
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
             plt.axhline(0, linewidth=0.5, color='black', zorder=-10)
-
-            window = (
-                df['time'][0] - timedelta(hours=1),
-                df["time"][df["time"].size - 1] + timedelta(hours=1),
-                df['ext_temp'].min(numeric_only=True) - 1,
-                max(df['ext_temp'].max(numeric_only=True) + 0.5,
-                    df['ext_humidex'].max(numeric_only=True) + 0.5,
-                    df['int_temp'].max(numeric_only=True) + 0.5,
-                    df['open_temp'].max(numeric_only=True) + 0.5,
-                    df['open_feels_like'].max(numeric_only=True) + 0.5
-                    ))
-            plt.axis(window)
 
             try:
                 plt.title(
@@ -185,36 +166,37 @@ class ThermoProGraph:
                     val - DAYS,
                     val + 0.1,
                     min(
-                        df2['ext_temp'].min(numeric_only=True) - 0.5,
-                        df2['ext_humidex'].min(numeric_only=True) - 0.5,
-                        df2['int_temp'].min(numeric_only=True) - 0.5,
-                        df2['open_temp'].min(numeric_only=True) - 0.5,
-                        df2['open_feels_like'].min(numeric_only=True) + 0.5
+                        df2['ext_temp'].min(numeric_only=True),
+                        df2['ext_humidex'].min(numeric_only=True),
+                        df2['int_temp'].min(numeric_only=True),
+                        df2['open_temp'].min(numeric_only=True),
+                        df2['open_feels_like'].min(numeric_only=True)
                     ) - 1,
                     max(
-                        df2['ext_temp'].max(numeric_only=True) + 0.5,
-                        df2['ext_humidex'].max(numeric_only=True) + 0.5,
-                        df2['int_temp'].max(numeric_only=True) + 0.5,
-                        df2['open_temp'].max(numeric_only=True) + 0.5,
-                        df2['open_feels_like'].max(numeric_only=True) + 0.5
+                        df2['ext_temp'].max(numeric_only=True),
+                        df2['ext_humidex'].max(numeric_only=True),
+                        df2['int_temp'].max(numeric_only=True),
+                        df2['open_temp'].max(numeric_only=True),
+                        df2['open_feels_like'].max(numeric_only=True)
                     ) + 1
                 )
                 ax2.axis(window2)
                 ax2.set_yticks(list(range(
                     int(min(
-                        df2['ext_temp'].min(numeric_only=True) - 0.5,
-                        df2['ext_humidex'].min(numeric_only=True) - 0.5,
-                        df2['int_temp'].min(numeric_only=True) - 0.5,
-                        df2['open_temp'].min(numeric_only=True) - 0.5,
-                        df2['open_feels_like'].min(numeric_only=True) + 0.5
+                        df2['ext_temp'].min(numeric_only=True),
+                        df2['ext_humidex'].min(numeric_only=True),
+                        df2['int_temp'].min(numeric_only=True),
+                        df2['open_temp'].min(numeric_only=True),
+                        df2['open_feels_like'].min(numeric_only=True)
                     ) - 1),
                     int(max(
-                        df2['ext_temp'].max(numeric_only=True) + 0.5,
-                        df2['ext_humidex'].max(numeric_only=True) + 0.5,
-                        df2['int_temp'].max(numeric_only=True) + 0.5,
-                        df2['open_temp'].max(numeric_only=True) + 0.5,
-                        df2['open_feels_like'].max(numeric_only=True) + 0.5
-                    ) + 1.1), 1)))
+                        df2['ext_temp'].max(numeric_only=True),
+                        df2['ext_humidex'].max(numeric_only=True),
+                        df2['int_temp'].max(numeric_only=True),
+                        df2['open_temp'].max(numeric_only=True),
+                        df2['open_feels_like'].max(numeric_only=True)
+                    ) + 1),
+                    1)))
 
                 fig.canvas.draw_idle()
 
@@ -234,23 +216,37 @@ class ThermoProGraph:
                 ax2.axis((
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
-                    df['ext_temp'].min(numeric_only=True) - 1,
+                    min(
+                        df['ext_temp'].min(numeric_only=True),
+                        df['ext_humidex'].min(numeric_only=True),
+                        df['int_temp'].min(numeric_only=True),
+                        df['open_temp'].min(numeric_only=True),
+                        df['open_feels_like'].min(numeric_only=True)
+                    ) - 1,
                     max(
-                        df['ext_temp'].max(numeric_only=True) + 0.5,
-                        df['ext_humidex'].max(numeric_only=True) + 0.5,
-                        df['int_temp'].max(numeric_only=True) + 0.5,
-                        df['open_temp'].max(numeric_only=True) + 0.5,
-                        df['open_feels_like'].max(numeric_only=True) + 0.5
+                        df['ext_temp'].max(numeric_only=True),
+                        df['ext_humidex'].max(numeric_only=True),
+                        df['int_temp'].max(numeric_only=True),
+                        df['open_temp'].max(numeric_only=True),
+                        df['open_feels_like'].max(numeric_only=True)
                     ) + 1
                 ))
-                ax2.set_yticks(list(range(int(df['ext_temp'].min(numeric_only=True) - 1.1),
-                                          int(max(
-                                              df['ext_temp'].max(numeric_only=True) + 0.5,
-                                              df['ext_humidex'].max(numeric_only=True) + 0.5,
-                                              df['int_temp'].max(numeric_only=True) + 0.5,
-                                              df['open_temp'].max(numeric_only=True) + 0.5,
-                                              df['open_feels_like'].max(numeric_only=True) + 0.5
-                                          ) + 1.1), 1)))
+                ax2.set_yticks(list(range(
+                    int(min(
+                        df['ext_temp'].min(numeric_only=True),
+                        df['ext_humidex'].min(numeric_only=True),
+                        df['int_temp'].min(numeric_only=True),
+                        df['open_temp'].min(numeric_only=True),
+                        df['open_feels_like'].min(numeric_only=True)
+                    ) - 1),
+                    int(max(
+                        df['ext_temp'].max(numeric_only=True),
+                        df['ext_humidex'].max(numeric_only=True),
+                        df['int_temp'].max(numeric_only=True),
+                        df['open_temp'].max(numeric_only=True),
+                        df['open_feels_like'].max(numeric_only=True)
+                    ) + 1),
+                    1)))
                 fig.canvas.draw_idle()
 
             slider_position = Slider(
@@ -324,7 +320,7 @@ class ThermoProGraph:
             try:
                 plt.title(
                     f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
-                    + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Hydro: {df['kwh_hydro_quebec'][df['kwh_hydro_quebec'].last_valid_index()]}KWh, Nevi: {df['kwh_neviweb'][df['kwh_neviweb'].last_valid_index()]}KWh" \
+                    + f"Open: {round(df['open_temp'][len(df['open_temp']) - 1], 2)}°C, Hydro: {df['kwh_hydro_quebec'][df['kwh_hydro_quebec'].last_valid_index()]}KWh, Nevi: {df['kwh_neviweb'][df['kwh_neviweb'].last_valid_index()]}KWh" \
                     + f', Rolling x̄: {int(DAYS)} days', fontsize=10)
             except Exception as ex:
                 log.error(ex)

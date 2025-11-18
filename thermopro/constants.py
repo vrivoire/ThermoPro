@@ -13,7 +13,7 @@ COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_humidex', 'ext_temp', 'ex
                            'open_wind_gust', 'open_wind_speed', 'int_humidity_Acurite-609TXC', 'int_temp_Acurite-609TXC', 'ext_humidity_ThermoPro-TX7B', 'ext_temp_ThermoPro-TX7B']
                       ))
 
-print(COLUMNS)
+# print(COLUMNS)
 
 OUTPUT_CSV_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.csv"
 OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
@@ -26,21 +26,21 @@ OUTPUT_RTL_433_FILE = f"{POIDS_PRESSION_PATH}rtl_433.json"
 RTL_433_VERSION = 'nightly'
 TIMEOUT = 300
 RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
-SENSORS: list[dict[str, list[str] | dict[str, dict[str, str]]]] = [
-    {
-        'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}'],
-        'sensors': {
-            'Thermopro-TX2': {
-                'protocol': '162',
-                'kind': 'ext'
-            },
-            'Acurite-609TXC': {
-                'protocol': '11',
-                'kind': 'int'
-            }
+
+SENSORS: dict[str, list[str] | dict[str, dict[str, str]]] = {
+    'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}'],
+    'sensors': {
+        'Acurite-609TXC': {
+            'protocol': '11',
+            'kind': 'int'
+        },
+        'Thermopro-TX2': {
+            'protocol': '162',
+            'kind': 'ext'
         }
     }
-]
+}
+
 SENSORS_TX7B: list = ['ThermoPro-TX7B', RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-f', '915M', '-Y', 'classic', '-s', '250k']
 
 DAYS = 30.437  # https://www.britannica.com/science/time/Standard-time
