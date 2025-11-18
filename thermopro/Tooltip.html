@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>ThermoPro</title>
+    <style>
+        #weather-widget {
+			border: 1px solid;
+			color: #80808061;
+			width: 300px;
+			background: #80808036;
+			padding: 3px;
+			position: relative;
+			font-family: Space Grotesk,Arial,sans-serif;
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+			color: #48484a;
+			width: 19em;
+			margin: 0;
+			padding: 0;
+		}
+        .current-temp {
+            display: flex;
+            align-items: center;
+            justify-content: left;
+            flex-direction: row;
+            white-space: nowrap;
+            box-sizing: border-box;
+            font-size: 36px;
+            font-weight: 100;
+            margin-right: 8pt;
+        }
+        .weather-items {
+            font-size: 15px;
+            list-style: none;
+            line-height: 20px;
+            border-left: 1px solid #eb6e4b;
+            max-width: 60em;
+            padding-left: 16pt;
+            padding-right: 16pt;
+            margin-top: 4pt;
+            margin-bottom: 0;
+            box-sizing: border-box;
+            margin-right: 1pt;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+<div id="weather-widget">
+    <span style="color: #eb6e4b;">{{time.strftime('%d %B %Y %H:%M')}}</span>
+    <span class="current-temp"><img src="https://openweathermap.org/img/wn/{{open_icon}}@2x.png" loading="eager">&nbsp;{{ext_temp}}&deg;C</span>
+    <div style="font-weight: 700;padding-left: 10px;">
+        <span title="Humidex: {{ext_humidex}}&deg;C.">Feels like {{open_feels_like}}&deg;C</span><br>
+        {{open_description}}
+    </div>
+
+    <ul class="weather-items">
+        {% if open_rain > 0 or open_snow > 0 %}
+        <li>
+            {% if open_rain > 0 %}
+            &#9748; {{open_rain}}mm
+            {% endif %}
+            &nbsp;
+            {% if open_snow > 0 %}
+            &#9924; {{open_snow}}mm
+            {% endif %}
+        </li>
+        {% endif %}
+        <li>&#127811;{{open_wind_speed}}m/s ({{open_wind_gust}}m/s) <span title="{{open_wind_deg}}&deg;">{{open_wind_deg_txt}}</span>
+            &#128167;{{ext_humidity}}%
+        </li>
+        <li>{{open_pressure}}hPa &nbsp; &#128065; {{"%.2f" | format(open_visibility/1000)}}Km &nbsp; UV: {{"%.2f" |
+            format(open_uvi)}}
+        </li>
+    </ul>
+    <hr>
+    <ul class="weather-items">
+        <li>
+            <span title="Mean: {{mean_kwh_hydro_quebec}} KWh"><img src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Hydro-Qu%C3%A9bec_logo.svg" loading="eager" width="50"> {{last_kwh_hydro_quebec}} KWh</span>&nbsp;
+            <img src="https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/7b/9b/75/7b9b754b-cc8c-5a36-3468-9ea5838af4ab/AppIcon-0-0-1x_U007epad-0-1-0-85-220.jpeg/200x200ia-75.webp" loading="eager" width="20"> {{kwh_neviweb}} KWh
+        </li>
+        <li><span title="Humidex: {{int_humidex}}&deg;C">&#127777; &#127968; {{int_temp}}&deg;C &nbsp; &#128167; {{int_humidity}}%</span>
+        </li>
+        <li>&#128186; {{int_temp_bureau}}&deg;C &nbsp; &#128719; {{int_temp_chambre}}&deg;C</li>
+        <li>&#128704; {{int_temp_salle_de_bain}}&deg;C &nbsp; &#128715; {{int_temp_salon}}&deg;C</li>
+    </ul>
+</div>
+</body>
+</html>
