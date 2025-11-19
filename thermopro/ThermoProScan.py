@@ -1,6 +1,5 @@
 # start pyinstaller --onedir ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 import atexit
-import csv
 import ctypes
 import glob
 import json
@@ -16,7 +15,6 @@ from queue import Queue
 from time import sleep
 from typing import Any
 
-import pandas
 import pandas as pd
 import requests
 import schedule
@@ -24,8 +22,8 @@ from dateutil.relativedelta import relativedelta
 from pandas import DataFrame
 
 import thermopro
-from constants import OUTPUT_CSV_FILE, WEATHER_URL, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, OUTPUT_JSON_FILE, BKP_DAYS
-from thermopro import log, show_df, POIDS_PRESSION_PATH
+from constants import WEATHER_URL, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, BKP_DAYS, POIDS_PRESSION_PATH
+from thermopro import log, show_df
 from thermopro.HydroQuébec import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
@@ -138,7 +136,7 @@ class ThermoProScan:
             log.info(f'Got all new data:\n{json.dumps(json_data, indent=4, sort_keys=True, default=str)}')
             log.info('----------------------------------------------')
 
-            df: DataFrame = self.load_json()
+            df: DataFrame = thermopro.load_json()
             if json_data:
                 data_dict: dict[str, Any] = {}
                 for col in COLUMNS:
@@ -163,8 +161,8 @@ class ThermoProScan:
 
             self.set_kwh(kwh_dict, df)
 
-            self.save_csv(df)
-            self.save_json(df)
+            # self.save_csv(df)
+            thermopro.save_json(df)
             self.save_bkp(df)
 
             show_df(df)
@@ -176,52 +174,6 @@ class ThermoProScan:
             thread.start()
             threads.append(thread)
         log.info("End task")
-
-    def save_json(self, df: DataFrame):
-        df = ThermoProScan.set_astype(df)
-        df.to_json(OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
-        # for orient in ['columns', 'index', 'split', 'table']:
-        #     print(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json')
-        #     df.to_json(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json', orient=orient, indent=4, date_format='iso')
-        log.info('JSON saved')
-
-    def save_csv(self, df: DataFrame | None) -> bool:
-        df = ThermoProScan.set_astype(df)
-        if df is None:
-            log.warning('df is empty')
-            return False
-        else:
-            columns = list(COLUMNS)
-            # NE PAS EFFACER
-            # columns = sorted(columns)
-            # columns.remove('time')
-            # columns = ['time'] + columns
-            # print(columns)
-
-            with open(OUTPUT_CSV_FILE + '.tmp', 'w', newline='') as writer:
-                writer = csv.writer(writer)
-                writer.writerow(columns)
-                for index, row in df.iterrows():
-                    data: list[Any] = []
-                    for col in columns:
-                        if col == 'time':
-                            data.append(row[col].strftime('%Y/%m/%d %H:%M:%S'))
-                        elif type(row[col]) == datetime:
-                            data.append(row[col].strftime('%Y/%m/%d %H:%M:%S')) if row[col] else data.append(None)
-                        elif type(row[col]) == float and pd.isna(row[col]):
-                            data.append(None)
-                        else:
-                            data.append(row[col]) if not pd.isna(row[col]) or not row[col] is None else data.append(None)
-                    writer.writerow(data)
-
-            if os.path.exists(OUTPUT_CSV_FILE):
-                try:
-                    os.remove(OUTPUT_CSV_FILE)
-                except Exception as ex:
-                    log.error(ex)
-            os.renames(OUTPUT_CSV_FILE + '.tmp', OUTPUT_CSV_FILE)
-            log.info('CSV saved.')
-            return True
 
     def start(self):
         try:
@@ -282,7 +234,9 @@ class ThermoProScan:
 
     def save_bkp(self, df: DataFrame) -> None:
         try:
-            in_file_list: list[str] = [files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] + [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))]
+            in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
+                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
+                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
             log.info(f'Files to bkp: {in_file_list}')
 
             out_file_list: list[str] = [BKP_PATH + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
@@ -317,138 +271,6 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    # def load_csv(self) -> list[dict[str, Any]] | None:
-    def load_csv(self) -> DataFrame | None:
-        log.info(f'load_csv, columns ({len(COLUMNS)}): {COLUMNS}')
-        try:
-            if os.path.isfile(OUTPUT_CSV_FILE):
-                result = pd.read_csv(OUTPUT_CSV_FILE)
-                result = result.astype({'time': 'datetime64[ns]'})
-                result = result.astype({'ext_temp': 'Float64'})
-                result = result.astype({'int_temp': 'Float64'})
-                result = result.astype({'open_temp': 'Float64'})
-                result = result.astype({'open_feels_like': 'Float64'})
-                try:
-                    result = result.astype({'open_humidity': 'Int64'})
-                except Exception as ex:
-                    result = result.astype({'open_humidity': 'Float64'})
-                try:
-                    result = result.astype({'open_pressure': 'Int64'})
-                except Exception as ex:
-                    result = result.astype({'open_pressure': 'Float64'})
-                result = result.astype({'kwh_hydro_quebec': 'Float64'})
-                result = result.astype({'ext_humidex': 'Int64'})
-                # return result.to_dict('records')
-                return result
-            else:
-                log.error(f'The path "{OUTPUT_CSV_FILE}" does not exit.')
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-        return None
-
-    @staticmethod
-    def load_json() -> DataFrame:
-        try:
-            df: DataFrame
-            if os.path.exists(OUTPUT_JSON_FILE):
-                log.info(f'Loading file {OUTPUT_JSON_FILE}')
-                df: DataFrame = pandas.read_json(OUTPUT_JSON_FILE)
-            elif os.path.exists(OUTPUT_CSV_FILE):
-                log.info(f'Loading file {OUTPUT_CSV_FILE}')
-                df: DataFrame = pandas.read_csv(OUTPUT_CSV_FILE)
-            else:
-                raise f"The files {OUTPUT_JSON_FILE} and {OUTPUT_CSV_FILE} do not exist."
-
-            # df = df.drop('ext_humidity_Acurite-609TXC', axis=1)
-            # df = df.drop('ext_temp_Acurite-609TXC', axis=1)
-
-            df = ThermoProScan.set_astype(df)
-
-            df_conditional_drop = df.drop(df[
-                                              (df['time'].dt.minute >= 7) &
-                                              (df['time'].dt.minute <= 59) &
-                                              (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
-                                              ].index)
-            log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
-            df = df_conditional_drop.reset_index(drop=True)
-
-            df = df[COLUMNS]
-            return df
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-            raise ex
-
-    @staticmethod
-    def set_astype(df: DataFrame) -> DataFrame:
-        columns = list(COLUMNS)
-        for col in ['time', 'open_sunrise', 'open_sunset']:
-            df = df.astype({col: 'datetime64[ns]'})
-            columns.remove(col)
-        for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'ext_humidity_Thermopro-TX2',
-                    'int_humidity_Acurite-609TXC', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility',
-                    'open_wind_deg']:
-            try:
-                df[col] = df[col].round().astype('Int64')
-            except KeyError as ex:
-                log.error(df[col].dtypes)
-                log.error(ex)
-                log.error(traceback.format_exc())
-            columns.remove(col)
-        for col in ['open_description', 'open_icon']:
-            df[col] = df[col].astype(str)
-            columns.remove(col)
-        for col in columns:
-            try:
-                df[col] = df[col].astype('Float64')
-            except KeyError as ex:
-                log.error(df[col].dtypes)
-                log.error(ex)
-                log.error(traceback.format_exc())
-
-        df.set_index('time')
-        all_columns2: list[str] = sorted(df.columns.tolist())
-        all_columns2.remove('time')
-        all_columns2 = ['time'] + all_columns2
-        df = df[all_columns2]
-        df = df.sort_values(by='time', ascending=True)
-        return df
-
-
-# def compare_df():
-#     # https://www.google.com/search?q=python+compare+2+dataframes&oq=python+compare+2+dataframs&gs_lcrp=EgZjaHJvbWUqCQgBEAAYDRiABDIGCAAQRRg5MgkIARAAGA0YgAQyCAgCEAAYFhgeMggIAxAAGBYYHjIICAQQABgWGB4yCAgFEAAYFhge0gEJMTQ4MjNqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8
-#     log.info('comparing df')
-#     pandas.set_option('display.max_columns', None)
-#     pandas.set_option('display.width', 1000)
-#     pandas.set_option('display.max_rows', 1000)
-#
-#     df_json: DataFrame = self.load_json()
-#     df_csv: DataFrame = self.load_csv()
-#
-#     all_columns2: list[str] = sorted(df_json.columns.tolist())
-#     all_columns2.remove('time')
-#     all_columns2 = ['time'] + all_columns2
-#     df_json = df_json[all_columns2]
-#     df_csv = df_csv[all_columns2]
-#
-#     print(df_csv.columns.tolist())
-#     print('')
-#     print(df_json.columns.tolist())
-#     print('')
-#     #
-#     # print(f'equals: {df_csv.equals(df_json)}')
-#     # print('')
-#     # merged_df = pd.merge(df_json, df_csv, on='time', how='outer', indicator=True)
-#     # differences = merged_df[merged_df['_merge'] != 'both']
-#     # print(f'differences:\n{differences}')
-#     # print('')
-#     comparison_result = (df_json == df_csv)
-#     print(f'comparison_result:\n{comparison_result}')
-#     print('')
-#     col1_diff = df_json['time'] != df_json['time']
-#     print(f'Differences in Specific Columns:\n{df_json[col1_diff]}')
-
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
@@ -457,5 +279,6 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
-    df = thermoProScan.load_json()
-    # thermoProScan.save_json(df)
+    # df = thermopro.load_json()
+    # thermopro.save_json(df)
+    # thermopro.show_df(df)

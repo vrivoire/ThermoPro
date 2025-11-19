@@ -36,12 +36,11 @@ class Rtl433Temperature2:
             )
             # log.debug(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout}, stderr: {completed_process.stderr}')
             alive = exe in completed_process.stdout
+            log.info(f'RTL_433_EXE alive is {alive}')
+            return alive
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
-
-        # log.info(f'rtl_433 alive is {alive}')
-        return alive
 
     def __kill_rtl_433(self) -> None:
         exe = RTL_433_EXE[RTL_433_EXE.rfind('/') + 1:]
@@ -55,7 +54,10 @@ class Rtl433Temperature2:
                     shell=True,
                     text=True
                 )
-                log.info(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout.replace('\n', ' ')}, stderr: {completed_process.stderr.replace('\n', ' ')}')
+                if completed_process.returncode == 0:
+                    log.info('RTL_433_EXE killed.')
+                else:
+                    log.info(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout.replace('\n', ' ')}, stderr: {completed_process.stderr.replace('\n', ' ')}')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -72,18 +74,29 @@ class Rtl433Temperature2:
                 shell=True,
                 text=True
             )
-            log.info(f'Return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')
+            if completed_process.returncode == 0:
+                log.info('RTL_433_EXE started.')
+            else:
+                log.info(f'Return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')
 
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned: {timeoutExpired}")
             self.__kill_rtl_433()
+            raise timeoutExpired
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+            raise ex
 
     def __delete_json_file(self):
         if os.path.exists(OUTPUT_RTL_433_FILE):
             try:
                 os.remove(OUTPUT_RTL_433_FILE)
+                log.info("OUTPUT_RTL_433_FILE deleted.")
             except Exception as ex:
                 log.error(ex)
+        else:
+            log.warning(f'The file {OUTPUT_RTL_433_FILE} not found.')
 
     def __get_humidex(self, ext_temp: float, humidity: int) -> int | None:
         if ext_temp and humidity:
@@ -98,21 +111,71 @@ class Rtl433Temperature2:
 
     def __prepare_calls(self) -> tuple[list[str], dict[str, str]]:
         data: dict[str, list[str] | dict[str, dict[str, str]]] = dict(SENSORS)
-        args: list[str] = data['args']
-        sensors: dict[str, dict[str, str]] = data['sensors']
+        args: list[str] = list(data['args'])
+        sensors: dict[str, dict[str, str]] = dict(data['sensors'])
         for key in sensors.keys():
-            sensor: dict[str, str] = sensors[key]
+            sensor: dict[str, str] = dict(sensors[key])
             args.append('-R')
             args.append(sensor['protocol'])
             sensor.pop('protocol')
             sensors[key] = sensors[key]['kind']
-
-        # print(args)
-        # print(sensors)
-
         return (args, sensors)
 
+    # https://stackoverflow.com/questions/12523044/how-can-i-tail-a-log-file-in-python
+    def __call_sensors(self, args: list[str], sensors: dict[str, str], json_rtl_433: dict[str, Any],
+            ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float],
+            threads: list[threading.Thread]):
+        log.info('-------------------------- __call_sensors --------------------------')
+        try:
+            self.__kill_rtl_433()
+            self.__delete_json_file()
+            thread: threading.Thread = threading.Thread(target=self.__start_rtl_433, args=(args,))
+            thread.start()
+            sleep(0.5)
+
+            if self.__find_rtl_433():
+                if not os.path.exists(OUTPUT_RTL_433_FILE):
+                    raise Exception(f'File not found: {OUTPUT_RTL_433_FILE}')
+                with open(OUTPUT_RTL_433_FILE, 'r') as f:
+                    f.seek(0, 2)
+                    while len(sensors.keys()) != 0:
+                        line = f.readline()
+                        if not line:
+                            sleep(0.1)
+                            continue
+                        else:
+                            line = line.strip()
+                            data: dict = json.loads(line)
+                            model: str = data['model']
+                            log.info(f'{model}, {sensors.keys()}, {model in sensors.keys()}')
+                            if model in sensors.keys():
+                                log.info(f'>>> data: {data}')
+                                data = self.fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
+                                self.warn_battery(data, threads)
+                                sensors.pop(model)
+                                json_rtl_433.update(data)
+                if len(sensors.keys()) == 0:
+                    self.__kill_rtl_433()
+                    self.__delete_json_file()
+            else:
+                raise Exception('RTL_433 not responding')
+
+        except subprocess.TimeoutExpired as timeoutExpired:
+            log.error(timeoutExpired)
+        except FileNotFoundError:
+            log.error(f"Error: '{OUTPUT_RTL_433_FILE}' not found. Please ensure the file exists.")
+            log.error(traceback.format_exc())
+        except json.JSONDecodeError:
+            log.error(f"Error: Could not decode JSON from '{OUTPUT_RTL_433_FILE}'. Check file format.")
+        except Exception as e:
+            log.error(f"An unexpected error occurred: {e}")
+            log.error(traceback.format_exc())
+        finally:
+            self.__kill_rtl_433()
+            self.__delete_json_file()
+
     def call_rtl_433(self, result_queue: Queue):
+        log.info('-------------------------- call_rtl_433 --------------------------')
         json_rtl_433: dict[str, Any] = {}
         ext_humidity_list: list[int] = []
         ext_temp_list: list[float] = []
@@ -120,91 +183,9 @@ class Rtl433Temperature2:
         int_temp_list: list[float] = []
         threads: list[threading.Thread] = []
 
-        try:
-            thread: threading.Thread = threading.Thread(target=self.__start_rtl_433, args=(SENSORS_TX7B[1:],))
-            thread.start()
-            sleep(2)
-            data1: dict[str, Any] = {}
-            old_file_size_bytes = 0
-            while self.__find_rtl_433():
-                file_size_bytes = os.path.getsize(OUTPUT_RTL_433_FILE)
-                if file_size_bytes != old_file_size_bytes:
-                    with open(OUTPUT_RTL_433_FILE, 'r') as file:
-                        while True:
-                            line: str = file.readline().strip()
-                            if len(line) == 0:
-                                break
-                            data1.update(json.loads(line))
-                            log.info(f'data1={data1}')
-                            data1.update(self.fill_dict(data1, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, 'ext'))
-                            self.warn_battery(data1, threads)
-
-                            for key in list(data1.keys()):
-                                if key.find('TX7B') == -1:
-                                    del data1[key]
-                            json_rtl_433.update(data1)
-                            self.__kill_rtl_433()
-                            self.__delete_json_file()
-                sleep(2)
-        except subprocess.TimeoutExpired as timeoutExpired:
-            log.error(timeoutExpired)
-        except FileNotFoundError:
-            log.error(f"Error: '{OUTPUT_RTL_433_FILE}' not found. Please ensure the file exists.")
-        except json.JSONDecodeError:
-            log.error(f"Error: Could not decode JSON from '{OUTPUT_RTL_433_FILE}'. Check file format.")
-        except Exception as e:
-            log.error(f"An unexpected error occurred: {e}")
-            log.error(traceback.format_exc())
-        finally:
-            self.__kill_rtl_433()
-            self.__delete_json_file()
-
-        try:
-            prepare_calls: tuple[list[str], dict[str, str]] = self.__prepare_calls()
-            args: list[str] = prepare_calls[0]
-            sensors: dict[str, str] = prepare_calls[1]
-            thread: threading.Thread = threading.Thread(target=self.__start_rtl_433, args=(args,))
-            thread.start()
-            sleep(2)
-            old_file_size_bytes = 0
-            while self.__find_rtl_433():
-                file_size_bytes = os.path.getsize(OUTPUT_RTL_433_FILE)
-                if file_size_bytes != old_file_size_bytes:
-                    with open(OUTPUT_RTL_433_FILE, 'r') as file:
-                        while True:
-                            line: str = file.readline().strip()
-                            if len(line) == 0:
-                                break
-                            data: dict = json.loads(line)
-                            old_file_size_bytes = file_size_bytes
-                            model: str = data['model']
-                            if model in sensors.keys():
-                                log.info(f'data={data}')
-                                data = self.fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
-                                self.warn_battery(data, threads)
-                                sensors.pop(model)
-                                json_rtl_433.update(data)
-                        if len(sensors.keys()) == 0:
-                            break
-
-        except subprocess.TimeoutExpired as timeoutExpired:
-            log.error(timeoutExpired)
-        except FileNotFoundError:
-            log.error(f"Error: '{OUTPUT_RTL_433_FILE}' not found. Please ensure the file exists.")
-        except json.JSONDecodeError:
-            log.error(f"Error: Could not decode JSON from '{OUTPUT_RTL_433_FILE}'. Check file format.")
-        except Exception as e:
-            log.error(f"An unexpected error occurred: {e}")
-            log.error(traceback.format_exc())
-        finally:
-            self.__kill_rtl_433()
-            self.__delete_json_file()
-
-        for s in self.__prepare_calls()[1]:
-            json_rtl_433[f'ext_temp_{s}'] = None
-            json_rtl_433[f'ext_humidity_{s}'] = None
-            json_rtl_433[f'int_temp_{s}'] = None
-            json_rtl_433[f'int_humidity_{s}'] = None
+        self.__call_sensors(list(SENSORS_TX7B['args']), dict(SENSORS_TX7B['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
+        prepare_calls: tuple[list[str], dict[str, str]] = self.__prepare_calls()
+        self.__call_sensors(prepare_calls[0], prepare_calls[1], json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
 
         self.get_mean('ext', ext_humidity_list, ext_temp_list, json_rtl_433)
         self.get_mean('int', int_humidity_list, int_temp_list, json_rtl_433)
@@ -214,7 +195,7 @@ class Rtl433Temperature2:
         if json_rtl_433.get('int_humidity'):
             json_rtl_433['int_humidex'] = self.__get_humidex(json_rtl_433['int_temp'], json_rtl_433['int_humidity'])
 
-        for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status']:
+        for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags']:
             try:
                 json_rtl_433.pop(item)
             except KeyError:
@@ -266,6 +247,7 @@ if __name__ == "__main__":
     result_queue: Queue = Queue()
     testJson: Rtl433Temperature2 = Rtl433Temperature2()
     testJson.call_rtl_433(result_queue)
+    # testJson.call_rtl_433(result_queue)
 
     while not result_queue.empty():
         print(thermopro.ppretty(result_queue.get()))

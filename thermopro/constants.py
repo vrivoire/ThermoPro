@@ -1,6 +1,12 @@
+import os
 import sys
 
-from thermopro import HOME_PATH, POIDS_PRESSION_PATH
+# from thermopro import HOME_PATH, POIDS_PRESSION_PATH
+
+HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
+LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
+POIDS_PRESSION_PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
+LOG_NAME: str = ''
 
 sys.path.append(f'{HOME_PATH}/Documents/BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
@@ -41,7 +47,12 @@ SENSORS: dict[str, list[str] | dict[str, dict[str, str]]] = {
     }
 }
 
-SENSORS_TX7B: list = ['ThermoPro-TX7B', RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-f', '915M', '-Y', 'classic', '-s', '250k']
+SENSORS_TX7B: dict[str, list[str] | dict[str, dict[str, str]]] = {
+    'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-f', '915M', '-Y', 'classic', '-s', '250k'],
+    'sensors': {
+        'ThermoPro-TX7B': 'ext'
+    }
+}
 
 DAYS = 30.437  # https://www.britannica.com/science/time/Standard-time
 
