@@ -12,6 +12,7 @@ import matplotlib.dates as m_dates
 import matplotlib.pyplot as plt
 import mplcursors
 import pandas as pd
+from matplotlib.backend_bases import MouseEvent
 from matplotlib.container import BarContainer
 from matplotlib.dates import date2num, num2date
 from matplotlib.lines import Line2D
@@ -29,23 +30,16 @@ class ThermoProGraph:
         log.info('Starting ThermoProGraph')
         global df
         df = thermopro.load_json()
+        self.clean_data()
         show_df(df)
 
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
     def create_graph_temperature(self) -> None:
         try:
             log.info('create_graph_temperature')
-            show_df(df)
+
             fig, ax1 = plt.subplots()
             ax2 = ax1.twinx()
-
-            df['ext_humidity'] = df['ext_humidity'].apply(lambda x: None if x == 0 else x)
-            df['int_humidity'] = df['int_humidity'].apply(lambda x: None if x == 0 else x)
-            df['int_temp'] = df['int_temp'].apply(lambda x: None if x == 0.0 else x)
-            df['open_feels_like'] = df['open_feels_like'].apply(lambda x: None if x == 0 else x)
-            df['open_humidity'] = df['open_humidity'].apply(lambda x: None if x == 0 else x)
-            df['ext_humidex'] = df['ext_humidex'].apply(lambda x: None if x == 0 else x)
-            df['open_pressure'] = df['open_pressure'].apply(lambda x: None if x < 30 else x)
 
             ax1.set_ylabel('Humidity %', color='xkcd:royal blue')  # we already handled the x-label with ax1
             ax1.grid(axis='y', color='blue', linewidth=0.2)
@@ -119,7 +113,15 @@ class ThermoProGraph:
                 hspace=0.202
             )
 
-            def on_clicked(label):
+            def on_click(event: MouseEvent):
+                print(type(event))
+                print(event)
+                if event.button == 1:  # Left mouse button
+                    print(f"Clicked at data coordinates: x={event.xdata}, y={event.ydata}")
+
+            fig.canvas.mpl_connect('button_press_event', on_click)
+
+            def on_check_clicked(label):
                 line: Line2D | None = None
                 for line in all_lines:
                     if line.get_label() == label:
@@ -152,7 +154,7 @@ class ThermoProGraph:
                 frame_props={'edgecolor': lines_colors},
                 check_props={'facecolor': lines_colors},
             )
-            check.on_clicked(on_clicked)
+            check.on_clicked(on_check_clicked)
 
             def on_changed(val):
                 slider_position.valtext.set_text(num2date(val).date())
@@ -284,12 +286,23 @@ class ThermoProGraph:
             log.error(traceback.format_exc())
             ctypes.windll.user32.MessageBoxW(0, f'{ex}', "ThermoProGraph Error", 16)
 
+    def clean_data(self):
+        df['ext_humidity'] = df['ext_humidity'].apply(lambda x: None if x == 0 else x)
+        df['int_humidity'] = df['int_humidity'].apply(lambda x: None if x == 0 else x)
+        df['int_temp'] = df['int_temp'].apply(lambda x: None if x == 0.0 else x)
+        df['open_feels_like'] = df['open_feels_like'].apply(lambda x: None if x == 0.0 else x)
+        df['open_humidity'] = df['open_humidity'].apply(lambda x: None if x == 0 else x)
+        df['ext_humidex'] = df['ext_humidex'].apply(lambda x: None if x == 0 else x)
+        df['open_pressure'] = df['open_pressure'].apply(lambda x: None if x < 30 else x)
+
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
     # https://www.reddit.com/media?url=https%3A%2F%2Fpreview.redd.it%2F4b4dsqrkc8251.png%3Fwidth%3D478%26format%3Dpng%26auto%3Dwebp%26s%3Df23f16925ebaae75f60c43756dd9f7214dbffa3b
     def create_graph_energy(self) -> None:
         try:
             log.info('create_graph_energy')
             global df
+
+            self.clean_data()
 
             fig, ax1 = plt.subplots()
             ax2 = ax1.twinx()
@@ -390,7 +403,6 @@ class ThermoProGraph:
                 slider_position.valtext.set_text(num2date(val).date())
                 df2: pd.DataFrame = df.set_index(['time'])
                 df2 = df2[num2date(val - DAYS).date():num2date(val + 1).date()].ffill()
-                show_df(df2)
 
                 if len(df2) > 0:
                     window = (
@@ -443,7 +455,6 @@ class ThermoProGraph:
             def reset(val) -> None:
                 log.info(f'reset({val}) -> from: {df['time'][0] - timedelta(hours=1)}, to: {df["time"][df["time"].size - 1] + timedelta(hours=1)}')
                 slider_position.reset()
-                show_df(df)
                 ax1.axis((
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),

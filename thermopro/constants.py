@@ -5,6 +5,10 @@ import sys
 
 HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
 LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
+
+BKP_PATH = f'{LOG_PATH}bkp/'
+BKP_DAYS = 5
+
 POIDS_PRESSION_PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
 LOG_NAME: str = ''
 
@@ -19,38 +23,31 @@ COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_humidex', 'ext_temp', 'ex
                            'open_wind_gust', 'open_wind_speed', 'int_humidity_Acurite-609TXC', 'int_temp_Acurite-609TXC', 'ext_humidity_ThermoPro-TX7B', 'ext_temp_ThermoPro-TX7B']
                       ))
 
-# print(COLUMNS)
-
 OUTPUT_CSV_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.csv"
 OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
-BKP_PATH = f'{POIDS_PRESSION_PATH}bkp/'
-BKP_DAYS = 5
+
 LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
 
-OUTPUT_RTL_433_FILE = f"{POIDS_PRESSION_PATH}rtl_433.json"
+OUTPUT_RTL_433_FILE: str = f"{POIDS_PRESSION_PATH}rtl_433.json"
 # RTL_433_VERSION = '25.02'
 RTL_433_VERSION = 'nightly'
-TIMEOUT = 300
-RTL_433_EXE = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
+TIMEOUT: int = 3 * 60
+RTL_433_EXE_PATH: str = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
+RTL_433_EXE = RTL_433_EXE_PATH[RTL_433_EXE_PATH.rfind('/') + 1:]
 
-SENSORS: dict[str, list[str] | dict[str, dict[str, str]]] = {
-    'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}'],
-    'sensors': {
-        'Acurite-609TXC': {
-            'protocol': '11',
-            'kind': 'int'
-        },
-        'Thermopro-TX2': {
-            'protocol': '162',
-            'kind': 'ext'
+SENSORS2: dict[str, dict[str, list[str | int] | dict[str, str]] | dict[str, list[str] | dict[str, str]]] = {
+    '915': {
+        'args': [RTL_433_EXE_PATH, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-f', '915M', '-Y', 'classic', '-s', '250k'],
+        'sensors': {
+            'ThermoPro-TX7B': 'ext'
         }
-    }
-}
-
-SENSORS_TX7B: dict[str, list[str] | dict[str, dict[str, str]]] = {
-    'args': [RTL_433_EXE, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-f', '915M', '-Y', 'classic', '-s', '250k'],
-    'sensors': {
-        'ThermoPro-TX7B': 'ext'
+    },
+    '433': {
+        'args': [RTL_433_EXE_PATH, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '11', '-R', '162'],
+        'sensors': {
+            'Acurite-609TXC': 'int',
+            'Thermopro-TX2': 'ext'
+        }
     }
 }
 

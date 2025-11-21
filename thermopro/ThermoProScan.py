@@ -161,9 +161,8 @@ class ThermoProScan:
 
             self.set_kwh(kwh_dict, df)
 
-            # self.save_csv(df)
             thermopro.save_json(df)
-            self.save_bkp(df)
+            self.save_bkp()
 
             show_df(df)
         except Exception as ex:
@@ -232,7 +231,7 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    def save_bkp(self, df: DataFrame) -> None:
+    def save_bkp(self) -> None:
         try:
             in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
                                        [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +

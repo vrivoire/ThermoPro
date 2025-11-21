@@ -61,7 +61,7 @@ def load_json() -> DataFrame:
 
         df_conditional_drop = df.drop(df[
                                           (df['time'].dt.minute >= 12) &
-                                          (df['time'].dt.minute <= 59) &
+                                          (df['time'].dt.minute <= 55) &
                                           (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
                                           ].index)
         log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
@@ -71,10 +71,10 @@ def load_json() -> DataFrame:
 
         for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'ext_humidity_Thermopro-TX2', 'ext_humidity_ThermoPro-TX7B',
                     'ext_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon',
-                    'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon']:
+                    'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like']:
             df[col] = df[col].astype('Float64')
             df[col] = df[col].ffill().fillna(0.0)
-        for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'open_feels_like', 'kwh_neviweb', 'int_humidity', 'int_humidity_Acurite-609TXC']:
+        for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity', 'int_humidity_Acurite-609TXC']:
             df[col] = df[col].astype('Int64')
             df[col] = df[col].ffill().fillna(0)
 
@@ -176,6 +176,7 @@ def ppretty(value, tab_char='\t', return_char='\n', indent=0):
 def set_up(log_name: str):
     global LOG_NAME
     LOG_NAME = f'{LOG_PATH}{log_name[log_name.rfind('\\') + 1:len(log_name) - 3]}.log'
+    log_name_error = f'{LOG_PATH}{log_name[log_name.rfind('\\') + 1:len(log_name) - 3]}.error.log'
 
     if not os.path.exists(LOG_PATH):
         os.mkdir(LOG_PATH)
@@ -183,12 +184,19 @@ def set_up(log_name: str):
     file_handler = logging.handlers.TimedRotatingFileHandler(LOG_NAME, when='midnight', interval=1, backupCount=7,
                                                              encoding=None, delay=True, utc=False, atTime=None,
                                                              errors=None)
+    file_handler_error = logging.handlers.TimedRotatingFileHandler(log_name_error, when='midnight', interval=1, backupCount=7,
+                                                                   encoding=None, delay=True, utc=False, atTime=None,
+                                                                   errors=None)
+    file_handler_error.level = logging.ERROR
+
     file_handler.namer = lambda name: name.replace(".log", "") + ".log"
+    file_handler_error.namer = lambda name: name.replace(".log", "") + ".log"
     log.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)-8s] [%(filename)s.%(funcName)s:%(lineno)d] %(message)s",
         handlers=[
             file_handler,
+            file_handler_error,
             logging.StreamHandler()
         ]
     )
