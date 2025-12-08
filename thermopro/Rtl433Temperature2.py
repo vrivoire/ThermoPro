@@ -21,6 +21,102 @@ class Rtl433Temperature2:
     def __init__(self):
         log.info('       ----------------------- Start Rtl433Temperature2 -----------------------')
 
+    def call_rtl_433(self, result_queue: Queue):
+        log.info('-------------------------- call_rtl_433 --------------------------')
+        json_rtl_433: dict[str, Any] = {}
+        ext_humidity_list: list[int] = []
+        ext_temp_list: list[float] = []
+        int_humidity_list: list[int] = []
+        int_temp_list: list[float] = []
+        threads: list[threading.Thread] = []
+
+        try:
+            self.__kill_rtl_433()
+            self.__delete_json_file()
+
+            for freq in SENSORS2:
+                self.__call_sensors(list(SENSORS2[freq]['args']), dict(SENSORS2[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
+
+            self.__get_mean('ext', ext_humidity_list, ext_temp_list, json_rtl_433)
+            self.__get_mean('int', int_humidity_list, int_temp_list, json_rtl_433)
+
+            if json_rtl_433.get('ext_humidity'):
+                json_rtl_433['ext_humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['ext_humidity'])
+            if json_rtl_433.get('int_humidity'):
+                json_rtl_433['int_humidex'] = self.__get_humidex(json_rtl_433['int_temp'], json_rtl_433['int_humidity'])
+
+            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags']:
+                try:
+                    json_rtl_433.pop(item)
+                except KeyError:
+                    pass
+
+            log.info(f'json_rtl_433={json_rtl_433}')
+
+        except Exception as e:
+            log.error(f"An unexpected error occurred: {e}")
+            log.error(traceback.format_exc())
+
+        self.__kill_rtl_433()
+        self.__delete_json_file()
+
+        result_queue.put(json_rtl_433)
+
+        if len(threads) > 0:
+            for thread in threads:
+                thread.join(60)
+            log.info("Threads stopped.")
+
+    def __call_sensors(self, args: list[str | int], sensors: dict[str, str], json_rtl_433: dict[str, Any],
+            ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float],
+            threads: list[threading.Thread]):
+        log.info('-------------------------- __call_sensors --------------------------')
+        log.info(f'args: {args}')
+        log.info(f'sensors: {sensors}')
+        try:
+            self.__kill_rtl_433()
+            self.__delete_json_file()
+
+            thread: threading.Thread = threading.Thread(target=self.__start_rtl_433, args=(args,))
+            thread.start()
+
+            i: int = 0
+            while not os.path.exists(OUTPUT_RTL_433_FILE) and i < 1000:
+                i += 1
+                sleep(0.2)
+            if not os.path.exists(OUTPUT_RTL_433_FILE):
+                raise Exception(f'File not found: {OUTPUT_RTL_433_FILE} and is_rtl_433_alive: {self.__is_rtl_433_alive()} and i: {i}')
+            log.info(f"Found file {OUTPUT_RTL_433_FILE} and is_rtl_433_alive: {self.__is_rtl_433_alive()} and i: {i}")
+
+            with open(OUTPUT_RTL_433_FILE, 'r') as f:
+                f.seek(0, 2)
+                while len(sensors.keys()) != 0 and self.__is_rtl_433_alive():
+                    line = f.readline()
+                    if not line:
+                        sleep(0.1)
+                        continue
+                    else:
+                        data: dict = json.loads(line.strip())
+                        model: str = data['model']
+                        log.info(f'{model}, {sensors.keys()}')
+                        if model in sensors.keys():
+                            log.info(f'>>> data: {data}')
+                            data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
+                            self.__warn_battery(data, threads)
+                            sensors.pop(model)
+                            log.info(f'Removed: {model}')
+                            json_rtl_433.update(data)
+                    if len(sensors.keys()) == 0 or not self.__is_rtl_433_alive():
+                        log.info(f'Done! keys: {sensors.keys()}, is alive: {self.__is_rtl_433_alive()}')
+                        break
+
+        except Exception as e:
+            log.error(f"An unexpected error occurred: {e}")
+            log.error(traceback.format_exc())
+        finally:
+            self.__kill_rtl_433()
+            self.__delete_json_file()
+
     def __is_rtl_433_alive(self) -> bool:
         try:
             completed_process = subprocess.run(
@@ -77,15 +173,16 @@ class Rtl433Temperature2:
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
-        finally:
-            self.__kill_rtl_433()
-            self.__delete_json_file()
+        # finally:
+        #     self.__kill_rtl_433()
+        #     self.__delete_json_file()
+        #     log.error(4)
 
     def __delete_json_file(self):
         if os.path.exists(OUTPUT_RTL_433_FILE):
             try:
                 os.remove(OUTPUT_RTL_433_FILE)
-                log.info(f"{OUTPUT_RTL_433_FILE} deleted.")
+                log.info(f"File {OUTPUT_RTL_433_FILE} deleted.")
             except Exception as ex:
                 log.error(ex)
 
@@ -100,108 +197,13 @@ class Rtl433Temperature2:
             return humidex
         return None
 
-    # https://stackoverflow.com/questions/12523044/how-can-i-tail-a-log-file-in-python
-    def __call_sensors(self, args: list[str | int], sensors: dict[str, str], json_rtl_433: dict[str, Any],
-            ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float],
-            threads: list[threading.Thread]):
-        log.info('-------------------------- __call_sensors --------------------------')
-        log.info(f'args: {args}')
-        log.info(f'sensors: {sensors}')
-        try:
-            self.__kill_rtl_433()
-            self.__delete_json_file()
-            thread: threading.Thread = threading.Thread(target=self.__start_rtl_433, args=(args,))
-            thread.start()
-
-            i: int = 0
-            while not os.path.exists(OUTPUT_RTL_433_FILE) and i < 1000:
-                i += 1
-                sleep(0.2)
-            if not os.path.exists(OUTPUT_RTL_433_FILE):
-                raise Exception(f'File not found: {OUTPUT_RTL_433_FILE} and is_rtl_433_alive: {self.__is_rtl_433_alive()} and i: {i}')
-            log.info(f"Found file {OUTPUT_RTL_433_FILE} and is_rtl_433_alive: {self.__is_rtl_433_alive()} and i: {i}")
-
-            with open(OUTPUT_RTL_433_FILE, 'r') as f:
-                f.seek(0, 2)
-                while len(sensors.keys()) != 0 and self.__is_rtl_433_alive():
-                    line = f.readline()
-                    if not line:
-                        sleep(0.1)
-                        continue
-                    else:
-                        data: dict = json.loads(line.strip())
-                        model: str = data['model']
-                        log.info(f'{model}, {sensors.keys()}')
-                        if model in sensors.keys():
-                            log.info(f'>>> data: {data}')
-                            data = self.fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
-                            self.warn_battery(data, threads)
-                            sensors.pop(model)
-                            log.info(f'Removed: {model}')
-                            json_rtl_433.update(data)
-                    if len(sensors.keys()) == 0 or not self.__is_rtl_433_alive():
-                        log.info(f'Done! keys: {sensors.keys()}, is alive: {self.__is_rtl_433_alive()}')
-                        self.__kill_rtl_433()
-                        self.__delete_json_file()
-                        break
-
-        except Exception as e:
-            log.error(f"An unexpected error occurred: {e}")
-            log.error(traceback.format_exc())
-        finally:
-            self.__kill_rtl_433()
-            self.__delete_json_file()
-
-    def call_rtl_433(self, result_queue: Queue):
-        log.info('-------------------------- call_rtl_433 --------------------------')
-        json_rtl_433: dict[str, Any] = {}
-        ext_humidity_list: list[int] = []
-        ext_temp_list: list[float] = []
-        int_humidity_list: list[int] = []
-        int_temp_list: list[float] = []
-        threads: list[threading.Thread] = []
-
-        try:
-            for freq in SENSORS2:
-                self.__call_sensors(list(SENSORS2[freq]['args']), dict(SENSORS2[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
-
-            self.get_mean('ext', ext_humidity_list, ext_temp_list, json_rtl_433)
-            self.get_mean('int', int_humidity_list, int_temp_list, json_rtl_433)
-
-            if json_rtl_433.get('ext_humidity'):
-                json_rtl_433['ext_humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['ext_humidity'])
-            if json_rtl_433.get('int_humidity'):
-                json_rtl_433['int_humidex'] = self.__get_humidex(json_rtl_433['int_temp'], json_rtl_433['int_humidity'])
-
-            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags']:
-                try:
-                    json_rtl_433.pop(item)
-                except KeyError:
-                    pass
-
-            log.info(f'json_rtl_433={json_rtl_433}')
-
-        except Exception as e:
-            log.error(f"An unexpected error occurred: {e}")
-            log.error(traceback.format_exc())
-
-        self.__kill_rtl_433()
-        self.__delete_json_file()
-
-        result_queue.put(json_rtl_433)
-
-        if len(threads) > 0:
-            for thread in threads:
-                thread.join(60)
-            log.info("Threads stopped.")
-
-    def warn_battery(self, data1: dict, threads: list[threading.Thread]):
+    def __warn_battery(self, data1: dict, threads: list[threading.Thread]):
         if data1.get('battery_ok') == 0 and datetime.now().strftime("%H") == '00':
             thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Sensor {data1.get('model')}'s battery is weak...", "RTL 433 Warning", 0x30))
             thread.start()
             threads.append(thread)
 
-    def fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
+    def __fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
         data[f'{kind}_temp_{data['model']}'] = data['temperature_C']
         data[f'{kind}_humidity_{data['model']}'] = data['humidity'] if data.get('humidity') else None
 
@@ -213,7 +215,7 @@ class Rtl433Temperature2:
             int_humidity_list.append(data['humidity']) if data.get('humidity') else None
         return data
 
-    def get_mean(self, kind: str, humidity_list: list[int], temp_list: list[float], json_rtl_433: dict[str, Any]):
+    def __get_mean(self, kind: str, humidity_list: list[int], temp_list: list[float], json_rtl_433: dict[str, Any]):
         temp: float | None = None
         if len(temp_list) > 0:
             temp: float = min(temp_list)

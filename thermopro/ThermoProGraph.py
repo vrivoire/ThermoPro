@@ -3,6 +3,7 @@
 import ctypes
 import math
 import sys
+import tkinter
 import traceback
 from collections.abc import Sequence
 from datetime import timedelta
@@ -19,8 +20,14 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import CheckButtons, Slider, Button
 
 import thermopro
-from constants import MIN_HPA, MAX_HPA, DAYS
-from thermopro import log, show_df
+from constants import MIN_HPA, MAX_HPA, MEAN
+from thermopro import log
+from thermopro.Tooltip import Tooltip
+
+root = tkinter.Tk()
+SCREEN_WIDTH: int = root.winfo_screenwidth()
+SCREEN_HEIGHT: int = root.winfo_screenheight()
+root.destroy()
 
 
 class ThermoProGraph:
@@ -31,12 +38,13 @@ class ThermoProGraph:
         global df
         df = thermopro.load_json()
         self.clean_data()
-        show_df(df)
+        # show_df(df)
 
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
     def create_graph_temperature(self) -> None:
         try:
             log.info('create_graph_temperature')
+            plt.ion()
 
             fig, ax1 = plt.subplots()
             ax2 = ax1.twinx()
@@ -69,10 +77,10 @@ class ThermoProGraph:
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
 
-            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
-            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
-            mean_ext_humidity, = ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='Mean ext %')
-            mean_int_humidity, = ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_humidity'].mean(), color='xkcd:dark blue', alpha=0.3, label='Mean int %')
+            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
+            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
+            mean_ext_humidity, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='Mean ext %')
+            mean_int_humidity, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['int_humidity'].mean(), color='xkcd:dark blue', alpha=0.3, label='Mean int %')
 
             # https://mplcursors.readthedocs.io/en/stable/index.html
             mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
@@ -90,6 +98,9 @@ class ThermoProGraph:
             mplcursors.cursor(mean_int_humidity, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
+            mplcursors.cursor(int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
 
             plt.axhline(0, linewidth=0.5, color='black', zorder=-10)
 
@@ -98,7 +109,7 @@ class ThermoProGraph:
                     f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
                     + f"{int(df['ext_humidity'][len(df['ext_humidity']) - 1])}%, Humidex: {(df['ext_humidex'][len(df['ext_humidex']) - 1])}, " \
                     + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {int(df['open_humidity'][len(df['open_humidity']) - 1])}%, Open Humidex: {int(df['open_feels_like'][len(df['open_feels_like']) - 1])}, " \
-                    + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {int(DAYS)} days', fontsize=10)
+                    + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {int(MEAN)} days', fontsize=10)
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
@@ -112,14 +123,6 @@ class ThermoProGraph:
                 wspace=0.198,
                 hspace=0.202
             )
-
-            def on_click(event: MouseEvent):
-                print(type(event))
-                print(event)
-                if event.button == 1:  # Left mouse button
-                    print(f"Clicked at data coordinates: x={event.xdata}, y={event.ydata}")
-
-            fig.canvas.mpl_connect('button_press_event', on_click)
 
             def on_check_clicked(label):
                 line: Line2D | None = None
@@ -146,8 +149,8 @@ class ThermoProGraph:
             lines_label: Sequence[str] = [str(line.get_label()) for line in all_lines]
             lines_colors: Sequence[str] = [line.get_color() for line in all_lines]
             lines_actives: Sequence[bool] = [line.get_visible() for line in all_lines]
-            check = CheckButtons(
-                ax=ax1.inset_axes((0.0, 0.0, 0.1, 0.3), zorder=-10),
+            check: CheckButtons = CheckButtons(
+                ax=ax1.inset_axes((0.0, 0.0, 0.06, 0.3), zorder=-10),
                 labels=lines_label,
                 actives=lines_actives,
                 label_props={'color': lines_colors},
@@ -156,12 +159,19 @@ class ThermoProGraph:
             )
             check.on_clicked(on_check_clicked)
 
+            def on_click(event: MouseEvent) -> None:
+                if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
+                    tooltip: Tooltip = Tooltip()
+                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+
+            fig.canvas.mpl_connect('button_press_event', on_click)
+
             def on_changed(val):
                 slider_position.valtext.set_text(num2date(val).date())
                 df2: pd.DataFrame = df.set_index(['time'])
-                df2 = df2[num2date(val - DAYS).date():num2date(val + DAYS).date()]
+                df2 = df2[num2date(val - MEAN).date():num2date(val + MEAN).date()]
                 window = (
-                    val - DAYS,
+                    val - MEAN,
                     val + 0.1,
                     0,
                     100
@@ -172,7 +182,7 @@ class ThermoProGraph:
                 ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
                 window2 = (
-                    val - DAYS,
+                    val - MEAN,
                     val + 0.1,
                     min(
                         df2['ext_temp'].min(numeric_only=True),
@@ -279,7 +289,11 @@ class ThermoProGraph:
             fig.canvas.manager.set_window_title('ThermoPro Temperature')
             mng = plt.get_current_fig_manager()
             mng.window.state('zoomed')
+
+            plt.draw()
+            plt.ioff()
             plt.show()
+            # plt.ioff()
 
         except Exception as ex:
             log.error(ex)
@@ -295,8 +309,6 @@ class ThermoProGraph:
         df['ext_humidex'] = df['ext_humidex'].apply(lambda x: None if x == 0 else x)
         df['open_pressure'] = df['open_pressure'].apply(lambda x: None if x < 30 else x)
 
-    # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
-    # https://www.reddit.com/media?url=https%3A%2F%2Fpreview.redd.it%2F4b4dsqrkc8251.png%3Fwidth%3D478%26format%3Dpng%26auto%3Dwebp%26s%3Df23f16925ebaae75f60c43756dd9f7214dbffa3b
     def create_graph_energy(self) -> None:
         try:
             log.info('create_graph_energy')
@@ -307,7 +319,7 @@ class ThermoProGraph:
             fig, ax1 = plt.subplots()
             ax2 = ax1.twinx()
 
-            ax1.set_ylabel('KWh', color='xkcd:royal blue')  # we already handled the x-label with ax1
+            ax1.set_ylabel('KWh', color='xkcd:grey')  # we already handled the x-label with ax1
             ax1.grid(axis='y', color='gray', linewidth=0.2)
             ax1.set_yticks(list(range(0, math.ceil(df['kwh_hydro_quebec'].max(numeric_only=True)))), minor=True)
             kwh_hydro_quebec, = ax1.plot(df["time"], (df["kwh_hydro_quebec"]), color='xkcd:grey', label='Hydro KWh')
@@ -330,10 +342,10 @@ class ThermoProGraph:
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
 
-            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
-            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
-            mean_kwh_hydro_quebec, = ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['kwh_hydro_quebec'].mean(), color='xkcd:medium grey', alpha=0.3, label='Mean Hydo KWh')
-            mean_kwh_neviweb, = ax1.plot(df["time"], df.rolling(window=f'{DAYS}D', on='time')['kwh_neviweb'].mean(), color='xkcd:medium gray', alpha=0.3, label='Mean Nevi KWh')
+            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
+            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
+            mean_kwh_hydro_quebec, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['kwh_hydro_quebec'].mean(), color='xkcd:medium grey', alpha=0.3, label='Mean Hydo KWh')
+            mean_kwh_neviweb, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['kwh_neviweb'].mean(), color='xkcd:medium gray', alpha=0.3, label='Mean Nevi KWh')
 
             plt.axhline(0, linewidth=0.5, color='black', zorder=-10)
 
@@ -341,7 +353,7 @@ class ThermoProGraph:
                 plt.title(
                     f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
                     + f"Open: {round(df['open_temp'][len(df['open_temp']) - 1], 2)}°C, Hydro: {df['kwh_hydro_quebec'][df['kwh_hydro_quebec'].last_valid_index()]}KWh, Nevi: {df['kwh_neviweb'][df['kwh_neviweb'].last_valid_index()]}KWh" \
-                    + f', Rolling x̄: {int(DAYS)} days', fontsize=10)
+                    + f', Rolling x̄: {int(MEAN)} days', fontsize=10)
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
@@ -388,8 +400,8 @@ class ThermoProGraph:
                     lines_colors.append(line.get_color())
                     lines_actives.append(line.get_visible())
             lines_label: list[str] = [str(line.get_label()) for line in all_lines]
-            check = CheckButtons(
-                ax=ax1.inset_axes((0.0, 0.0, 0.1, 0.3), zorder=-10),
+            check: CheckButtons = CheckButtons(
+                ax=ax1.inset_axes((0.0, 0.0, 0.07, 0.3), zorder=-10),
                 labels=lines_label,
                 actives=lines_actives,
                 label_props={'color': lines_colors},
@@ -398,15 +410,22 @@ class ThermoProGraph:
             )
             check.on_clicked(on_clicked)
 
+            def on_click(event: MouseEvent) -> None:
+                if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
+                    tooltip: Tooltip = Tooltip()
+                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+
+            fig.canvas.mpl_connect('button_press_event', on_click)
+
             def on_changed(val):
-                log.info(f'on_changed({num2date(val)}) -> from: {num2date(val - DAYS).date()}, to: {num2date(val + 1).date()}')
+                log.info(f'on_changed({num2date(val)}) -> from: {num2date(val - MEAN).date()}, to: {num2date(val + 1).date()}')
                 slider_position.valtext.set_text(num2date(val).date())
                 df2: pd.DataFrame = df.set_index(['time'])
-                df2 = df2[num2date(val - DAYS).date():num2date(val + 1).date()].ffill()
+                df2 = df2[num2date(val - MEAN).date():num2date(val + 1).date()].ffill()
 
                 if len(df2) > 0:
                     window = (
-                        val - DAYS,
+                        val - MEAN,
                         val + 0.1,
                         0,
                         math.ceil(max(df2['kwh_hydro_quebec']) * 10 if len(df2['kwh_hydro_quebec']) > 0 else 0.0) / 10
@@ -422,7 +441,7 @@ class ThermoProGraph:
                     ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
                     window2 = (
-                        val - DAYS,
+                        val - MEAN,
                         val + 0.1,
                         min(
                             df2['ext_temp'].min(numeric_only=True, skipna=True),
@@ -518,6 +537,9 @@ class ThermoProGraph:
             button.on_clicked(reset)
             slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
+            mplcursors.cursor(int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
             mplcursors.cursor(mean_ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
@@ -549,6 +571,7 @@ if __name__ == '__main__':
     thermopro.set_up(__file__)
     thermoProGraph: ThermoProGraph = ThermoProGraph()
     # thermoProGraph.create_graph_energy()
+    # exit()
     if len(sys.argv) == 2:
         arg = sys.argv[1]
         log.info(f"The command line argument is: {arg}")

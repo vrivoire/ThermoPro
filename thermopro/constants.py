@@ -51,7 +51,8 @@ SENSORS2: dict[str, dict[str, list[str | int] | dict[str, str]] | dict[str, list
     }
 }
 
-DAYS = 30.437  # https://www.britannica.com/science/time/Standard-time
+DAYS_PER_MONTH = 30.437  # https://www.britannica.com/science/time/Standard-time
+MEAN = DAYS_PER_MONTH
 
 OPEN_LAT = 45.509  # Montreal
 OPEN_LON = -73.588  # Montreal

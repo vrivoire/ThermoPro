@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <title>ThermoPro</title>
+    <style>
+        #weather-widget {
+			border: 1px solid;
+			color: #80808061;
+			width: 300px;
+			background: #80808036;
+			padding: 3px;
+			position: relative;
+			font-family: Space Grotesk,Arial,sans-serif;
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+			color: #48484a;
+			width: 19em;
+			margin: 0;
+			padding: 0;
+		}
+        .current-temp {
+            display: flex;
+            align-items: center;
+            justify-content: left;
+            flex-direction: row;
+            white-space: nowrap;
+            box-sizing: border-box;
+            font-size: 36px;
+            font-weight: 100;
+            margin-right: 8pt;
+        }
+        .weather-items {
+            font-size: 15px;
+            list-style: none;
+            line-height: 20px;
+            border-left: 1px solid #eb6e4b;
+            max-width: 60em;
+            padding-left: 16pt;
+            padding-right: 16pt;
+            margin-top: 4pt;
+            margin-bottom: 0;
+            box-sizing: border-box;
+            margin-right: 1pt;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+<div id="weather-widget">
+    <span style="color: #eb6e4b;display: block;text-align: center;font-weight: bold;margin-top: 1em;">06 November 2025 21:01</span>
+    <span class="current-temp"><img loading="eager" src="https://openweathermap.org/img/wn/03n@2x.png">&nbsp;0.2&deg;C</span>
+    <div style="font-weight: 700;padding-left: 10px;">
+        <span title="Humidex: 0&deg;C.">Feels like -3.0&deg;C</span><br>
+        Clouds, scattered clouds
+    </div>
+
+    <ul class="weather-items">
+
+        <li>&#127811;4.12m/s (0.0m/s) <span title="290&deg;">&#129104; WNW</span>
+            &#128167;63%
+        </li>
+        <li>1018hPa &nbsp; &#128065; 10.00Km &nbsp; UV: 0.00
+        </li>
+    </ul>
+    <hr>
+    <ul class="weather-items">
+        <li>
+            <span title="Mean: 0.582 KWh"><img loading="eager" src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Hydro-Qu%C3%A9bec_logo.svg" width="50"> 0.39 KWh</span>&nbsp;
+            <img loading="eager" src="https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/7b/9b/75/7b9b754b-cc8c-5a36-3468-9ea5838af4ab/AppIcon-0-0-1x_U007epad-0-1-0-85-220.jpeg/200x200ia-75.webp" width="20"> 0.00 KWh
+        </li>
+        <li><span style="color:black" title="">&#127777; &#127968; 18.5&deg;C &nbsp; &#128167; 32%</span>
+        </li>
+        <li>&#128186; 18.12&deg;C &nbsp; &#128719; 18.21&deg;C</li>
+        <li>&#128704; 18.86&deg;C &nbsp; &#128715; 19.62&deg;C</li>
+    </ul>
+</div>
+</body>
+</html>

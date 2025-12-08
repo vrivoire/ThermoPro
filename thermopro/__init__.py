@@ -1,3 +1,4 @@
+import json
 import logging as log
 import logging.handlers
 import os.path
@@ -150,27 +151,29 @@ def ping(name: str):
 
 
 def ppretty(value, tab_char='\t', return_char='\n', indent=0):
-    nlch: str = return_char + tab_char * (indent + 1)
-    if type(value) is dict:
-        items = [
-            nlch + repr(key) + ': ' + ppretty(value[key], tab_char, return_char, indent + 1)
-            for key in value
-        ]
-        return '{%s}' % (','.join(items) + return_char + tab_char * indent)
-    elif type(value) is list:
-        items = [
-            nlch + ppretty(item, tab_char, return_char, indent + 1)
-            for item in value
-        ]
-        return '[%s]' % (','.join(items) + return_char + tab_char * indent)
-    elif type(value) is tuple:
-        items = [
-            nlch + ppretty(item, tab_char, return_char, indent + 1)
-            for item in value
-        ]
-        return '(%s)' % (','.join(items) + return_char + tab_char * indent)
-    else:
-        return repr(value)
+    return json.dumps(value, indent=4, sort_keys=True, default=str)
+    # nlch: str = return_char + tab_char * (indent + 1)
+    # if type(value) is dict:
+    #     value = sorted(dict(value.items()), key=lambda item: item[0].lower())
+    #     items = [
+    #         nlch + repr(key) + ': ' + ppretty(value[key], tab_char, return_char, indent + 1)
+    #         for key in value
+    #     ]
+    #     return '{%s}' % (','.join(items) + return_char + tab_char * indent)
+    # elif type(value) is list:
+    #     items = [
+    #         nlch + ppretty(item, tab_char, return_char, indent + 1)
+    #         for item in value
+    #     ]
+    #     return '[%s]' % (','.join(items) + return_char + tab_char * indent)
+    # elif type(value) is tuple:
+    #     items = [
+    #         nlch + ppretty(item, tab_char, return_char, indent + 1)
+    #         for item in value
+    #     ]
+    #     return '(%s)' % (','.join(items) + return_char + tab_char * indent)
+    # else:
+    #     return repr(value)
 
 
 def set_up(log_name: str):

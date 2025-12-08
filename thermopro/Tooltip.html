@@ -22,7 +22,7 @@
         .current-temp {
             display: flex;
             align-items: center;
-            justify-content: left;
+            justify-content: center;
             flex-direction: row;
             white-space: nowrap;
             box-sizing: border-box;
@@ -48,7 +48,7 @@
 </head>
 <body>
 <div id="weather-widget">
-    <span style="color: #eb6e4b;">{{time.strftime('%d %B %Y %H:%M')}}</span>
+    <span style="color: #eb6e4b;display: block;text-align: center;font-weight: bold;margin-top: 1em;">{{time.strftime('%d %B %Y %H:%M')}}</span>
     <span class="current-temp"><img loading="eager" src="https://openweathermap.org/img/wn/{{open_icon}}@2x.png">&nbsp;{{"%.1f" | format(ext_temp)}}&deg;C</span>
     <div style="font-weight: 700;padding-left: 10px;">
         <span title="Humidex: {{ext_humidex}}&deg;C.">Feels like {{open_feels_like}}&deg;C</span><br>
@@ -76,7 +76,7 @@
     <hr>
     <ul class="weather-items">
         <li>
-            <span title="Mean: {{mean_kwh_hydro_quebec}} KWh"><img loading="eager" src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Hydro-Qu%C3%A9bec_logo.svg" width="50"> {{"%.2f" | format(last_kwh_hydro_quebec)}} KWh</span>&nbsp;
+            <span title="Mean: {{mean_kwh_hydro_quebec}} KWh"><img loading="eager" src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Hydro-Qu%C3%A9bec_logo.svg" width="50"> {{"%.2f" | format(kwh_hydro_quebec)}} KWh</span>&nbsp;
             <img loading="eager" src="https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/7b/9b/75/7b9b754b-cc8c-5a36-3468-9ea5838af4ab/AppIcon-0-0-1x_U007epad-0-1-0-85-220.jpeg/200x200ia-75.webp" width="20"> {{"%.2f" | format(kwh_neviweb)}} KWh
         </li>
         <li><span style="color:{{comfort_color}}" title="{{comfort_text}}">&#127777; &#127968; {{int_temp}}&deg;C &nbsp; &#128167; {{int_humidity}}%</span>
