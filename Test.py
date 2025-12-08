@@ -1,37 +1,77 @@
+# Source - https://stackoverflow.com/a/6697555
+# Posted by Joe Kington, modified by community. See post 'Timeline' for change history
+# Retrieved 2025-12-08, License - CC BY-SA 4.0
+
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.widgets import Slider, Button, RadioButtons
+from numpy import pi, sin
 
 
-def on_click(event):
-    """Callback function to handle mouse clicks."""
-    if event.inaxes:  # Check if the click was within an Axes
-        # Get the Axes object where the click occurred
-        ax = event.inaxes
-
-        # Check if the click is near the x-axis
-        # This is a simplified check; you might need more robust logic
-        # depending on your specific needs (e.g., considering tick labels, etc.)
-        if ax == plt.gca() and abs(event.ydata - ax.get_ylim()[0]) < 0.1 * (ax.get_ylim()[1] - ax.get_ylim()[0]):
-            print(f"Clicked on x-axis at x-coordinate: {event.xdata:.2f}")
-        else:
-            print(f"Clicked within Axes, but not specifically on x-axis. X: {event.xdata:.2f}, Y: {event.ydata:.2f}")
-    else:
-        print("Clicked outside any Axes.")
+def signal(amp, freq):
+    return amp * sin(2 * pi * freq * t)
 
 
-# Create a figure and axes
-fig, ax = plt.subplots()
+axis_color = 'lightgoldenrodyellow'
 
-# Plot some data
-x = np.linspace(0, 10, 100)
-y = np.sin(x)
-ax.plot(x, y)
+fig = plt.figure()
+ax = fig.add_subplot(111)
 
-ax.set_xlabel("X-axis Label")
-ax.set_ylabel("Y-axis Label")
-ax.set_title("Click on X-axis Example")
+# Adjust the subplots region to leave some space for the sliders and buttons
+fig.subplots_adjust(left=0.25, bottom=0.25)
 
-# Connect the callback function to the button_press_event
-fig.canvas.mpl_connect('button_press_event', on_click)
+t = np.arange(0.0, 1.0, 0.001)
+amp_0 = 5
+freq_0 = 3
+
+# Draw the initial plot
+# The 'line' variable is used for modifying the line later
+[line] = ax.plot(t, signal(amp_0, freq_0), linewidth=2, color='red')
+ax.set_xlim([0, 1])
+ax.set_ylim([-10, 10])
+
+# Add two sliders for tweaking the parameters
+
+# Define an axes area and draw a slider in it
+amp_slider_ax = fig.add_axes([0.25, 0.15, 0.65, 0.03], facecolor=axis_color)
+amp_slider = Slider(amp_slider_ax, 'Amp', 0.1, 10.0, valinit=amp_0)
+
+# Draw another slider
+freq_slider_ax = fig.add_axes([0.25, 0.1, 0.65, 0.03], facecolor=axis_color)
+freq_slider = Slider(freq_slider_ax, 'Freq', 0.1, 30.0, valinit=freq_0)
+
+
+# Define an action for modifying the line when any slider's value changes
+def sliders_on_changed(val):
+    line.set_ydata(signal(amp_slider.val, freq_slider.val))
+    fig.canvas.draw_idle()
+
+
+amp_slider.on_changed(sliders_on_changed)
+freq_slider.on_changed(sliders_on_changed)
+
+# Add a button for resetting the parameters
+reset_button_ax = fig.add_axes([0.8, 0.025, 0.1, 0.04])
+reset_button = Button(reset_button_ax, 'Reset', color=axis_color, hovercolor='0.975')
+
+
+def reset_button_on_clicked(mouse_event):
+    freq_slider.reset()
+    amp_slider.reset()
+
+
+reset_button.on_clicked(reset_button_on_clicked)
+
+# Add a set of radio buttons for changing color
+color_radios_ax = fig.add_axes([0.025, 0.5, 0.15, 0.15], facecolor=axis_color)
+color_radios = RadioButtons(color_radios_ax, ('red', 'blue', 'green'), active=0)
+
+
+def color_radios_on_clicked(label):
+    line.set_color(label)
+    fig.canvas.draw_idle()
+
+
+color_radios.on_clicked(color_radios_on_clicked)
 
 plt.show()

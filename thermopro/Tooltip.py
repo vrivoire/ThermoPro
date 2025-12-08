@@ -13,7 +13,7 @@ from pandas import DataFrame
 
 import thermopro
 from thermopro import log
-from thermopro.constants import MEAN
+from thermopro.constants import DAYS_PER_MONTH
 
 COMFORT_MATRIX = '''%,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43
 100,blue,green,green,green,green,yellow,yellow,yellow,yellow,orange,orange,orange,red,red,,,,,,,,,
@@ -170,7 +170,7 @@ class Tooltip:
         return f"&#{arr[(val % 8)]}; {s}"
 
     # https://www.google.com/search?q=python+matplotlib.pyplot+plot+behind+webview+window&sca_esv=43ccaf06e6065102&sxsrf=AE3TifOwqr8gxh3r1DkDhvg6hhFK6rUphg%3A1763825350701&ei=xtYhaZHGKpu-0PEP4c3ZwQ0&ved=0ahUKEwiRweW7iYaRAxUbHzQIHeFmNtgQ4dUDCBE&uact=5&oq=python+matplotlib.pyplot+plot+behind+webview+window&gs_lp=Egxnd3Mtd2l6LXNlcnAiM3B5dGhvbiBtYXRwbG90bGliLnB5cGxvdCBwbG90IGJlaGluZCB3ZWJ2aWV3IHdpbmRvdzIEECEYFUieZVCODFjWY3ABeAGQAQCYAcgBoAHEFqoBBjAuMTguMbgBA8gBAPgBAZgCEqAC3RTCAgoQABiwAxjWBBhHwgIIEAAYgAQYogTCAgUQABjvBcICChAhGKABGMMEGArCAggQIRigARjDBJgDAIgGAZAGCJIHBjEuMTYuMaAH_DGyBwYwLjE2LjG4B9kUwgcEMTQuNMgHEA&sclient=gws-wiz-serp
-    def render(self, df: DataFrame, xdata: float, x: int, y: int, SCREEN_WIDTH: int, SCREEN_HEIGHT: int):
+    def render(self, df: DataFrame, xdata: float, x: int, y: int, SCREEN_WIDTH: int, SCREEN_HEIGHT: int, mean: int):
         log.info(f'xdata: {xdata}, x: {x}, y: {y}')
 
         x = x if (SCREEN_WIDTH - WIDTH) > x else SCREEN_WIDTH - WIDTH
@@ -185,7 +185,7 @@ class Tooltip:
             comfort = self.get_matrix(int(data['int_temp']), data['int_humidity'])
             data['comfort_color'] = comfort[0]
             data['comfort_text'] = comfort[1]
-            data['mean_kwh_hydro_quebec'] = round(df.rolling(window=f'{MEAN}D', on='time')['kwh_hydro_quebec'].mean().iloc[-1], 3)
+            data['mean_kwh_hydro_quebec'] = round(df.rolling(window=f'{mean}D', on='time')['kwh_hydro_quebec'].mean().iloc[-1], 3)
             data['int_humidity'] = data['int_humidity'] if not math.isnan(data.get('int_humidity')) else 0
             data['open_rain'] = data['open_rain'] if not data.get('open_rain') is None else 0.0
             data['open_snow'] = data['open_snow'] if not data.get('open_snow') is None else 0.0
@@ -214,4 +214,4 @@ if __name__ == '__main__':
     SCREEN_HEIGHT: int = root.winfo_screenheight()
     root.destroy()
     tooltip: Tooltip = Tooltip()
-    tooltip.render(thermopro.load_json(), 20398.893382950886, 1347, 967, SCREEN_WIDTH, SCREEN_HEIGHT)
+    tooltip.render(thermopro.load_json(), 20398.893382950886, 1347, 967, SCREEN_WIDTH, SCREEN_HEIGHT, DAYS_PER_MONTH)

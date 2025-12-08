@@ -24,7 +24,7 @@ from pandas import DataFrame
 import thermopro
 from constants import WEATHER_URL, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, BKP_DAYS, POIDS_PRESSION_PATH
 from thermopro import log, show_df
-from thermopro.HydroQuébec import HydroQuébec
+from thermopro.HydroQuébecPower import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
 

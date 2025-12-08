@@ -20,7 +20,7 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import CheckButtons, Slider, Button
 
 import thermopro
-from constants import MIN_HPA, MAX_HPA, MEAN
+from constants import MIN_HPA, MAX_HPA, DAYS_PER_MONTH
 from thermopro import log
 from thermopro.Tooltip import Tooltip
 
@@ -44,7 +44,11 @@ class ThermoProGraph:
     def create_graph_temperature(self) -> None:
         try:
             log.info('create_graph_temperature')
-            plt.ion()
+
+            global df
+            self.clean_data()
+
+            mean: int = DAYS_PER_MONTH
 
             fig, ax1 = plt.subplots()
             ax2 = ax1.twinx()
@@ -77,10 +81,10 @@ class ThermoProGraph:
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
 
-            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
-            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
-            mean_ext_humidity, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='Mean ext %')
-            mean_int_humidity, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['int_humidity'].mean(), color='xkcd:dark blue', alpha=0.3, label='Mean int %')
+            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
+            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
+            mean_ext_humidity, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='Mean ext %')
+            mean_int_humidity, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_humidity'].mean(), color='xkcd:dark blue', alpha=0.3, label='Mean int %')
 
             # https://mplcursors.readthedocs.io/en/stable/index.html
             mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
@@ -109,7 +113,7 @@ class ThermoProGraph:
                     f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
                     + f"{int(df['ext_humidity'][len(df['ext_humidity']) - 1])}%, Humidex: {(df['ext_humidex'][len(df['ext_humidex']) - 1])}, " \
                     + f"Open: {df['open_temp'][len(df['open_temp']) - 1]}°C, Open: {int(df['open_humidity'][len(df['open_humidity']) - 1])}%, Open Humidex: {int(df['open_feels_like'][len(df['open_feels_like']) - 1])}, " \
-                    + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa, Rolling x̄: {int(MEAN)} days', fontsize=10)
+                    + f'Pressure: {int(df['open_pressure'][len(df['open_pressure']) - 1])} hPa', fontsize=10)
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
@@ -162,16 +166,16 @@ class ThermoProGraph:
             def on_click(event: MouseEvent) -> None:
                 if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
                     tooltip: Tooltip = Tooltip()
-                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT, mean)
 
             fig.canvas.mpl_connect('button_press_event', on_click)
 
             def on_changed(val):
-                slider_position.valtext.set_text(num2date(val).date())
+                slider_date.valtext.set_text(num2date(val).date())
                 df2: pd.DataFrame = df.set_index(['time'])
-                df2 = df2[num2date(val - MEAN).date():num2date(val + MEAN).date()]
+                df2 = df2[num2date(val - mean).date():num2date(val + mean).date()]
                 window = (
-                    val - MEAN,
+                    val - mean,
                     val + 0.1,
                     0,
                     100
@@ -182,7 +186,7 @@ class ThermoProGraph:
                 ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
                 window2 = (
-                    val - MEAN,
+                    val - mean,
                     val + 0.1,
                     min(
                         df2['ext_temp'].min(numeric_only=True),
@@ -220,7 +224,7 @@ class ThermoProGraph:
                 fig.canvas.draw_idle()
 
             def reset(event) -> None:
-                slider_position.reset()
+                slider_date.reset()
                 ax1.axis((
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
@@ -268,23 +272,45 @@ class ThermoProGraph:
                     1)))
                 fig.canvas.draw_idle()
 
-            slider_position = Slider(
+            def on_changed_mean(val):
+                mean_ext_temp.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['ext_temp'].mean())
+                mean_int_temp.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['int_temp'].mean())
+                mean_ext_humidity.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['ext_humidity'].mean())
+                mean_int_humidity.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['int_humidity'].mean())
+
+            slider_mean = Slider(
+                plt.axes(
+                    (0.08, 0.03, 0.73, 0.03),  # (left, bottom, width, height)
+                    facecolor='gray'
+                ),
+                'Mean',
+                1,
+                int(DAYS_PER_MONTH),
+                valstep=1,
+                color='gray',
+                initcolor='none',
+            )
+            slider_mean.valtext.set_text(int(DAYS_PER_MONTH))
+            slider_mean.set_val(int(DAYS_PER_MONTH))
+            slider_mean.on_changed(on_changed_mean)
+
+            slider_date = Slider(
                 plt.axes(
                     (0.08, 0.01, 0.73, 0.03),
-                    facecolor='White'
+                    facecolor='gray'
                 ),
                 'Date',
                 date2num(df["time"][0]),
                 date2num(df['time'][len(df['time']) - 1]),
                 valstep=1,
-                color='w',
+                color='gray',
                 initcolor='none',
             )
-            slider_position.valtext.set_text(df["time"][0].date())
-            slider_position.on_changed(on_changed)
+            slider_date.valtext.set_text(df["time"][0].date())
+            slider_date.on_changed(on_changed)
             button = Button(fig.add_axes((0.9, 0.01, 0.055, 0.03)), 'Reset', hovercolor='0.975')
             button.on_clicked(reset)
-            slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
+            slider_date.set_val(date2num(df['time'][len(df['time']) - 1]))
 
             fig.canvas.manager.set_window_title('ThermoPro Temperature')
             mng = plt.get_current_fig_manager()
@@ -312,9 +338,11 @@ class ThermoProGraph:
     def create_graph_energy(self) -> None:
         try:
             log.info('create_graph_energy')
-            global df
 
+            global df
             self.clean_data()
+
+            mean: int = DAYS_PER_MONTH
 
             fig, ax1 = plt.subplots()
             ax2 = ax1.twinx()
@@ -342,18 +370,18 @@ class ThermoProGraph:
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
 
-            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
-            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
-            mean_kwh_hydro_quebec, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['kwh_hydro_quebec'].mean(), color='xkcd:medium grey', alpha=0.3, label='Mean Hydo KWh')
-            mean_kwh_neviweb, = ax1.plot(df["time"], df.rolling(window=f'{MEAN}D', on='time')['kwh_neviweb'].mean(), color='xkcd:medium gray', alpha=0.3, label='Mean Nevi KWh')
+            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
+            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
+            mean_kwh_hydro_quebec, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['kwh_hydro_quebec'].mean(), color='xkcd:medium grey', alpha=0.3, label='Mean Hydo KWh')
+            mean_kwh_neviweb, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['kwh_neviweb'].mean(), color='xkcd:medium gray', alpha=0.3, label='Mean Nevi KWh')
 
             plt.axhline(0, linewidth=0.5, color='black', zorder=-10)
 
             try:
                 plt.title(
                     f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
-                    + f"Open: {round(df['open_temp'][len(df['open_temp']) - 1], 2)}°C, Hydro: {df['kwh_hydro_quebec'][df['kwh_hydro_quebec'].last_valid_index()]}KWh, Nevi: {df['kwh_neviweb'][df['kwh_neviweb'].last_valid_index()]}KWh" \
-                    + f', Rolling x̄: {int(MEAN)} days', fontsize=10)
+                    + f"Open: {round(df['open_temp'][len(df['open_temp']) - 1], 2)}°C, Hydro: {df['kwh_hydro_quebec'][df['kwh_hydro_quebec'].last_valid_index()]}KWh, Nevi: {df['kwh_neviweb'][df['kwh_neviweb'].last_valid_index()]}KWh",
+                    fontsize=10)
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
@@ -413,19 +441,19 @@ class ThermoProGraph:
             def on_click(event: MouseEvent) -> None:
                 if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
                     tooltip: Tooltip = Tooltip()
-                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT, mean)
 
             fig.canvas.mpl_connect('button_press_event', on_click)
 
             def on_changed(val):
-                log.info(f'on_changed({num2date(val)}) -> from: {num2date(val - MEAN).date()}, to: {num2date(val + 1).date()}')
-                slider_position.valtext.set_text(num2date(val).date())
+                log.info(f'on_changed({num2date(val)}) -> from: {num2date(val - mean).date()}, to: {num2date(val + 1).date()}')
+                slider_date.valtext.set_text(num2date(val).date())
                 df2: pd.DataFrame = df.set_index(['time'])
-                df2 = df2[num2date(val - MEAN).date():num2date(val + 1).date()].ffill()
+                df2 = df2[num2date(val - mean).date():num2date(val + 1).date()].ffill()
 
                 if len(df2) > 0:
                     window = (
-                        val - MEAN,
+                        val - mean,
                         val + 0.1,
                         0,
                         math.ceil(max(df2['kwh_hydro_quebec']) * 10 if len(df2['kwh_hydro_quebec']) > 0 else 0.0) / 10
@@ -441,7 +469,7 @@ class ThermoProGraph:
                     ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
                     window2 = (
-                        val - MEAN,
+                        val - mean,
                         val + 0.1,
                         min(
                             df2['ext_temp'].min(numeric_only=True, skipna=True),
@@ -473,7 +501,7 @@ class ThermoProGraph:
 
             def reset(val) -> None:
                 log.info(f'reset({val}) -> from: {df['time'][0] - timedelta(hours=1)}, to: {df["time"][df["time"].size - 1] + timedelta(hours=1)}')
-                slider_position.reset()
+                slider_date.reset()
                 ax1.axis((
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
@@ -519,23 +547,46 @@ class ThermoProGraph:
                     minor=True)
                 fig.canvas.draw_idle()
 
-            slider_position = Slider(
+            def on_changed_mean(val):
+                mean_ext_temp.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['ext_temp'].mean())
+                mean_int_temp.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['int_temp'].mean())
+                mean_kwh_hydro_quebec.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['kwh_hydro_quebec'].mean())
+                mean_kwh_neviweb.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['kwh_neviweb'].mean())
+
+            slider_mean = Slider(
+                plt.axes(
+                    (0.08, 0.03, 0.73, 0.03),  # (left, bottom, width, height)
+                    facecolor='gray'
+                ),
+                'Mean',
+                1,
+                int(DAYS_PER_MONTH),
+                valstep=1,
+                color='gray',
+                initcolor='none',
+            )
+            slider_mean.valtext.set_text(int(DAYS_PER_MONTH))
+            slider_mean.set_val(int(DAYS_PER_MONTH))
+            slider_mean.on_changed(on_changed_mean)
+
+            slider_date = Slider(
                 plt.axes(
                     (0.08, 0.01, 0.73, 0.03),
-                    facecolor='White'
+                    facecolor='gray'
                 ),
                 'Date',
                 date2num(df["time"][0]),
                 date2num(df['time'][len(df['time']) - 1]),
                 valstep=1,
-                color='w',
+                color='gray',
                 initcolor='none',
             )
-            slider_position.valtext.set_text(df["time"][0].date())
-            slider_position.on_changed(on_changed)
+            slider_date.valtext.set_text(df["time"][0].date())
+            slider_date.on_changed(on_changed)
+            slider_date.set_val(date2num(df['time'][len(df['time']) - 1]))
+
             button = Button(fig.add_axes((0.9, 0.01, 0.055, 0.03)), 'Reset', hovercolor='0.975')
             button.on_clicked(reset)
-            slider_position.set_val(date2num(df['time'][len(df['time']) - 1]))
 
             mplcursors.cursor(int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
