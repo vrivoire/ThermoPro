@@ -16,7 +16,7 @@ Django==6.0
 django-scheduler==0.10.1
 fonttools==4.61.0
 frozenlist==1.8.0
-Hydro-Quebec-API-Wrapper==4.2.5
+Hydro-Quebec-API-Wrapper==4.2.6
 icalendar==6.3.2
 idna==3.11
 Jinja2==3.1.6
