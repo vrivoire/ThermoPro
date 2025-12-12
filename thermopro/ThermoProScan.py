@@ -178,11 +178,12 @@ class ThermoProScan:
         try:
             log.info('ThermoProScan started')
             i = 0
-            while not os.path.exists(POIDS_PRESSION_PATH) and i < 5:
+            while not os.path.exists(POIDS_PRESSION_PATH) and i < 10:
                 log.warning(f'The path "{POIDS_PRESSION_PATH}" not ready.')
                 i += 1
                 sleep(10)
             if not os.path.exists(POIDS_PRESSION_PATH):
+                log.error(f'The path "{POIDS_PRESSION_PATH}" not ready.')
                 ctypes.windll.user32.MessageBoxW(0, "Mapping not ready.", "Warning!", 16)
                 sys.exit()
 

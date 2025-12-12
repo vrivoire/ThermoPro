@@ -681,7 +681,6 @@ class NeviwebTemperature:
         log.info("  ----------------------- Start load_neviweb -----------------------")
         result: dict = {}
         try:
-            log.info(f'logout={self.logout()}')
             log.info(f'login={self.login()}')
 
             self.get_network()

@@ -38,7 +38,7 @@ class ThermoProGraph:
         global df
         df = thermopro.load_json()
         self.clean_data()
-        # show_df(df)
+        thermopro.show_df(df)
 
     # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
     def create_graph_temperature(self) -> None:
@@ -379,8 +379,11 @@ class ThermoProGraph:
 
             try:
                 plt.title(
-                    f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, Int: {df['int_temp'][len(df['int_temp']) - 1]}°C, Ext.: {df['ext_temp'][len(df['ext_temp']) - 1]}°C, " \
-                    + f"Open: {round(df['open_temp'][len(df['open_temp']) - 1], 2)}°C, Hydro: {df['kwh_hydro_quebec'][df['kwh_hydro_quebec'].last_valid_index()]}KWh, Nevi: {df['kwh_neviweb'][df['kwh_neviweb'].last_valid_index()]}KWh",
+                    f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, " \
+                    + f"Mean Int: {round(df.rolling(window=f'{mean}D', on='time')['int_temp'].mean()[len(df['int_temp']) - 1], 2)}°C, " \
+                    + f"Mean Ext.: {round(df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean()[len(df['ext_temp']) - 1])}°C, " \
+                    + f"Mean Hydro: {round(df.rolling(window=f'{mean}D', on='time')['kwh_hydro_quebec'].mean()[len(df['kwh_hydro_quebec']) - 1], 2)}KWh, " \
+                    + f"Mean Nevi: {round(df.rolling(window=f'{mean}D', on='time')['kwh_neviweb'].mean()[len(df['kwh_neviweb']) - 1], 2)}KWh",
                     fontsize=10)
             except Exception as ex:
                 log.error(ex)
