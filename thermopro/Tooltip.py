@@ -144,6 +144,7 @@ class Tooltip:
         log.info('Starting Tooltip')
 
     def get_matrix(self, temp: int, humidity: int):
+        print(f'temp: {temp}, humidity: {humidity}')
         try:
             humidity = 5 * round(humidity / 5) if not math.isnan(humidity) else 0
             if temp < 21 or temp > 43 and humidity < 20:
@@ -183,6 +184,7 @@ class Tooltip:
             data['open_wind_deg_txt'] = self.degToCompass(data.get('open_wind_deg')) if data.get('open_wind_deg') else ''
             data['int_temp_salle_de_bain'] = data['int_temp_salle-de-bain']
             comfort = self.get_matrix(int(data.get('int_temp')), data.get('int_humidity'))
+            print(comfort)
             data['comfort_color'] = comfort[0]
             data['comfort_text'] = comfort[1]
             data['mean_kwh_hydro_quebec'] = round(df.rolling(window=f'{mean}D', on='time')['kwh_hydro_quebec'].mean().iloc[-1], 3)
@@ -214,4 +216,4 @@ if __name__ == '__main__':
     SCREEN_HEIGHT: int = root.winfo_screenheight()
     root.destroy()
     tooltip: Tooltip = Tooltip()
-    tooltip.render(thermopro.load_json(), 20198.893382950886, 1347, 507, SCREEN_WIDTH, SCREEN_HEIGHT, DAYS_PER_MONTH)
+    tooltip.render(thermopro.load_json(), 20434.166062978064, 2323, 1327, SCREEN_WIDTH, SCREEN_HEIGHT, DAYS_PER_MONTH)

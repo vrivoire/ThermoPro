@@ -29,8 +29,8 @@ OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
 LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
 
 OUTPUT_RTL_433_FILE: str = f"{POIDS_PRESSION_PATH}rtl_433.json"
-# RTL_433_VERSION = '25.02'
-RTL_433_VERSION = 'nightly'
+RTL_433_VERSION = '25.12'
+# RTL_433_VERSION = 'nightly'
 TIMEOUT: int = 3 * 60
 RTL_433_EXE_PATH: str = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
 RTL_433_EXE = RTL_433_EXE_PATH[RTL_433_EXE_PATH.rfind('/') + 1:]

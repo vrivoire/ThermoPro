@@ -6,6 +6,7 @@ import json
 import os
 import os.path
 import shutil
+import statistics
 import sys
 import threading
 import traceback
@@ -117,13 +118,12 @@ class ThermoProScan:
                 json_data.update(result_queue.get())
 
             kwh_dict: dict[str, float] = json_data['kwh_dict']
-            room_temperature_display_list: list = json_data.get('room_temperature_display_list')
-            if room_temperature_display_list is not None and len(room_temperature_display_list) > 0:
-                if json_data['int_temp'] is not None:
-                    room_temperature_display_list.append(json_data['int_temp'])
-                int_temp: float = round(sum(room_temperature_display_list) / len(room_temperature_display_list), 1)
-                log.info(f'Was int_temp={json_data['int_temp']}, now int_temp={int_temp}, {room_temperature_display_list}')
-                json_data['int_temp'] = int_temp
+            room_temperature_display_list: list[float] = []
+            for entry in [s for s in list(json_data) if "int_temp_" in s]:
+                room_temperature_display_list.append(json_data.get(entry))
+            int_temp: float = round(statistics.mean(room_temperature_display_list), 2)
+            log.info(f'Was int_temp={json_data['int_temp']}, now int_temp={int_temp}, {room_temperature_display_list}')
+            json_data['int_temp'] = int_temp
 
             for col in list(json_data.keys()):
                 if col not in COLUMNS:
@@ -171,7 +171,7 @@ class ThermoProScan:
             log.error(traceback.format_exc())
             thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Genaral Error\n{ex}", "Genaral Error", 0x30))
             thread.start()
-            threads.append(thread)
+
         log.info("End task")
 
     def start(self):
