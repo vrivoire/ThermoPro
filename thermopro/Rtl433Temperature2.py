@@ -234,13 +234,12 @@ class Rtl433Temperature2:
 if __name__ == "__main__":
     thermopro.set_up(__file__)
     result_queue: Queue = Queue()
-    testJson: Rtl433Temperature2 = Rtl433Temperature2()
-    testJson.call_rtl_433(result_queue)
-    # testJson.call_rtl_433(result_queue)
+    rtl433Temperature2: Rtl433Temperature2 = Rtl433Temperature2()
+    rtl433Temperature2.call_rtl_433(result_queue)
 
     while not result_queue.empty():
         json_data: dict[str, Any] = result_queue.get()
         print(thermopro.ppretty(json_data))
         print(list(json_data))
-        matching = [s for s in list(json_data) if "int_temp_" in s]
-        print(matching)
+        print([s for s in list(json_data) if "int_temp_" in s])
+        print([s for s in list(json_data) if "int_humidity_" in s])

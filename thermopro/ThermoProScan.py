@@ -17,16 +17,16 @@ from time import sleep
 from typing import Any
 
 import pandas as pd
-import requests
 import schedule
 from dateutil.relativedelta import relativedelta
 from pandas import DataFrame
 
 import thermopro
-from constants import WEATHER_URL, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, BKP_DAYS, POIDS_PRESSION_PATH
+from constants import NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, BKP_DAYS, POIDS_PRESSION_PATH
 from thermopro import log, show_df
 from thermopro.HydroQuébecPower import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
+from thermopro.OpenWeather import OpenWeather
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
 
 
@@ -45,47 +45,6 @@ class ThermoProScan:
         log.info('Starting ThermoProScan')
         atexit.register(self.__cleanup_function)
 
-    # https://home.openweathermap.org/statistics/onecall_30
-    def load_open_weather(self, result_queue: Queue):
-        log.info("   ----------------------- Start load_open_weather -----------------------")
-        try:
-            response = requests.get(WEATHER_URL)
-            resp = response.json()
-
-            log.info(json.dumps(resp, indent=4, sort_keys=True))
-
-            if "cod" in resp:
-                log.error(json.dumps(resp, indent=4, sort_keys=True))
-            elif "current" in resp:
-                current = resp['current']
-                data: dict[str, Any] = {
-                    'open_temp': round(current['temp'], 2),
-                    'open_feels_like': round(current['feels_like'], 2),
-                    'open_humidity': int(current['humidity']),
-                    "open_pressure": int(current['pressure']),
-                    "open_clouds": round(current['clouds'], 0),
-                    "open_visibility": round(current['visibility'], 0),
-                    "open_wind_speed": round(current['wind_speed'], 2),
-                    "open_wind_gust": round(current['wind_gust'], 2) if current.get("wind_gust") else 0.0,
-                    "open_wind_deg": round(current['wind_deg'], 0),
-
-                    "open_rain": round(current['rain']["1h"], 2) if current.get('rain') else 0.0,  # mm/h
-                    "open_snow": round(current['snow']["1h"], 2) if current.get('snow') else 0.0,  # mm/h
-
-                    "open_description": f"{current['weather'][0]['main']}, {current['weather'][0]['description']}" if current.get('weather') else '',
-                    "open_icon": current['weather'][0]['icon'] if current.get('weather') else '',
-                    'open_sunrise': datetime.fromtimestamp(current['sunrise']),
-                    'open_sunset': datetime.fromtimestamp(current['sunset']),
-                    'open_uvi': round(current['uvi'], 2)  # https://fr.wikipedia.org/wiki/Indice_UV
-                }
-
-                result_queue.put(data)
-            else:
-                log.error(json.dumps(resp, indent=4, sort_keys=True))
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-
     def __call_all(self) -> None:
         json_data: dict[str, Any] = {}
         threads: list[threading.Thread] = []
@@ -103,7 +62,7 @@ class ThermoProScan:
             threads.append(thread)
             thread.start()
 
-            thread: threading.Thread = threading.Thread(target=self.load_open_weather, args=(result_queue,))
+            thread: threading.Thread = threading.Thread(target=OpenWeather().load_open_weather, args=(result_queue,))
             threads.append(thread)
             thread.start()
 
@@ -117,13 +76,9 @@ class ThermoProScan:
             while not result_queue.empty():
                 json_data.update(result_queue.get())
 
+            self.__get_int_means(json_data)
+
             kwh_dict: dict[str, float] = json_data['kwh_dict']
-            room_temperature_display_list: list[float] = []
-            for entry in [s for s in list(json_data) if "int_temp_" in s]:
-                room_temperature_display_list.append(json_data.get(entry))
-            int_temp: float = round(statistics.mean(room_temperature_display_list), 2)
-            log.info(f'Was int_temp={json_data['int_temp']}, now int_temp={int_temp}, {room_temperature_display_list}')
-            json_data['int_temp'] = int_temp
 
             for col in list(json_data.keys()):
                 if col not in COLUMNS:
@@ -173,6 +128,21 @@ class ThermoProScan:
             thread.start()
 
         log.info("End task")
+
+    def __get_int_means(self, json_data: dict[str, Any]):
+        room_temperature_list: list[float] = []
+        for entry in [s for s in list(json_data) if "int_temp_" in s]:
+            room_temperature_list.append(json_data.get(entry))
+        int_temp: float = round(statistics.mean(room_temperature_list), 2)
+        log.info(f'Was int_temp={json_data['int_temp']}, now int_temp={int_temp}, {room_temperature_list}')
+        json_data['int_temp'] = int_temp
+
+        room_humidity_list: list[float] = []
+        for entry in [s for s in list(json_data) if "int_humidity_" in s]:
+            room_humidity_list.append(json_data.get(entry))
+        int_humidity: float = round(statistics.mean(room_humidity_list), 2)
+        log.info(f'Was int_humidity={json_data['int_humidity']}, now int_humidity={int_humidity}, {room_humidity_list}')
+        json_data['int_humidity'] = int_humidity
 
     def start(self):
         try:
