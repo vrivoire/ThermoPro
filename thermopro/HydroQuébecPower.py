@@ -34,14 +34,19 @@ class HydroQuébec:
             await web_user.login()
             is_logged: bool = await web_user.login()
             log.info(f'Login: {is_logged}')
+            log.info(f'check_hq_portal_status: {await web_user.check_hq_portal_status()}')
+            # print(requests.get(HOST_SERVICES).json())
+            # print(requests.get(HOURLY_CONSUMPTION_API_URL).ok)
+            # print(requests.get(HOURLY_CONSUMPTION_API_URL).status_code)
+
             if is_logged:
                 await web_user.get_info()
-
                 customer = web_user.customers[0]
                 await customer.get_info()
                 contract: Contract = web_user.customers[0].accounts[0].contracts[0]
 
                 try:
+                    log.info('---------------------------- get_hourly_energy ----------------------------')
                     start_date = datetime.now() - relativedelta(weeks=0)
                     end_date = datetime.now() - relativedelta(weeks=weeks)
                     log.info(f'Date range: from: {end_date.strftime('%Y-%m-%d %H:%M')}, to: {start_date.strftime('%Y-%m-%d %H:%M')}')
@@ -69,6 +74,7 @@ class HydroQuébec:
                     log.error(traceback.format_exc())
 
                 try:
+                    log.info('---------------------------- get_today_hourly_consumption ----------------------------')
                     today_hourly_consumption: ConsumpHourlyTyping = await contract.get_today_hourly_consumption()
                     if today_hourly_consumption.get('success'):
                         crt: ConsumpHourlyResultsTyping = today_hourly_consumption.get('results')
@@ -84,9 +90,10 @@ class HydroQuébec:
                     log.error(ex)
                     log.error(traceback.format_exc())
 
-            kwh_dict = dict(sorted(kwh_dict.items()))
-            log.info(f'Created kwh_dict, size: {len(kwh_dict)} from: {next(iter(kwh_dict))}, to: {next(reversed(kwh_dict.keys()))}')
-
+                kwh_dict = dict(sorted({key: value for key, value in kwh_dict.items() if value != 0.0}.items()))
+                log.info(f'Created kwh_dict, size: {len(kwh_dict)} from: {next(iter(kwh_dict))}, to: {next(reversed(kwh_dict.keys()))}')
+            else:
+                log.error('Not logged in')
         except Exception as exp:
             log.error(exp)
             log.error(traceback.format_exc())

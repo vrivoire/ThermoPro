@@ -364,8 +364,8 @@ class ThermoProGraph:
             plt.gcf().autofmt_xdate()
 
             ext_temp, = ax2.plot(df["time"], df["ext_temp"], color='xkcd:scarlet', label='Ext. °C')
-            int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
             open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
+            int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
 
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
@@ -592,6 +592,12 @@ class ThermoProGraph:
             button.on_clicked(reset)
 
             mplcursors.cursor(int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+            mplcursors.cursor(ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+            mplcursors.cursor(open_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
             mplcursors.cursor(mean_ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(

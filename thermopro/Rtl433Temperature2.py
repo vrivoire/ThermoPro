@@ -198,7 +198,7 @@ class Rtl433Temperature2:
         if data.get('battery_ok') == 0:
             string: str = ' RTL 433 Warning '.center(80, '*')
             log.error(string)
-            log.error('*' + f"Sensor {data.get('model')}'s battery is weak...".center(len(string) - 2) + '*')
+            log.error('*' + f"Sensor {data.get('model')} battery is weak...".center(len(string) - 2) + '*')
             log.error(string)
             if datetime.now().strftime("%H") == '00':
                 thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Sensor {data.get('model')}'s battery is weak...", "RTL 433 Warning", 0x30))

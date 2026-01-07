@@ -1,5 +1,4 @@
 import math
-import statistics
 import traceback
 from queue import Queue
 from typing import Any
@@ -685,11 +684,8 @@ class NeviwebTemperature:
             log.info(f'login={self.login()}')
 
             self.get_network()
-            # log.info(f'get_network: {self._network_name}')
             self.get_gateway_data()
-            # log.info(f'gateway_data: {self.gateway_data}')
             self.get_groups()
-            # log.info(f"get_groups: {self.groups}")
 
             for device in self.gateway_data:
                 columns = WATT_ATTRIBUTES
@@ -709,18 +705,11 @@ class NeviwebTemperature:
             result['kwh_neviweb'] = kwh_total if not math.isnan(kwh_total) else 0.0
             log.info(f'kwh_neviweb: {result['kwh_neviweb']}')
 
-            room_temperature_display_list: list[float] = []
             for device in self.gateway_data:
                 for group in self.groups:
                     if group['id'] == device['group$id']:
                         result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
-                        room_temperature_display_list.append(device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0)
                         log.info(f'{group['name']}: {device["roomTemperature"]}°C, {round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)} KWh')
-
-            int_temp: float = round(statistics.mean(room_temperature_display_list), 2)
-            log.info(f'int_temp={int_temp}, data={room_temperature_display_list}')
-            result.update({'int_temp': int_temp})
-            result.update({'room_temperature_display_list': room_temperature_display_list})
 
             log.info(f'result={result}')
         except Exception as ex:

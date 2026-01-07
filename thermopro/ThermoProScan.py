@@ -194,7 +194,7 @@ class ThermoProScan:
 
                 for index, line1 in filtered_df.iterrows():
                     key = f'{line1['time'].strftime('%Y-%m-%d')} {line1['time'].strftime('%H')}'
-                    kwh: float = kwh_dict.get(key) if kwh_dict.get(key) else 0.0
+                    kwh: float = kwh_dict.get(key) if kwh_dict.get(key) else None
                     df.loc[index, 'kwh_hydro_quebec'] = kwh
 
             log.info(f'KWH: {count} rows updated.')

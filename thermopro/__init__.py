@@ -9,6 +9,7 @@ from datetime import datetime
 
 import pandas
 from dateutil.relativedelta import relativedelta
+from numpy import int32
 from pandas import DataFrame
 
 from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH
@@ -40,7 +41,7 @@ def save_json(df: DataFrame):
 @staticmethod
 def load_json() -> DataFrame:
     try:
-        df: DataFrame
+        df: DataFrame | None = None
 
         if os.path.exists(OUTPUT_JSON_FILE + '.zip'):
             log.info(f'Loading file {OUTPUT_JSON_FILE + '.zip'}')
@@ -58,28 +59,30 @@ def load_json() -> DataFrame:
         # df = df.drop('ext_humidity_Acurite-609TXC', axis=1)
         # df = df.drop('ext_temp_Acurite-609TXC', axis=1)
 
-        df = set_astype(df)
+        if df is None:
+            raise f"Unable to load file {OUTPUT_JSON_FILE}.zip"
+        else:
+            df = set_astype(df)
+            df_conditional_drop = df.drop(df[
+                                              (df['time'].dt.minute >= int32(12)) &
+                                              (df['time'].dt.minute <= int32(55)) &
+                                              (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
+                                              ].index)
+            log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
+            df = df_conditional_drop.reset_index(drop=True)
 
-        df_conditional_drop = df.drop(df[
-                                          (df['time'].dt.minute >= 12) &
-                                          (df['time'].dt.minute <= 55) &
-                                          (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
-                                          ].index)
-        log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
-        df = df_conditional_drop.reset_index(drop=True)
+            df = df[COLUMNS]
 
-        df = df[COLUMNS]
+            for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'ext_humidity_Thermopro-TX2', 'ext_humidity_ThermoPro-TX7B',
+                        'ext_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon',
+                        'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like']:
+                df[col] = df[col].astype('Float64')
+                df[col] = df[col].ffill().fillna(0.0)
+            for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity', 'int_humidity_Acurite-609TXC']:
+                df[col] = df[col].astype('Int64')
+                df[col] = df[col].ffill().fillna(0)
 
-        for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'ext_humidity_Thermopro-TX2', 'ext_humidity_ThermoPro-TX7B',
-                    'ext_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon',
-                    'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like']:
-            df[col] = df[col].astype('Float64')
-            df[col] = df[col].ffill().fillna(0.0)
-        for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity', 'int_humidity_Acurite-609TXC']:
-            df[col] = df[col].astype('Int64')
-            df[col] = df[col].ffill().fillna(0)
-
-        return df
+            return df
     except Exception as ex:
         log.error(ex)
         log.error(traceback.format_exc())
