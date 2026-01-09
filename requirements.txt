@@ -53,5 +53,5 @@ tk==0.1.0
 types-pytz==2025.2.0.20251108
 typing_extensions==4.15.0
 tzdata==2025.3
-urllib3==2.6.2
+urllib3==2.6.3
 yarl==1.22.0

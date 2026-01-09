@@ -2,6 +2,7 @@ import json
 import logging as log
 import logging.handlers
 import os.path
+import shutil
 import subprocess
 import traceback
 import zipfile
@@ -12,7 +13,7 @@ from dateutil.relativedelta import relativedelta
 from numpy import int32
 from pandas import DataFrame
 
-from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH
+from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH, HOME_PATH
 
 
 # HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
@@ -24,13 +25,26 @@ from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_
 @staticmethod
 def save_json(df: DataFrame):
     df = set_astype(df)
-    # df.to_json(OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
     df.to_json(OUTPUT_JSON_FILE + '.zip', orient='records', indent=4, date_format='iso',
                compression={
                    'method': 'zip',
                    'compression': zipfile.ZIP_DEFLATED,
                    'compresslevel': 9
                })
+
+    for drive in ['OneDrive', 'Mega', 'Icedrive', 'Documents']:
+        path = f"{HOME_PATH}{drive}/PoidsPression/ThermoProScan.json.zip"
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                log.info(f'{path} removed.')
+            except Exception as ex:
+                log.error(ex)
+        try:
+            shutil.copy2(OUTPUT_JSON_FILE + '.zip', path)
+            log.info(f'Copied to {path}')
+        except Exception as ex:
+            log.error(ex)
 
     # for orient in ['columns', 'index', 'split', 'table']:
     #     print(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json')
