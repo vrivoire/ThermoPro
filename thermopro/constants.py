@@ -15,13 +15,20 @@ LOG_NAME: str = ''
 sys.path.append(f'{HOME_PATH}/Documents/BkpScripts')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
-COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb'] +
+COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb', 'ext_humidex', 'int_humidex'] +
                       sorted(
-                          ['ext_humidex', 'int_humidex', 'ext_humidity_Thermopro-TX2', 'ext_temp_Thermopro-TX2', 'int_temp_bureau',
-                           'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds',
-                           'open_description', 'open_humidity', 'open_icon', 'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi', 'open_visibility', 'open_wind_deg',
-                           'open_wind_gust', 'open_wind_speed', 'int_humidity_Acurite-609TXC', 'int_temp_Acurite-609TXC', 'ext_humidity_ThermoPro-TX7B', 'ext_temp_ThermoPro-TX7B']
-                      ))
+                          ['int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds', 'open_description', 'open_humidity', 'open_icon',
+                           'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi', 'open_visibility', 'open_wind_deg', 'open_wind_gust', 'open_wind_speed']
+                      ) +
+                      sorted(
+                          ['int_humidity_Acurite-609TXC', 'int_temp_Acurite-609TXC',
+                           'ext_humidity_ThermoPro-TX7B', 'ext_temp_ThermoPro-TX7B',
+                           'int_humidity_ThermoPro-TX7B', 'int_temp_ThermoPro-TX7B',
+                           'ext_humidity_Thermopro-TX2', 'ext_temp_Thermopro-TX2',
+                           # 'ext_humidity_AmbientWeather-WH31E', 'ext_temp_AmbientWeather-WH31E'
+                           ]
+                      )
+                      )
 
 OUTPUT_CSV_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.csv"
 OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
@@ -36,10 +43,17 @@ RTL_433_EXE_PATH: str = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-
 RTL_433_EXE = RTL_433_EXE_PATH[RTL_433_EXE_PATH.rfind('/') + 1:]
 
 SENSORS2: dict[str, dict[str, list[str | int] | dict[str, str]] | dict[str, list[str] | dict[str, str]]] = {
+    # '915': {
+    #     'args': [RTL_433_EXE_PATH, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-R', '113', '-f', '915M', '-Y', 'classic', '-s', '250k'],
+    #     'sensors': {
+    #         'ThermoPro-TX7B': 'int',
+    #         'AmbientWeather-WH31E': 'ext'
+    #     }
+    # },
     '915': {
         'args': [RTL_433_EXE_PATH, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-f', '915M', '-Y', 'classic', '-s', '250k'],
         'sensors': {
-            'ThermoPro-TX7B': 'ext'
+            'ThermoPro-TX7B': 'int'
         }
     },
     '433': {

@@ -3,6 +3,7 @@ import atexit
 import ctypes
 import glob
 import json
+import math
 import os
 import os.path
 import shutil
@@ -76,7 +77,7 @@ class ThermoProScan:
             while not result_queue.empty():
                 json_data.update(result_queue.get())
 
-            self.__get_int_means(json_data)
+            self.__get_means_and_mins(json_data)
 
             kwh_dict: dict[str, float] = json_data['kwh_dict']
 
@@ -91,7 +92,7 @@ class ThermoProScan:
             log.info(f'Got all new data:\n{json.dumps(json_data, indent=4, sort_keys=True, default=str)}')
             log.info('----------------------------------------------')
 
-            df: DataFrame = thermopro.load_json()
+            df1: DataFrame = thermopro.load_json()
             if json_data:
                 data_dict: dict[str, Any] = {}
                 for col in COLUMNS:
@@ -110,16 +111,18 @@ class ThermoProScan:
                             data_dict[col] = int(json_data.get(col))
                         else:
                             data_dict[col] = json_data.get(col)
-                df.loc[len(df)] = data_dict
+
+                df1.loc[len(df1)] = data_dict
+
                 for col in ['time', 'open_sunrise', 'open_sunset']:
-                    df = df.astype({col: 'datetime64[ns]'})
+                    df1 = df1.astype({col: 'datetime64[ns]'})
 
-            self.set_kwh(kwh_dict, df)
+            self.set_kwh(kwh_dict, df1)
 
-            thermopro.save_json(df)
+            thermopro.save_json(df1)
             self.save_bkp()
 
-            show_df(df)
+            show_df(df1)
         except Exception as ex:
             log.error(ex)
             log.error(thermopro.ppretty(json_data))
@@ -129,20 +132,50 @@ class ThermoProScan:
 
         log.info("End task")
 
-    def __get_int_means(self, json_data: dict[str, Any]):
+    def __get_means_and_mins(self, json_data: dict[str, Any]):
+        ext_temperature_list: list[float] = []
+        for entry in [s for s in list(json_data) if "ext_temp_" in s]:
+            ext_temperature_list.append(json_data.get(entry))
+        ext_temp: float = round(min(ext_temperature_list), 2)
+        log.info(f'ext_temp={ext_temp}, {ext_temperature_list}')
+        json_data['ext_temp'] = ext_temp
+
         room_temperature_list: list[float] = []
         for entry in [s for s in list(json_data) if "int_temp_" in s]:
             room_temperature_list.append(json_data.get(entry))
         int_temp: float = round(statistics.mean(room_temperature_list), 2)
-        log.info(f'Was int_temp={json_data['int_temp']}, now int_temp={int_temp}, {room_temperature_list}')
+        log.info(f'int_temp={int_temp}, {room_temperature_list}')
         json_data['int_temp'] = int_temp
+
+        ext_humidity_list: list[float] = []
+        for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
+            ext_humidity_list.append(json_data.get(entry))
+        ext_humidity: float = round(statistics.mean(ext_humidity_list), 2)
+        log.info(f'ext_humidity={ext_humidity}, {ext_humidity_list}')
+        json_data['ext_humidity'] = ext_humidity
 
         room_humidity_list: list[float] = []
         for entry in [s for s in list(json_data) if "int_humidity_" in s]:
             room_humidity_list.append(json_data.get(entry))
         int_humidity: float = round(statistics.mean(room_humidity_list), 2)
-        log.info(f'Was int_humidity={json_data['int_humidity']}, now int_humidity={int_humidity}, {room_humidity_list}')
+        log.info(f'int_humidity={int_humidity}, {room_humidity_list}')
         json_data['int_humidity'] = int_humidity
+
+        json_data['ext_humidex'] = self.__get_humidex(json_data['ext_temp'], json_data['ext_humidity'])
+        log.info(f'ext_humidex={json_data['ext_humidex']}')
+        json_data['int_humidex'] = self.__get_humidex(json_data['int_temp'], json_data['int_humidity'])
+        log.info(f'int_humidex={json_data['int_humidex']}')
+
+    def __get_humidex(self, temp: float, humidity: int) -> int | None:
+        if temp is not None and humidity is not None:
+            kelvin = temp + 273
+            ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
+            etd = ets * humidity / 100
+            humidex: int = round(temp + ((etd - 10) * 5 / 9))
+            if humidex < temp:
+                humidex = round(temp)
+            return humidex
+        return None
 
     def start(self):
         try:
@@ -249,6 +282,6 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
-    # df = thermopro.load_json()
-    # thermopro.save_json(df)
-    # thermopro.show_df(df)
+    df = thermopro.load_json()
+    thermopro.save_json(df)
+    thermopro.show_df(df)

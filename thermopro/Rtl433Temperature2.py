@@ -1,8 +1,6 @@
 import ctypes
 import json
-import math
 import os
-import statistics
 import subprocess
 import threading
 import traceback
@@ -38,21 +36,13 @@ class Rtl433Temperature2:
             for freq in SENSORS2:
                 self.__call_sensors(list(SENSORS2[freq]['args']), dict(SENSORS2[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
 
-            self.__get_mean('ext', ext_humidity_list, ext_temp_list, json_rtl_433)
-            self.__get_mean('int', int_humidity_list, int_temp_list, json_rtl_433)
-
-            if json_rtl_433.get('ext_humidity'):
-                json_rtl_433['ext_humidex'] = self.__get_humidex(json_rtl_433['ext_temp'], json_rtl_433['ext_humidity'])
-            if json_rtl_433.get('int_humidity'):
-                json_rtl_433['int_humidex'] = self.__get_humidex(json_rtl_433['int_temp'], json_rtl_433['int_humidity'])
-
             for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags']:
                 try:
                     json_rtl_433.pop(item)
                 except KeyError:
                     pass
 
-            log.info(f'json_rtl_433={json_rtl_433}')
+            log.info(f'json_rtl_433={thermopro.ppretty(json_rtl_433)}')
 
         except Exception as e:
             log.error(f"An unexpected error occurred: {e}")
@@ -101,7 +91,7 @@ class Rtl433Temperature2:
                         model: str = data['model']
                         log.info(f'{model}, {sensors.keys()}')
                         if model in sensors.keys():
-                            log.info(f'>>>>>> data: {data}')
+                            log.info(f'>>>>>> {data.get('model')}: {data}')
                             data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
                             self.__warn_battery(data, threads)
                             sensors.pop(model)
@@ -183,17 +173,6 @@ class Rtl433Temperature2:
             except Exception as ex:
                 log.error(ex)
 
-    def __get_humidex(self, ext_temp: float, humidity: int) -> int | None:
-        if ext_temp and humidity:
-            kelvin = ext_temp + 273
-            ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
-            etd = ets * humidity / 100
-            humidex: int = round(ext_temp + ((etd - 10) * 5 / 9))
-            if humidex < ext_temp:
-                humidex = round(ext_temp)
-            return humidex
-        return None
-
     def __warn_battery(self, data: dict, threads: list[threading.Thread]):
         if data.get('battery_ok') == 0:
             string: str = ' RTL 433 Warning '.center(80, '*')
@@ -210,25 +189,13 @@ class Rtl433Temperature2:
         data[f'{kind}_humidity_{data['model']}'] = int(data['humidity']) if data.get('humidity') else None
 
         if kind == 'ext':
-            ext_temp_list.append(data['temperature_C']) if data.get('temperature_C') else None
-            ext_humidity_list.append(data['humidity']) if data.get('humidity') else None
+            ext_temp_list.append(data['temperature_C']) if data.get('temperature_C') is not None else None
+            ext_humidity_list.append(data['humidity']) if data.get('humidity') is not None else None
         else:
-            int_temp_list.append(data['temperature_C']) if data.get('temperature_C') else None
-            int_humidity_list.append(data['humidity']) if data.get('humidity') else None
+            int_temp_list.append(data['temperature_C']) if data.get('temperature_C') is not None else None
+            int_humidity_list.append(data['humidity']) if data.get('humidity') is not None else None
+
         return data
-
-    def __get_mean(self, kind: str, humidity_list: list[int], temp_list: list[float], json_rtl_433: dict[str, Any]):
-        temp: float | None = None
-        if len(temp_list) > 0:
-            temp: float = min(temp_list)
-        log.info(f'{kind}_temp={temp}, {temp_list}')
-        json_rtl_433[f'{kind}_temp'] = round(temp, 2)
-
-        humidity: int | None = None
-        if len(humidity_list) > 0:
-            humidity: int = int(statistics.mean(humidity_list))
-        log.info(f'{kind}_humidity={humidity}, {humidity_list}')
-        json_rtl_433[f'{kind}_humidity'] = humidity
 
 
 if __name__ == "__main__":

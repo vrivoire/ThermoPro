@@ -37,12 +37,11 @@ def save_json(df: DataFrame):
         if os.path.exists(path):
             try:
                 os.remove(path)
-                log.info(f'{path} removed.')
             except Exception as ex:
                 log.error(ex)
         try:
-            shutil.copy2(OUTPUT_JSON_FILE + '.zip', path)
-            log.info(f'Copied to {path}')
+            dst = shutil.copy2(OUTPUT_JSON_FILE + '.zip', path)
+            log.info(f'Copied to {dst}')
         except Exception as ex:
             log.error(ex)
 
@@ -87,12 +86,18 @@ def load_json() -> DataFrame:
 
             df = df[COLUMNS]
 
-            for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'ext_humidity_Thermopro-TX2', 'ext_humidity_ThermoPro-TX7B',
-                        'ext_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon',
-                        'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like']:
+            # df['int_humidity_ThermoPro-TX7B'] = None
+            # df['int_humidity_ThermoPro-TX7B'] = df['int_humidity_ThermoPro-TX7B'].astype('Int64')
+            # df['int_temp_ThermoPro-TX7B'] = None
+            # df['int_temp_ThermoPro-TX7B'] = df['int_temp_ThermoPro-TX7B'].astype('Float64')
+
+            for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like',
+                        'int_temp_ThermoPro-TX7B', 'ext_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC'
+                        ]:
                 df[col] = df[col].astype('Float64')
                 df[col] = df[col].ffill().fillna(0.0)
-            for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity', 'int_humidity_Acurite-609TXC']:
+            for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity',
+                        'int_humidity_Acurite-609TXC', 'int_humidity_ThermoPro-TX7B', 'ext_humidity_ThermoPro-TX7B', 'ext_humidity_Thermopro-TX2']:
                 df[col] = df[col].astype('Int64')
                 df[col] = df[col].ffill().fillna(0)
 
