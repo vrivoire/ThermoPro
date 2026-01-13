@@ -80,7 +80,7 @@ class HydroQuébec:
                         crt: ConsumpHourlyResultsTyping = today_hourly_consumption.get('results')
                         date_jour: str = crt.get('dateJour')
                         liste_donnees_conso_energie_horaire: list[ConsumpHourlyResultTyping] = crt.get('listeDonneesConsoEnergieHoraire')
-                        log.info(f'Got liste_donnees_conso_energie_horaire ({len(liste_donnees_conso_energie_horaire)})')
+                        log.info(f'Got liste_donnees_conso_energie_horaire ({len(liste_donnees_conso_energie_horaire)} rows)')
                         for ldceh in liste_donnees_conso_energie_horaire:
                             kwh_dict[f'{date_jour} {ldceh.get('heure')[0:2]}'] = float(ldceh.get('consoTotal') if not math.isnan(ldceh.get('consoTotal')) else 0.0)
                     else:

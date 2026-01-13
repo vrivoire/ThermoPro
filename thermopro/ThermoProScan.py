@@ -113,7 +113,6 @@ class ThermoProScan:
                             data_dict[col] = json_data.get(col)
 
                 new_row_df = pd.DataFrame([data_dict])
-                show_df(new_row_df)
                 df1 = pd.concat([df1, new_row_df], ignore_index=True)
 
                 for col in ['time', 'open_sunrise', 'open_sunset']:
