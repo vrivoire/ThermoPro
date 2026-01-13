@@ -36,7 +36,7 @@ pkce==1.0.3
 propcache==0.4.1
 proxy_tools==0.1.0
 pycparser==2.23
-pyinstaller==6.17.0
+pyinstaller==6.18.0
 pyinstaller-hooks-contrib==2025.11
 pyparsing==3.3.1
 python-dateutil==2.9.0.post0

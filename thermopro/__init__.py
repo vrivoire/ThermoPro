@@ -13,7 +13,7 @@ from dateutil.relativedelta import relativedelta
 from numpy import int32
 from pandas import DataFrame
 
-from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH, HOME_PATH
+from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH, HOME_PATH, TIMEOUT
 
 
 # HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
@@ -76,9 +76,10 @@ def load_json() -> DataFrame:
             raise f"Unable to load file {OUTPUT_JSON_FILE}.zip"
         else:
             df = set_astype(df)
+            timeout: int = int(TIMEOUT / 60)
             df_conditional_drop = df.drop(df[
-                                              (df['time'].dt.minute >= int32(12)) &
-                                              (df['time'].dt.minute <= int32(55)) &
+                                              (df['time'].dt.minute >= int32(3 * timeout)) &
+                                              (df['time'].dt.minute <= int32(60 - timeout)) &
                                               (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
                                               ].index)
             log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
@@ -91,8 +92,9 @@ def load_json() -> DataFrame:
             # df['int_temp_ThermoPro-TX7B'] = None
             # df['int_temp_ThermoPro-TX7B'] = df['int_temp_ThermoPro-TX7B'].astype('Float64')
 
-            for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like',
-                        'int_temp_ThermoPro-TX7B', 'ext_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC'
+            for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau',
+                        'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like',
+                        'int_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC'
                         ]:
                 df[col] = df[col].astype('Float64')
                 df[col] = df[col].ffill().fillna(0.0)

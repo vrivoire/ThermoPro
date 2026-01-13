@@ -112,13 +112,16 @@ class ThermoProScan:
                         else:
                             data_dict[col] = json_data.get(col)
 
-                df1.loc[len(df1)] = data_dict
+                new_row_df = pd.DataFrame([data_dict])
+                show_df(new_row_df)
+                df1 = pd.concat([df1, new_row_df], ignore_index=True)
 
                 for col in ['time', 'open_sunrise', 'open_sunset']:
                     df1 = df1.astype({col: 'datetime64[ns]'})
 
             self.set_kwh(kwh_dict, df1)
 
+            thermopro.set_astype(df1)
             thermopro.save_json(df1)
             self.save_bkp()
 
@@ -132,32 +135,93 @@ class ThermoProScan:
 
         log.info("End task")
 
+        # https://stackoverflow.com/questions/13148429/how-to-change-the-order-of-dataframe-columns
+
+    def set_kwh(self, kwh_dict: dict[str, float], df: DataFrame) -> None:
+        try:
+            if kwh_dict:
+                keys: list[str] = sorted(kwh_dict.keys())
+                start_date = datetime.strptime(keys[0][0:10], "%Y-%m-%d")
+                end_date = datetime.now()
+                log.info(f'Setting hydro KWH, kwh_list size: {len(keys)}, first: {keys[0][0:10]}, last: {keys[len(keys) - 1][0:10]}')
+                filtered_df = df.loc[(df['time'] >= start_date) & (df['time'] <= end_date)]
+                filtered_df['time'].astype('datetime64[ns]')
+                filtered_df.set_index('time')
+                filtered_df = filtered_df.sort_values(by='time', ascending=True)
+                log.info(f'DataFrame size: {len(filtered_df)}')
+
+                for index, line1 in filtered_df.iterrows():
+                    key = f'{line1['time'].strftime('%Y-%m-%d')} {line1['time'].strftime('%H')}'
+                    kwh: float = kwh_dict.get(key) if kwh_dict.get(key) else 0.0
+                    df.loc[index, 'kwh_hydro_quebec'] = kwh
+
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+
+    def save_bkp(self) -> None:
+        try:
+            in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
+                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
+                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
+            log.info(f'Files to bkp: {in_file_list}')
+            out_file_list: list[str] = [BKP_PATH + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
+            for i, name in enumerate(in_file_list):
+                shutil.copy2(in_file_list[i], out_file_list[i])
+
+            file_name = 'ThermoProScan'
+            zip_file_name = f'{BKP_PATH}{file_name}_{datetime.now().strftime("%Y-%m-%d")}.zip'
+            with zipfile.ZipFile(zip_file_name, "a", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
+                for file in out_file_list:
+                    zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
+
+                    original: float = 0.0
+                    compressed: float = 0.0
+                    for info in zip_file.infolist():
+                        original += info.file_size / 1024
+                        compressed += info.compress_size / 1024
+                log.info(f"Zipped files, original: {round(original, 2)} Ko, compressed: {round(compressed, 2)} Ko. ratio: {round(100 - (compressed / original) * 100, 2)}%")
+                log.info(f"Zip file created at: {zip_file_name}")
+
+            try:
+                [os.remove(out_file) for out_file in out_file_list]
+                old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
+                if os.path.isfile(old_zip_file_name):
+                    log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
+                    os.remove(old_zip_file_name)
+            except Exception as ex:
+                log.error(ex)
+                log.error(traceback.format_exc())
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+
     def __get_means_and_mins(self, json_data: dict[str, Any]):
         ext_temperature_list: list[float] = []
         for entry in [s for s in list(json_data) if "ext_temp_" in s]:
             ext_temperature_list.append(json_data.get(entry))
-        ext_temp: float = round(min(ext_temperature_list), 2)
+        ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
         log.info(f'ext_temp={ext_temp}, {ext_temperature_list}')
         json_data['ext_temp'] = ext_temp
 
         room_temperature_list: list[float] = []
         for entry in [s for s in list(json_data) if "int_temp_" in s]:
             room_temperature_list.append(json_data.get(entry))
-        int_temp: float = round(statistics.mean(room_temperature_list), 2)
+        int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
         log.info(f'int_temp={int_temp}, {room_temperature_list}')
         json_data['int_temp'] = int_temp
 
-        ext_humidity_list: list[float] = []
+        ext_humidity_list: list[int] = []
         for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
             ext_humidity_list.append(json_data.get(entry))
-        ext_humidity: float = round(statistics.mean(ext_humidity_list), 2)
+        ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
         log.info(f'ext_humidity={ext_humidity}, {ext_humidity_list}')
         json_data['ext_humidity'] = ext_humidity
 
-        room_humidity_list: list[float] = []
+        room_humidity_list: list[int] = []
         for entry in [s for s in list(json_data) if "int_humidity_" in s]:
             room_humidity_list.append(json_data.get(entry))
-        int_humidity: float = round(statistics.mean(room_humidity_list), 2)
+        int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
         log.info(f'int_humidity={int_humidity}, {room_humidity_list}')
         json_data['int_humidity'] = int_humidity
 
@@ -209,70 +273,6 @@ class ThermoProScan:
             sys.exit()
         except SystemExit as ex:
             pass
-
-    # https://stackoverflow.com/questions/13148429/how-to-change-the-order-of-dataframe-columns
-    def set_kwh(self, kwh_dict: dict[str, float], df: DataFrame) -> None:
-        try:
-            count: int = 0
-            if kwh_dict:
-                keys: list[str] = sorted(kwh_dict.keys())
-                start_date = datetime.strptime(keys[0][0:10], "%Y-%m-%d")
-                end_date = datetime.now()
-                log.info(f'Setting hydro KWH, kwh_list size: {len(keys)}, first: {keys[0][0:10]}, last: {keys[len(keys) - 1][0:10]}')
-                filtered_df = df.loc[(df['time'] >= start_date) & (df['time'] <= end_date)]
-                filtered_df['time'].astype('datetime64[ns]')
-                filtered_df.set_index('time')
-                filtered_df = filtered_df.sort_values(by='time', ascending=True)
-                log.info(f'DataFrame size: {len(filtered_df)}')
-
-                for index, line1 in filtered_df.iterrows():
-                    key = f'{line1['time'].strftime('%Y-%m-%d')} {line1['time'].strftime('%H')}'
-                    kwh: float = kwh_dict.get(key) if kwh_dict.get(key) else None
-                    df.loc[index, 'kwh_hydro_quebec'] = kwh
-
-            log.info(f'KWH: {count} rows updated.')
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-
-    def save_bkp(self) -> None:
-        try:
-            in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
-                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
-                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
-            log.info(f'Files to bkp: {in_file_list}')
-
-            out_file_list: list[str] = [BKP_PATH + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
-
-            for i, name in enumerate(in_file_list):
-                shutil.copy2(in_file_list[i], out_file_list[i])
-
-            file_name = 'ThermoProScan'
-            zip_file_name = f'{BKP_PATH}{file_name}_{datetime.now().strftime("%Y-%m-%d")}.zip'
-            with zipfile.ZipFile(zip_file_name, "a", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
-                for file in out_file_list:
-                    zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
-
-                    original: float = 0.0
-                    compressed: float = 0.0
-                    for info in zip_file.infolist():
-                        original += info.file_size / 1024
-                        compressed += info.compress_size / 1024
-                log.info(f"Zipped files, original: {round(original, 2)} Ko, compressed: {round(compressed, 2)} Ko. ratio: {round(100 - (compressed / original) * 100, 2)}%")
-                log.info(f"Zip file created at: {zip_file_name}")
-
-            try:
-                [os.remove(out_file) for out_file in out_file_list]
-                old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
-                if os.path.isfile(old_zip_file_name):
-                    log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
-                    os.remove(old_zip_file_name)
-            except Exception as ex:
-                log.error(ex)
-                log.error(traceback.format_exc())
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
 
 
 if __name__ == '__main__':
