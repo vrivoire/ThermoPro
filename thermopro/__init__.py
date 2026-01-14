@@ -13,7 +13,7 @@ from dateutil.relativedelta import relativedelta
 from numpy import int32
 from pandas import DataFrame
 
-from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH, HOME_PATH, TIMEOUT
+from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH
 
 
 # HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
@@ -32,23 +32,23 @@ def save_json(df: DataFrame):
                    'compresslevel': 9
                })
 
-    for drive in ['OneDrive', 'Mega', 'Icedrive', 'Documents']:
-        path = f"{HOME_PATH}{drive}/PoidsPression/ThermoProScan.json.zip"
-        if os.path.exists(path):
-            try:
-                os.remove(path)
-            except Exception as ex:
-                log.error(ex)
-        try:
-            dst = shutil.copy2(OUTPUT_JSON_FILE + '.zip', path)
-            log.info(f'Copied to {dst}')
-        except Exception as ex:
-            log.error(ex)
+    copy_to_cloud()
 
     # for orient in ['columns', 'index', 'split', 'table']:
     #     print(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json')
     #     df.to_json(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json', orient=orient, indent=4, date_format='iso')
     log.info('JSON saved')
+
+
+def copy_to_cloud():
+    for drive in ['OneDrive', 'Mega', 'Icedrive', 'Documents']:
+        destination_folder = f"{HOME_PATH}{drive}/PoidsPression"
+        try:
+            shutil.copytree(POIDS_PRESSION_PATH, destination_folder, dirs_exist_ok=True)
+            log.info(f"Folder and contents successfully copied from '{POIDS_PRESSION_PATH}' to '{destination_folder}'")
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
 
 
 @staticmethod
@@ -76,6 +76,9 @@ def load_json() -> DataFrame:
             raise f"Unable to load file {OUTPUT_JSON_FILE}.zip"
         else:
             df = set_astype(df)
+            for col in ['time', 'open_sunrise', 'open_sunset']:
+                df = df.astype({col: 'datetime64[ns]'})
+
             timeout: int = int(TIMEOUT / 60)
             df_conditional_drop = df.drop(df[
                                               (df['time'].dt.minute >= int32(3 * timeout)) &
@@ -87,21 +90,21 @@ def load_json() -> DataFrame:
 
             df = df[COLUMNS]
 
-            # df['int_humidity_ThermoPro-TX7B'] = None
-            # df['int_humidity_ThermoPro-TX7B'] = df['int_humidity_ThermoPro-TX7B'].astype('Int64')
-            # df['int_temp_ThermoPro-TX7B'] = None
-            # df['int_temp_ThermoPro-TX7B'] = df['int_temp_ThermoPro-TX7B'].astype('Float64')
+            # df['ext_humidity_AmbientWeather-WH31B'] = None
+            # df['ext_humidity_AmbientWeather-WH31B'] = df['ext_humidity_AmbientWeather-WH31B'].astype('Int64')
+            # df['ext_temp_AmbientWeather-WH31B'] = None
+            # df['ext_temp_AmbientWeather-WH31B'] = df['ext_temp_AmbientWeather-WH31B'].astype('Float64')
 
-            for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau',
-                        'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like',
-                        'int_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC'
-                        ]:
-                df[col] = df[col].astype('Float64')
-                df[col] = df[col].ffill().fillna(0.0)
-            for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity',
-                        'int_humidity_Acurite-609TXC', 'int_humidity_ThermoPro-TX7B', 'ext_humidity_ThermoPro-TX7B', 'ext_humidity_Thermopro-TX2']:
-                df[col] = df[col].astype('Int64')
-                df[col] = df[col].ffill().fillna(0)
+            # for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau',
+            #             'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like',
+            #             'int_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC', 'ext_temp_AmbientWeather-WH31B',
+            #             ]:
+            #     df[col] = df[col].astype('Float64')
+            #     df[col] = df[col].ffill().fillna(0.0)
+            # for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity',
+            #             'int_humidity_ThermoPro-TX7B', 'ext_humidity_Thermopro-TX2', 'int_humidity_Acurite-609TXC', 'ext_humidity_AmbientWeather-WH31B']:
+            #     df[col] = df[col].astype('Int64')
+            #     df[col] = df[col].ffill().fillna(0)
 
             return df
     except Exception as ex:
@@ -116,13 +119,13 @@ def set_astype(df: DataFrame) -> DataFrame:
     for col in ['time', 'open_sunrise', 'open_sunset']:
         df = df.astype({col: 'datetime64[ns]'})
         columns.remove(col)
-    for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'ext_humidity_Thermopro-TX2',
-                'int_humidity_Acurite-609TXC', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility',
-                'open_wind_deg']:
+    for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg',
+                # 'int_temp_ThermoPro-TX7B',                'ext_humidity_Thermopro-TX2', 'ext_humidity_AmbientWeather-WH31B', 'int_humidity_Acurite-609TXC'
+                ]:
         try:
             df[col] = df[col].round().astype('Int64')
         except KeyError as ex:
-            log.error(df[col].dtypes)
+            log.error(f'{col} -> {df.columns}')
             log.error(ex)
             log.error(traceback.format_exc())
         columns.remove(col)

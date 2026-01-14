@@ -36,7 +36,7 @@ class Rtl433Temperature2:
             for freq in SENSORS2:
                 self.__call_sensors(list(SENSORS2[freq]['args']), dict(SENSORS2[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
 
-            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags']:
+            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags', 'data']:
                 try:
                     json_rtl_433.pop(item)
                 except KeyError:
@@ -51,7 +51,7 @@ class Rtl433Temperature2:
         self.__kill_rtl_433()
         self.__delete_json_file()
 
-        result_queue.put(json_rtl_433)
+        result_queue.put({'sensors': json_rtl_433})
 
         if len(threads) > 0:
             for thread in threads:

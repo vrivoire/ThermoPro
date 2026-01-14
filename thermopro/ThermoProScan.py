@@ -77,7 +77,10 @@ class ThermoProScan:
             while not result_queue.empty():
                 json_data.update(result_queue.get())
 
-            self.__get_means_and_mins(json_data)
+            sensors: dict[str, Any] = json_data['sensors']
+            sensors.update(json_data)
+            json_result = self.__get_means_and_mins(sensors)
+            json_data.update(json_result)
 
             kwh_dict: dict[str, float] = json_data['kwh_dict']
 
@@ -165,6 +168,7 @@ class ThermoProScan:
                                        [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
             log.info(f'Files to bkp: {in_file_list}')
             out_file_list: list[str] = [BKP_PATH + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
+            log.info(f'out_file_list: {out_file_list}')
             for i, name in enumerate(in_file_list):
                 shutil.copy2(in_file_list[i], out_file_list[i])
 
@@ -195,39 +199,42 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    def __get_means_and_mins(self, json_data: dict[str, Any]):
+    def __get_means_and_mins(self, json_data: dict[str, Any]) -> dict[str, Any]:
+        json_result: dict[str, Any] = {}
         ext_temperature_list: list[float] = []
         for entry in [s for s in list(json_data) if "ext_temp_" in s]:
             ext_temperature_list.append(json_data.get(entry))
         ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
         log.info(f'ext_temp={ext_temp}, {ext_temperature_list}')
-        json_data['ext_temp'] = ext_temp
+        json_result['ext_temp'] = ext_temp
 
         room_temperature_list: list[float] = []
         for entry in [s for s in list(json_data) if "int_temp_" in s]:
             room_temperature_list.append(json_data.get(entry))
         int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
         log.info(f'int_temp={int_temp}, {room_temperature_list}')
-        json_data['int_temp'] = int_temp
+        json_result['int_temp'] = int_temp
 
         ext_humidity_list: list[int] = []
         for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
             ext_humidity_list.append(json_data.get(entry))
         ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
         log.info(f'ext_humidity={ext_humidity}, {ext_humidity_list}')
-        json_data['ext_humidity'] = ext_humidity
+        json_result['ext_humidity'] = ext_humidity
 
         room_humidity_list: list[int] = []
         for entry in [s for s in list(json_data) if "int_humidity_" in s]:
             room_humidity_list.append(json_data.get(entry))
         int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
         log.info(f'int_humidity={int_humidity}, {room_humidity_list}')
-        json_data['int_humidity'] = int_humidity
+        json_result['int_humidity'] = int_humidity
 
-        json_data['ext_humidex'] = self.__get_humidex(json_data['ext_temp'], json_data['ext_humidity'])
-        log.info(f'ext_humidex={json_data['ext_humidex']}')
-        json_data['int_humidex'] = self.__get_humidex(json_data['int_temp'], json_data['int_humidity'])
-        log.info(f'int_humidex={json_data['int_humidex']}')
+        json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
+        log.info(f'ext_humidex={json_result['ext_humidex']}')
+        json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
+        log.info(f'int_humidex={json_result['int_humidex']}')
+
+        return json_result
 
     def __get_humidex(self, temp: float, humidity: int) -> int | None:
         if temp is not None and humidity is not None:
@@ -242,16 +249,9 @@ class ThermoProScan:
 
     def start(self):
         try:
-            log.info('ThermoProScan started')
-            i = 0
-            while not os.path.exists(POIDS_PRESSION_PATH) and i < 10:
+            while not os.path.exists(POIDS_PRESSION_PATH):
                 log.warning(f'The path "{POIDS_PRESSION_PATH}" not ready.')
-                i += 1
                 sleep(10)
-            if not os.path.exists(POIDS_PRESSION_PATH):
-                log.error(f'The path "{POIDS_PRESSION_PATH}" not ready.')
-                ctypes.windll.user32.MessageBoxW(0, "Mapping not ready.", "Warning!", 16)
-                sys.exit()
 
             self.__call_all()
             schedule.every().hour.at(":00").do(self.__call_all)
@@ -276,11 +276,14 @@ class ThermoProScan:
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
-    log.info('ThermoProScan Starting...')
+    log.info('-------------------------------------------------------------------------------------')
+    log.info('|                           ThermoProScan started                                   |')
+    log.info('-------------------------------------------------------------------------------------')
     thermoProScan: ThermoProScan = ThermoProScan()
     thermoProScan.start()
     sys.exit()
 
-    df = thermopro.load_json()
-    thermopro.save_json(df)
-    thermopro.show_df(df)
+    thermopro.copy_to_cloud()
+    # df = thermopro.load_json()
+    # thermopro.save_json(df)
+    # thermopro.show_df(df)
