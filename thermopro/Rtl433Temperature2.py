@@ -10,7 +10,7 @@ from time import sleep
 from typing import Any
 
 import thermopro
-from constants import TIMEOUT, OUTPUT_RTL_433_FILE, SENSORS2, RTL_433_EXE
+from constants import TIMEOUT, OUTPUT_RTL_433_FILE, SENSORS, RTL_433_EXE
 from thermopro import log
 
 
@@ -22,19 +22,21 @@ class Rtl433Temperature2:
 
     def call_rtl_433(self, result_queue: Queue):
         log.info('-------------------------- call_rtl_433 --------------------------')
-        json_rtl_433: dict[str, Any] = {}
+        json_rtl_433: dict[str, int | float] = {}
         ext_humidity_list: list[int] = []
         ext_temp_list: list[float] = []
         int_humidity_list: list[int] = []
         int_temp_list: list[float] = []
         threads: list[threading.Thread] = []
+        sensors_list: dict[str, str] = {}
 
         try:
             self.__kill_rtl_433()
             self.__delete_json_file()
 
-            for freq in SENSORS2:
-                self.__call_sensors(list(SENSORS2[freq]['args']), dict(SENSORS2[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
+            for freq in SENSORS:
+                sensors_list.update(SENSORS[freq]['sensors'])
+                self.__call_sensors(list(SENSORS[freq]['args']), dict(SENSORS[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
 
             for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags', 'data']:
                 try:
@@ -42,7 +44,8 @@ class Rtl433Temperature2:
                 except KeyError:
                     pass
 
-            log.info(f'json_rtl_433={thermopro.ppretty(json_rtl_433)}')
+            for sens in sorted(sensors_list):
+                log.info(f'>>>>>> {sensors_list[sens]} {sens}: {json_rtl_433.get(sensors_list[sens] + '_temp_' + sens)}°C, {json_rtl_433.get(sensors_list[sens] + '_humidity_' + sens)}%')
 
         except Exception as e:
             log.error(f"An unexpected error occurred: {e}")
@@ -185,6 +188,9 @@ class Rtl433Temperature2:
                 threads.append(thread)
 
     def __fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
+
+        # print(f'data={data['data']} --> {int(data['data'], 16)} --> {933819842077 - int(data['data'], 16)}') if data.get('data') is not None else None
+
         data[f'{kind}_temp_{data['model']}'] = round(data['temperature_C'], 2)
         data[f'{kind}_humidity_{data['model']}'] = int(data['humidity']) if data.get('humidity') else None
 
@@ -204,9 +210,13 @@ if __name__ == "__main__":
     rtl433Temperature2: Rtl433Temperature2 = Rtl433Temperature2()
     rtl433Temperature2.call_rtl_433(result_queue)
 
+    json_data: dict[str, int | float] = {}
     while not result_queue.empty():
-        json_data: dict[str, Any] = result_queue.get()
+        json_data = result_queue.get()
         print(thermopro.ppretty(json_data))
-        print(list(json_data))
-        print([s for s in list(json_data) if "int_temp_" in s])
-        print([s for s in list(json_data) if "int_humidity_" in s])
+
+    # sensors: dict[str, str] = {}
+    # for sensor in SENSORS:
+    #     sensors.update(SENSORS[sensor]['sensors'])
+    # for sensor in sorted(sensors):
+    #     print(f'{sensors[sensor]} {sensor}: {json_data['sensors'][sensors[sensor] + '_temp_' + sensor]}°C, {json_data['sensors'][sensors[sensor] + '_humidity_' + sensor]}%')

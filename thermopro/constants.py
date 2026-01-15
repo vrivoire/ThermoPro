@@ -32,7 +32,7 @@ TIMEOUT: int = 5 * 60
 RTL_433_EXE_PATH: str = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
 RTL_433_EXE = RTL_433_EXE_PATH[RTL_433_EXE_PATH.rfind('/') + 1:]
 
-SENSORS2: dict[str, dict[str, list[str | int] | dict[str, str]] | dict[str, list[str] | dict[str, str]]] = {
+SENSORS: dict[str, dict[str, list[str | int] | dict[str, str]] | dict[str, list[str] | dict[str, str]]] = {
     '915': {
         'args': [RTL_433_EXE_PATH, '-F', f'json:{OUTPUT_RTL_433_FILE}', '-T', f'{TIMEOUT}', '-R', '278', '-R', '113', '-f', '915M', '-Y', 'classic', '-s', '250k'],
         'sensors': {

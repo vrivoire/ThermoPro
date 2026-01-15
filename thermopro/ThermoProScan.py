@@ -205,34 +205,34 @@ class ThermoProScan:
         for entry in [s for s in list(json_data) if "ext_temp_" in s]:
             ext_temperature_list.append(json_data.get(entry))
         ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
-        log.info(f'ext_temp={ext_temp}, {ext_temperature_list}')
+        log.info(f'>>>>>> ext_temp={ext_temp}, {ext_temperature_list}')
         json_result['ext_temp'] = ext_temp
 
         room_temperature_list: list[float] = []
         for entry in [s for s in list(json_data) if "int_temp_" in s]:
             room_temperature_list.append(json_data.get(entry))
         int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
-        log.info(f'int_temp={int_temp}, {room_temperature_list}')
+        log.info(f'>>>>>> int_temp={int_temp}, {room_temperature_list}')
         json_result['int_temp'] = int_temp
 
         ext_humidity_list: list[int] = []
         for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
             ext_humidity_list.append(json_data.get(entry))
         ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
-        log.info(f'ext_humidity={ext_humidity}, {ext_humidity_list}')
+        log.info(f'>>>>>> ext_humidity={ext_humidity}, {ext_humidity_list}')
         json_result['ext_humidity'] = ext_humidity
 
         room_humidity_list: list[int] = []
         for entry in [s for s in list(json_data) if "int_humidity_" in s]:
             room_humidity_list.append(json_data.get(entry))
         int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
-        log.info(f'int_humidity={int_humidity}, {room_humidity_list}')
+        log.info(f'>>>>>> int_humidity={int_humidity}, {room_humidity_list}')
         json_result['int_humidity'] = int_humidity
 
         json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
-        log.info(f'ext_humidex={json_result['ext_humidex']}')
+        log.info(f'>>>>>> ext_humidex={json_result['ext_humidex']}')
         json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
-        log.info(f'int_humidex={json_result['int_humidex']}')
+        log.info(f'>>>>>> int_humidex={json_result['int_humidex']}')
 
         return json_result
 

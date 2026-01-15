@@ -709,7 +709,7 @@ class NeviwebTemperature:
                 for group in self.groups:
                     if group['id'] == device['group$id']:
                         result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
-                        log.info(f'{group['name']}: {device["roomTemperature"]}°C, {round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)} KWh')
+                        log.info(f'>>>>>> {group['name']}: {device["roomTemperature"]}°C, {round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)} KWh')
 
             log.info(f'result={result}')
         except Exception as ex:
