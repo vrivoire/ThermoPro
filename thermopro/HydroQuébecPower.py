@@ -26,7 +26,6 @@ class HydroQuébec:
             result_queue: Queue,
             weeks=4
     ) -> None:
-
         web_user: WebUser | None = None
         kwh_dict: dict[str, float] = {}
         try:
@@ -35,9 +34,6 @@ class HydroQuébec:
             is_logged: bool = await web_user.login()
             log.info(f'Login: {is_logged}')
             log.info(f'check_hq_portal_status: {await web_user.check_hq_portal_status()}')
-            # print(requests.get(HOST_SERVICES).json())
-            # print(requests.get(HOURLY_CONSUMPTION_API_URL).ok)
-            # print(requests.get(HOURLY_CONSUMPTION_API_URL).status_code)
 
             if is_logged:
                 await web_user.get_info()
@@ -123,7 +119,7 @@ if __name__ == "__main__":
 
     while not result_queue.empty():
         data = result_queue.get()
-        print(thermopro.ppretty(data))
+        # print(thermopro.ppretty(data))
         print(len(data.get('kwh_dict')))
         # kwh_list: dict = result_queue.get()
         # print(f'size: {len(kwh_list['kwh_list'])}\n{thermopro.ppretty(kwh_list)}')

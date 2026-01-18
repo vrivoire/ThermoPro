@@ -92,7 +92,7 @@ class Rtl433Temperature2:
                     else:
                         data: dict = json.loads(line.strip())
                         model: str = data['model']
-                        log.info(f'{model}, {sensors.keys()}')
+                        log.info(f'{model}, {list(sensors.keys())}')
                         if model in sensors.keys():
                             log.info(f'>>>>>> {data.get('model')}: {data}')
                             data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
@@ -101,8 +101,10 @@ class Rtl433Temperature2:
                             log.info(f'Removed: {model}')
                             json_rtl_433.update(data)
                     if len(sensors.keys()) == 0 or not self.__is_rtl_433_alive():
-                        log.info(f'Done! keys: {sensors.keys()}, is alive: {self.__is_rtl_433_alive()}')
+                        log.info(f'Done! keys: {list(sensors.keys())}, is alive: {self.__is_rtl_433_alive()}')
                         break
+
+            self.__warn_not_respondig(sensors)
 
         except Exception as e:
             log.error(f"An unexpected error occurred: {e}")
@@ -111,7 +113,7 @@ class Rtl433Temperature2:
             self.__kill_rtl_433()
             self.__delete_json_file()
 
-    def __is_rtl_433_alive(self) -> bool:
+    def __is_rtl_433_alive(self) -> bool | None:
         try:
             completed_process = subprocess.run(
                 ['tasklist', '/FI', f'IMAGENAME eq {RTL_433_EXE}', '/FO', 'csv', '/nh'],
@@ -145,13 +147,13 @@ class Rtl433Temperature2:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    def __start_rtl_433(self, args: list[str]):
+    def __start_rtl_433(self, args: list[str]) -> str | None:
         try:
             log.info(f'ARGS={args}')
             completed_process = subprocess.run(
                 args,
                 capture_output=True,
-                timeout=TIMEOUT,
+                timeout=TIMEOUT + 5,
                 encoding="utf-8",
                 check=False,
                 shell=True,
@@ -176,6 +178,13 @@ class Rtl433Temperature2:
             except Exception as ex:
                 log.error(ex)
 
+    def __warn_not_respondig(self, sensors: dict[str, str]):
+        if len(sensors) > 0:
+            string: str = ' RTL 433 Warning '.center(80, '*')
+            log.error(string)
+            log.error('*' + f'Sensor{'s' if len(sensors) > 1 else ''} {list(sensors)} NOT responding'.center(len(string) - 2) + '*')
+            log.error(string)
+
     def __warn_battery(self, data: dict, threads: list[threading.Thread]):
         if data.get('battery_ok') == 0:
             string: str = ' RTL 433 Warning '.center(80, '*')
@@ -188,8 +197,12 @@ class Rtl433Temperature2:
                 threads.append(thread)
 
     def __fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
-
-        # print(f'data={data['data']} --> {int(data['data'], 16)} --> {933819842077 - int(data['data'], 16)}') if data.get('data') is not None else None
+        # try:
+        #     print(f'data={data['data']} --> {int(data['data'], 16)}') if data.get('data') is not None else None
+        #     print(f'--> {datetime.fromtimestamp(int(data['data'], 16))}') if data.get('data') is not None else None
+        # except OSError as ex:
+        #     log.error(ex)
+        #     log.error(traceback.format_exc())
 
         data[f'{kind}_temp_{data['model']}'] = round(data['temperature_C'], 2)
         data[f'{kind}_humidity_{data['model']}'] = int(data['humidity']) if data.get('humidity') else None
