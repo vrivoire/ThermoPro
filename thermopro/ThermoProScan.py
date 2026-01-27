@@ -1,6 +1,5 @@
 # start pyinstaller --onedir ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 import atexit
-import ctypes
 import glob
 import json
 import math
@@ -53,7 +52,7 @@ class ThermoProScan:
         try:
             log.info('')
             log.info('--------------------------------------------------------------------------------')
-            log.info("Start task")
+            log.info("Start task.")
 
             thread: threading.Thread = threading.Thread(target=Rtl433Temperature2().call_rtl_433, args=(result_queue,))
             threads.append(thread)
@@ -77,9 +76,10 @@ class ThermoProScan:
             while not result_queue.empty():
                 json_data.update(result_queue.get())
 
-            sensors: dict[str, Any] = json_data['sensors']
-            sensors.update(json_data)
-            json_result = self.__get_means_and_mins(sensors)
+            sensors1: dict[str, int | float | str] = json_data['sensors']
+            sensors2: dict[str, int | float | str] = dict(sensors1)
+            sensors1.update(json_data)
+            json_result: dict[str, int | float | str] = self.__get_means_and_mins(sensors1)
             json_data.update(json_result)
 
             kwh_dict: dict[str, float] = json_data['kwh_dict']
@@ -122,22 +122,57 @@ class ThermoProScan:
                     df1 = df1.astype({col: 'datetime64[ns]'})
 
             self.set_kwh(kwh_dict, df1)
-
             thermopro.set_astype(df1)
             thermopro.save_json(df1)
+            thermopro.save_sensors(json_data, sensors2, kwh_dict)
             self.save_bkp()
+            thermopro.copy_to_cloud()
 
-            show_df(df1)
+            show_df(df1, title='__call_all')
+
+            log.info(f'Successfully ended.')
         except Exception as ex:
             log.error(ex)
-            log.error(thermopro.ppretty(json_data))
             log.error(traceback.format_exc())
-            thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Genaral Error\n{ex}", "Genaral Error", 0x30))
-            thread.start()
 
         log.info("End task")
 
-        # https://stackoverflow.com/questions/13148429/how-to-change-the-order-of-dataframe-columns
+    def __get_means_and_mins(self, json_data: dict[str, Any]) -> dict[str, int | float | str]:
+        json_result: dict[str, int | float | str] = {}
+        ext_temperature_list: list[float] = []
+        for entry in [s for s in list(json_data) if "ext_temp_" in s]:
+            ext_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+        ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
+        log.info(f'>>>>>> ext_temp={ext_temp}, {ext_temperature_list}')
+        json_result['ext_temp'] = ext_temp
+
+        room_temperature_list: list[float] = []
+        for entry in [s for s in list(json_data) if "int_temp_" in s]:
+            room_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+        int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
+        log.info(f'>>>>>> int_temp={int_temp}, {room_temperature_list}')
+        json_result['int_temp'] = int_temp
+
+        ext_humidity_list: list[int] = []
+        for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
+            ext_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+        ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
+        log.info(f'>>>>>> ext_humidity={ext_humidity}, {ext_humidity_list}')
+        json_result['ext_humidity'] = ext_humidity
+
+        room_humidity_list: list[int] = []
+        for entry in [s for s in list(json_data) if "int_humidity_" in s]:
+            room_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+        int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
+        log.info(f'>>>>>> int_humidity={int_humidity}, {room_humidity_list}')
+        json_result['int_humidity'] = int_humidity
+
+        json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
+        log.info(f'>>>>>> ext_humidex={json_result['ext_humidex']}')
+        json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
+        log.info(f'>>>>>> int_humidex={json_result['int_humidex']}')
+
+        return json_result
 
     def set_kwh(self, kwh_dict: dict[str, float], df: DataFrame) -> None:
         try:
@@ -156,7 +191,6 @@ class ThermoProScan:
                     key = f'{line1['time'].strftime('%Y-%m-%d')} {line1['time'].strftime('%H')}'
                     kwh: float = kwh_dict.get(key) if kwh_dict.get(key) else 0.0
                     df.loc[index, 'kwh_hydro_quebec'] = kwh
-
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -198,43 +232,6 @@ class ThermoProScan:
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
-
-    def __get_means_and_mins(self, json_data: dict[str, Any]) -> dict[str, Any]:
-        json_result: dict[str, Any] = {}
-        ext_temperature_list: list[float] = []
-        for entry in [s for s in list(json_data) if "ext_temp_" in s]:
-            ext_temperature_list.append(json_data.get(entry))
-        ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
-        log.info(f'>>>>>> ext_temp={ext_temp}, {ext_temperature_list}')
-        json_result['ext_temp'] = ext_temp
-
-        room_temperature_list: list[float] = []
-        for entry in [s for s in list(json_data) if "int_temp_" in s]:
-            room_temperature_list.append(json_data.get(entry))
-        int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
-        log.info(f'>>>>>> int_temp={int_temp}, {room_temperature_list}')
-        json_result['int_temp'] = int_temp
-
-        ext_humidity_list: list[int] = []
-        for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
-            ext_humidity_list.append(json_data.get(entry))
-        ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
-        log.info(f'>>>>>> ext_humidity={ext_humidity}, {ext_humidity_list}')
-        json_result['ext_humidity'] = ext_humidity
-
-        room_humidity_list: list[int] = []
-        for entry in [s for s in list(json_data) if "int_humidity_" in s]:
-            room_humidity_list.append(json_data.get(entry))
-        int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
-        log.info(f'>>>>>> int_humidity={int_humidity}, {room_humidity_list}')
-        json_result['int_humidity'] = int_humidity
-
-        json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
-        log.info(f'>>>>>> ext_humidex={json_result['ext_humidex']}')
-        json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
-        log.info(f'>>>>>> int_humidex={json_result['int_humidex']}')
-
-        return json_result
 
     def __get_humidex(self, temp: float, humidity: int) -> int | None:
         if temp is not None and humidity is not None:

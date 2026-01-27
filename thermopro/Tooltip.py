@@ -144,7 +144,6 @@ class Tooltip:
         log.info('Starting Tooltip')
 
     def get_matrix(self, temp: int, humidity: int):
-        print(f'temp: {temp}, humidity: {humidity}')
         try:
             humidity = 5 * round(humidity / 5) if not math.isnan(humidity) else 0
             if temp < 21 or temp > 43 and humidity < 20:

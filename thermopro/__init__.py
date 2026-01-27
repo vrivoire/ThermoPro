@@ -1,3 +1,4 @@
+import copy
 import json
 import logging as log
 import logging.handlers
@@ -9,11 +10,11 @@ import zipfile
 from datetime import datetime
 
 import pandas
-from dateutil.relativedelta import relativedelta
-from numpy import int32
-from pandas import DataFrame
+import pandas as pd
+from pandas import DataFrame, Timestamp
 
-from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH
+import thermopro
+from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH
 
 
 # HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
@@ -21,18 +22,112 @@ from thermopro.constants import COLUMNS, OUTPUT_JSON_FILE, OUTPUT_CSV_FILE, LOG_
 # POIDS_PRESSION_PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
 # LOG_NAME: str = ''
 
+def save_sensors(json_data: dict, sensors: dict[str, int | float | str], kwh_dict: dict[str, float]) -> None:
+    try:
+        start: Timestamp = Timestamp.now()
 
-@staticmethod
-def save_json(df: DataFrame):
+        json_data2 = copy.deepcopy(json_data)
+        sensors2 = copy.deepcopy(sensors)
+        kwh_dict = copy.deepcopy(kwh_dict)
+
+        data: dict[str, int | float | str] = {'time': datetime.now().isoformat()}
+        sensors2.update(json_data2)
+        for entry in [s for s in list(sensors2) if "ext_temp" in s]:
+            data[entry] = sensors2[entry]
+        for entry in [s for s in list(sensors2) if "int_temp" in s]:
+            data[entry] = sensors2[entry]
+        for entry in [s for s in list(sensors2) if "ext_humidity" in s]:
+            data[entry] = sensors2[entry]
+        for entry in [s for s in list(sensors2) if "int_humidity" in s]:
+            data[entry] = sensors2[entry]
+        for entry in [s for s in list(sensors2) if "kwh_" in s]:
+            data[entry] = sensors2.get(entry)
+
+        df: DataFrame = pd.DataFrame([data])
+
+        df = df.astype({'time': 'datetime64[ns]'})
+        df.set_index('time')
+        df = df.sort_values(by='time', ascending=True)
+
+        df_in = load_sensors()
+
+        if len(kwh_dict) > 0:
+            try:
+                start: Timestamp = Timestamp.now()
+                kwh_list: list[dict[str, float]] = [{'time': f'{k}:00', 'kwh_hydro_quebec': v} for k, v in kwh_dict.items()]
+                df_kwh: DataFrame = pd.DataFrame(kwh_list, columns=['time', 'kwh_hydro_quebec'])
+                df_kwh = df_kwh.astype({'time': 'datetime64[ns]'})
+                df_kwh.set_index('time')
+                kwh_first_timestamp: Timestamp = df_kwh['time'].head(1)[0]
+                kwh_last_timestamp: Timestamp = df_kwh['time'].tail(1)[len(df_kwh) - 1]
+                log.info(f'date range: {kwh_first_timestamp}...{kwh_last_timestamp}')
+
+                df_in = thermopro.load_sensors()
+                df_in['kwh_hydro_quebec'] = 0.0
+                df_in.astype({'kwh_hydro_quebec': float})
+                df_in['time'] = pd.to_datetime(df_in['time'])
+                df_in.astype({'time': 'datetime64[ns]'})
+                df_in.set_index('time')
+
+                for index in df_kwh.index.tolist():
+                    timestamp: Timestamp = df_kwh.iloc[index]['time']
+                    filtered_df_in = df_in[
+                        (df_in['time'].dt.year == timestamp.year) &
+                        (df_in['time'].dt.month == timestamp.month) &
+                        (df_in['time'].dt.day == timestamp.day) &
+                        (df_in['time'].dt.hour == timestamp.hour)
+                        ]
+                    df_in_indexes: list[int] | None = filtered_df_in.index.tolist() if len(filtered_df_in.index.tolist()) > 0 else None
+                    if df_in_indexes is not None:
+                        for df_in_index in df_in_indexes:
+                            df_in.loc[df_in_index, 'kwh_hydro_quebec'] = df_kwh.iloc[index]['kwh_hydro_quebec'] if df_kwh.iloc[index]['kwh_hydro_quebec'] else 0.0
+            except Exception as ex:
+                log.error(ex)
+                log.error(traceback.format_exc())
+
+        df_updated = pd.concat([df_in, df], ignore_index=True)
+        for entry in [s for s in list(sensors2) if "kwh_" in s]:
+            df_updated = df_updated.astype({entry: 'Float64'})
+
+        columns = df_updated.columns.tolist()
+        cols = ['time', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb']
+        for col in cols:
+            columns.remove(col)
+        df_updated = df_updated[cols + sorted(columns)]
+
+        df_updated['kwh_hydro_quebec'] = df_updated['kwh_hydro_quebec'].apply(lambda x: 0.0 if pd.isna(x) else x)
+        df_updated['kwh_neviweb'] = df_updated['kwh_neviweb'].apply(lambda x: 0.0 if pd.isna(x) else x)
+
+        df_updated.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
+                           compression={
+                               'method': 'zip',
+                               'compression': zipfile.ZIP_DEFLATED,
+                               'compresslevel': 9
+                           })
+        show_df(df_updated, title='save_sensors', max_rows=10)
+        log.info(f'Elapsed: {Timestamp.now() - start}, File of Sensors "{SENSORS_OUTPUT_JSON_FILE}" is saved.')
+    except Exception as ex:
+        log.error(ex)
+        log.error(traceback.format_exc())
+
+
+def load_sensors() -> DataFrame | None:
+    df_in: DataFrame | None = None
+    if os.path.exists(SENSORS_OUTPUT_JSON_FILE):
+        df_in: DataFrame = pd.read_json(SENSORS_OUTPUT_JSON_FILE, compression='zip')
+    if df_in is None:
+        raise f"Unable to load file {SENSORS_OUTPUT_JSON_FILE}."
+    return df_in
+
+
+def save_json(df: DataFrame) -> None:
     df = set_astype(df)
-    df.to_json(OUTPUT_JSON_FILE + '.zip', orient='records', indent=4, date_format='iso',
+    df.to_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
                compression={
                    'method': 'zip',
                    'compression': zipfile.ZIP_DEFLATED,
                    'compresslevel': 9
                })
-
-    copy_to_cloud()
 
     # for orient in ['columns', 'index', 'split', 'table']:
     #     print(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json')
@@ -40,10 +135,16 @@ def save_json(df: DataFrame):
     log.info('JSON saved')
 
 
-def copy_to_cloud():
+def copy_to_cloud() -> None:
     for drive in ['OneDrive', 'Mega', 'Icedrive', 'Documents']:
         destination_folder = f"{HOME_PATH}{drive}/PoidsPression"
         try:
+            if os.path.isdir(destination_folder):
+                try:
+                    shutil.rmtree(destination_folder)
+                    log.info(f"Directory and all contents at '{destination_folder}' deleted successfully.")
+                except OSError as e:
+                    log.error(f"Error: {destination_folder} : {e.strerror}")
             shutil.copytree(POIDS_PRESSION_PATH, destination_folder, dirs_exist_ok=True)
             log.info(f"Folder and contents successfully copied from '{POIDS_PRESSION_PATH}' to '{destination_folder}'")
         except Exception as ex:
@@ -51,14 +152,13 @@ def copy_to_cloud():
             log.error(traceback.format_exc())
 
 
-@staticmethod
 def load_json() -> DataFrame:
     try:
         df: DataFrame | None = None
 
-        if os.path.exists(OUTPUT_JSON_FILE + '.zip'):
-            log.info(f'Loading file {OUTPUT_JSON_FILE + '.zip'}')
-            df: DataFrame = pandas.read_json(OUTPUT_JSON_FILE + '.zip', compression='zip')
+        if os.path.exists(THERMO_PRO_SCAN_OUTPUT_JSON_FILE):
+            log.info(f'Loading file {THERMO_PRO_SCAN_OUTPUT_JSON_FILE}')
+            df: DataFrame = pandas.read_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE, compression='zip')
 
         # if os.path.exists(OUTPUT_JSON_FILE):
         #     log.info(f'Loading file {OUTPUT_JSON_FILE}')
@@ -73,38 +173,23 @@ def load_json() -> DataFrame:
         # df = df.drop('ext_temp_Acurite-609TXC', axis=1)
 
         if df is None:
-            raise f"Unable to load file {OUTPUT_JSON_FILE}.zip"
+            raise f"Unable to load file {THERMO_PRO_SCAN_OUTPUT_JSON_FILE}"
         else:
             df = set_astype(df)
             for col in ['time', 'open_sunrise', 'open_sunset']:
                 df = df.astype({col: 'datetime64[ns]'})
 
-            timeout: int = int(TIMEOUT / 60)
-            df_conditional_drop = df.drop(df[
-                                              (df['time'].dt.minute >= int32(3 * timeout)) &
-                                              (df['time'].dt.minute <= int32(60 - timeout)) &
-                                              (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
-                                              ].index)
-            log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
-            df = df_conditional_drop.reset_index(drop=True)
+            # PURGE !???!!!!!????
+            # timeout: int = int(TIMEOUT / 60)
+            # df_conditional_drop = df.drop(df[
+            #                                   (df['time'].dt.minute >= int32(3 * timeout)) &
+            #                                   (df['time'].dt.minute <= int32(60 - timeout)) &
+            #                                   (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
+            #                                   ].index)
+            # log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
+            # df = df_conditional_drop.reset_index(drop=True)
 
             df = df[COLUMNS]
-
-            # df['ext_humidity_AmbientWeather-WH31B'] = None
-            # df['ext_humidity_AmbientWeather-WH31B'] = df['ext_humidity_AmbientWeather-WH31B'].astype('Int64')
-            # df['ext_temp_AmbientWeather-WH31B'] = None
-            # df['ext_temp_AmbientWeather-WH31B'] = df['ext_temp_AmbientWeather-WH31B'].astype('Float64')
-
-            # for col in ['kwh_hydro_quebec', 'ext_temp', 'int_temp', 'open_temp', 'int_humidity', 'int_humidex', 'int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau',
-            #             'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_feels_like',
-            #             'int_temp_ThermoPro-TX7B', 'ext_temp_Thermopro-TX2', 'int_temp_Acurite-609TXC', 'ext_temp_AmbientWeather-WH31B',
-            #             ]:
-            #     df[col] = df[col].astype('Float64')
-            #     df[col] = df[col].ffill().fillna(0.0)
-            # for col in ['ext_humidity', 'open_humidity', 'open_pressure', 'ext_humidex', 'kwh_neviweb', 'int_humidity',
-            #             'int_humidity_ThermoPro-TX7B', 'ext_humidity_Thermopro-TX2', 'int_humidity_Acurite-609TXC', 'ext_humidity_AmbientWeather-WH31B']:
-            #     df[col] = df[col].astype('Int64')
-            #     df[col] = df[col].ffill().fillna(0)
 
             return df
     except Exception as ex:
@@ -113,17 +198,15 @@ def load_json() -> DataFrame:
         raise ex
 
 
-@staticmethod
 def set_astype(df: DataFrame) -> DataFrame:
     columns = list(COLUMNS)
     for col in ['time', 'open_sunrise', 'open_sunset']:
         df = df.astype({col: 'datetime64[ns]'})
         columns.remove(col)
-    for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg',
-                # 'int_temp_ThermoPro-TX7B',                'ext_humidity_Thermopro-TX2', 'ext_humidity_AmbientWeather-WH31B', 'int_humidity_Acurite-609TXC'
-                ]:
+    for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg']:
         try:
             df[col] = df[col].round().astype('Int64')
+            df[col] = df[col].apply(lambda x: 0 if pd.isna(x) else x)
         except KeyError as ex:
             log.error(f'{col} -> {df.columns}')
             log.error(ex)
@@ -135,6 +218,7 @@ def set_astype(df: DataFrame) -> DataFrame:
     for col in columns:
         try:
             df[col] = df[col].astype('Float64')
+            df[col] = df[col].apply(lambda x: 0.0 if pd.isna(x) else x)
         except KeyError as ex:
             log.error(df[col].dtypes)
             log.error(ex)
@@ -146,17 +230,20 @@ def set_astype(df: DataFrame) -> DataFrame:
     all_columns2 = ['time'] + all_columns2
     df = df[all_columns2]
     df = df.sort_values(by='time', ascending=True)
+    df['kwh_hydro_quebec'] = df['kwh_hydro_quebec'].apply(lambda x: 0.0 if pd.isna(x) else x)
+    df['kwh_neviweb'] = df['kwh_neviweb'].apply(lambda x: 0.0 if pd.isna(x) else x)
+
     return df
 
 
-def show_df(df: DataFrame):
-    pandas.set_option('display.max_columns', None)
-    pandas.set_option('display.width', 1000)
-    pandas.set_option('display.max_rows', 50)
-    log.info(f'DataFrame len: {len(df)}\n{df[len(df) - 50:]}')
+def show_df(df: DataFrame, title='', max_columns=None, width=1000, max_rows=50) -> None:
+    pandas.set_option('display.max_columns', max_columns)
+    pandas.set_option('display.width', width)
+    pandas.set_option('display.max_rows', max_rows)
+    log.info(f'>>>> {title} DataFrame len: {len(df)}\n{df[len(df) - max_rows:]}')
 
 
-def ping(name: str):
+def ping(name: str) -> bool:
     try:
         command = ['ping', '-4', '-n', '1', f'{name}']
         completed_process = subprocess.run(command, text=True, capture_output=True)
@@ -177,8 +264,13 @@ def ping(name: str):
     return False
 
 
-def ppretty(value, tab_char='\t', return_char='\n', indent=0):
-    return json.dumps(value, indent=4, sort_keys=True, default=str)
+def ppretty(value: object, tab_char: object = '\t', return_char: object = '\n', indent: object = 0) -> str | None:
+    try:
+        return json.dumps(value, indent=4, sort_keys=True, default=str, check_circular=False)
+    except Exception as ex:
+        log.error(ex)
+        log.error(traceback.format_exc())
+    return None
     # nlch: str = return_char + tab_char * (indent + 1)
     # if type(value) is dict:
     #     value = sorted(dict(value.items()), key=lambda item: item[0].lower())

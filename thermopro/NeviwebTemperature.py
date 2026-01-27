@@ -679,7 +679,7 @@ class NeviwebTemperature:
 
     def load_neviweb(self, result_queue: Queue):
         log.info("  ----------------------- Start load_neviweb -----------------------")
-        result: dict = {}
+        result: dict[str, int | float | None] = {}
         try:
             log.info(f'login={self.login()}')
 
@@ -703,14 +703,21 @@ class NeviwebTemperature:
                         kwh_total += kwh
                         result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh if not math.isnan(kwh) else 0.0
             result['kwh_neviweb'] = kwh_total if not math.isnan(kwh_total) else 0.0
-            log.info(f'kwh_neviweb: {result['kwh_neviweb']}')
 
             for device in self.gateway_data:
                 for group in self.groups:
                     if group['id'] == device['group$id']:
                         result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
-                        log.info(f'>>>>>> {group['name']}: {device["roomTemperature"]}°C, {round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)} KWh')
 
+            group_map = {g['id']: str(g['name']).replace(' ', '-').lower() for g in self.groups}
+            names = [
+                {g['id']: str(g['name']).replace(' ', '-').lower() for g in self.groups}[device['group$id']]
+                for device in self.gateway_data
+                if device.get('group$id') in group_map
+            ]
+            for name in sorted(names):
+                log.info(f'>>>>>> {name}: {result['int_temp_' + name]}°C, {result['kwh_' + name]}  KWh')
+            log.info(f'>>>>>> kwh_neviweb: {result['kwh_neviweb']}  KWh')
             log.info(f'result={result}')
         except Exception as ex:
             log.error(ex)
@@ -727,4 +734,5 @@ if __name__ == '__main__':
     neviweb_temperature: NeviwebTemperature = NeviwebTemperature()
     neviweb_temperature.load_neviweb(result_queue)
     while not result_queue.empty():
-        print(thermopro.ppretty(result_queue.get()))
+        result: dict[str, int | float | None] = result_queue.get()
+        print(thermopro.ppretty(result))

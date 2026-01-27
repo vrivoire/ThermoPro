@@ -20,8 +20,8 @@ COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'i
                       )
                       )
 
-OUTPUT_CSV_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.csv"
-OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
+THERMO_PRO_SCAN_OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json.zip"
+SENSORS_OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}Sensors.json.zip"
 
 LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
 

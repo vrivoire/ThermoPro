@@ -27,7 +27,7 @@ class HydroQuébec:
             weeks=4
     ) -> None:
         web_user: WebUser | None = None
-        kwh_dict: dict[str, float] = {}
+        kwh_dict: dict[str, float | None] = {}
         try:
             web_user = WebUser(HYDRO_EMAIL, HYDRO_PASSWORD, verify_ssl=False, log_level="ERROR", http_log_level="ERROR")
             await web_user.login()
@@ -118,8 +118,5 @@ if __name__ == "__main__":
     HydroQuébec().start(result_queue)
 
     while not result_queue.empty():
-        data = result_queue.get()
-        # print(thermopro.ppretty(data))
-        print(len(data.get('kwh_dict')))
-        # kwh_list: dict = result_queue.get()
-        # print(f'size: {len(kwh_list['kwh_list'])}\n{thermopro.ppretty(kwh_list)}')
+        kwh_list: dict[str, dict[str, float | None]] = result_queue.get()
+        print(thermopro.ppretty(kwh_list))

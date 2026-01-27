@@ -38,9 +38,8 @@ class ThermoProGraph:
         global df
         df = thermopro.load_json()
         self.clean_data()
-        thermopro.show_df(df)
+        thermopro.show_df(df, title='__init__')
 
-    # https://stackoverflow.com/questions/7908636/how-to-add-hovering-annotations-to-a-plot
     def create_graph_temperature(self) -> None:
         try:
             log.info('create_graph_temperature')
@@ -173,6 +172,12 @@ class ThermoProGraph:
             def on_changed(val):
                 slider_date.valtext.set_text(num2date(val).date())
                 df2: pd.DataFrame = df.set_index(['time'])
+
+                # https://www.google.com/search?q=Pandas4Warning%3A+Slicing+with+a+datetime.date+object+is+deprecated.+Explicitly+cast+to+Timestamp+instead.&oq=Pandas4Warning%3A+Slicing+with+a+datetime.date+object+is+deprecated.+Explicitly+cast+to+Timestamp+instead.&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIGCAEQRRg60gEHMTkxajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8
+                # start_of_day = pd.Timestamp(num2date(val - mean).date())
+                # end_of_day = pd.Timestamp(num2date(val + mean).date())
+                # df2 = df2[(df2['time'] >= start_of_day) & (df2['time'] < end_of_day)]
+
                 df2 = df2[num2date(val - mean).date():num2date(val + mean).date()]
                 window = (
                     val - mean,
@@ -351,7 +356,7 @@ class ThermoProGraph:
             ax1.grid(axis='y', color='gray', linewidth=0.2)
             ax1.set_yticks(list(range(0, math.ceil(df['kwh_hydro_quebec'].max(numeric_only=True)))), minor=True)
             kwh_hydro_quebec, = ax1.plot(df["time"], (df["kwh_hydro_quebec"]), color='xkcd:grey', label='Hydro KWh')
-            kwh_neviweb, = ax1.plot(df["time"], (df["kwh_neviweb"]), color='xkcd:gray', label='Nevi KWh')
+            kwh_neviweb, = ax1.plot(df["time"], (df["kwh_neviweb"]), color='xkcd:charcoal grey', label='Nevi KWh')
 
             ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
@@ -373,7 +378,7 @@ class ThermoProGraph:
             mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
             mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
             mean_kwh_hydro_quebec, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['kwh_hydro_quebec'].mean(), color='xkcd:medium grey', alpha=0.3, label='Mean Hydo KWh')
-            mean_kwh_neviweb, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['kwh_neviweb'].mean(), color='xkcd:medium gray', alpha=0.3, label='Mean Nevi KWh')
+            mean_kwh_neviweb, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['kwh_neviweb'].mean(), color='xkcd:charcoal', alpha=0.3, label='Mean Nevi KWh')
 
             plt.axhline(0, linewidth=0.5, color='black', zorder=-10)
 
@@ -613,6 +618,9 @@ class ThermoProGraph:
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]), 3)} {sel[0].get_label()}'
             ))
             mplcursors.cursor(mean_kwh_neviweb, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]), 3)} {sel[0].get_label()}'
+            ))
+            mplcursors.cursor(kwh_neviweb, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]), 3)} {sel[0].get_label()}'
             ))
 

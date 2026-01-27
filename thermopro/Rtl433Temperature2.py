@@ -22,7 +22,7 @@ class Rtl433Temperature2:
 
     def call_rtl_433(self, result_queue: Queue):
         log.info('-------------------------- call_rtl_433 --------------------------')
-        json_rtl_433: dict[str, int | float] = {}
+        json_rtl_433: dict[str, int | float | str] = {}
         ext_humidity_list: list[int] = []
         ext_temp_list: list[float] = []
         int_humidity_list: list[int] = []
@@ -43,16 +43,15 @@ class Rtl433Temperature2:
                     json_rtl_433.pop(item)
                 except KeyError:
                     pass
-
-            for sens in sorted(sensors_list):
-                log.info(f'>>>>>> {sensors_list[sens]} {sens}: {json_rtl_433.get(sensors_list[sens] + '_temp_' + sens)}°C, {json_rtl_433.get(sensors_list[sens] + '_humidity_' + sens)}%')
-
         except Exception as e:
             log.error(f"An unexpected error occurred: {e}")
             log.error(traceback.format_exc())
 
         self.__kill_rtl_433()
         self.__delete_json_file()
+
+        for sensor in sorted(sensors_list):
+            log.info(f'>>>>>> {sensors_list[sensor]} {sensor}: {json_rtl_433.get(sensors_list[sensor] + '_temp_' + sensor)}°C, {json_rtl_433.get(sensors_list[sensor] + '_humidity_' + sensor)}%')
 
         result_queue.put({'sensors': json_rtl_433})
 
@@ -223,13 +222,6 @@ if __name__ == "__main__":
     rtl433Temperature2: Rtl433Temperature2 = Rtl433Temperature2()
     rtl433Temperature2.call_rtl_433(result_queue)
 
-    json_data: dict[str, int | float] = {}
     while not result_queue.empty():
-        json_data = result_queue.get()
-        print(thermopro.ppretty(json_data))
-
-    # sensors: dict[str, str] = {}
-    # for sensor in SENSORS:
-    #     sensors.update(SENSORS[sensor]['sensors'])
-    # for sensor in sorted(sensors):
-    #     print(f'{sensors[sensor]} {sensor}: {json_data['sensors'][sensors[sensor] + '_temp_' + sensor]}°C, {json_data['sensors'][sensors[sensor] + '_humidity_' + sensor]}%')
+        json_data: dict[str, dict[str, int | float | str]] = result_queue.get()
+        print(thermopro.ppretty(json_data['sensors']))
