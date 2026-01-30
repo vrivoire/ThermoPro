@@ -20,4 +20,4 @@ call pyinstaller -y --onedir thermopro\ThermoProScan.py --icon=ThermoPro.png --n
 
 nssm start ThermoProScan
 
-pause
+rem pause

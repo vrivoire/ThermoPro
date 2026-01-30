@@ -1,4 +1,3 @@
-import copy
 import json
 import logging as log
 import logging.handlers
@@ -11,101 +10,40 @@ from datetime import datetime
 
 import pandas
 import pandas as pd
-from pandas import DataFrame, Timestamp
+from pandas import DataFrame
 
 import thermopro
 from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH
 
 
-# HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
-# LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
-# POIDS_PRESSION_PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
-# LOG_NAME: str = ''
-
-def save_sensors(json_data: dict, sensors: dict[str, int | float | str], kwh_dict: dict[str, float]) -> None:
+def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> None:
     try:
-        start: Timestamp = Timestamp.now()
+        sensors['time'] = now
+        df_sensors: DataFrame = pd.DataFrame([sensors])
+        df_sensors = df_sensors.astype({'time': 'datetime64[ns]'})
 
-        json_data2 = copy.deepcopy(json_data)
-        sensors2 = copy.deepcopy(sensors)
-        kwh_dict = copy.deepcopy(kwh_dict)
+        df_in: DataFrame = thermopro.load_sensors()
+        df_in = pd.concat([df_in, df_sensors], ignore_index=True)
+        df_in = df_in.astype({'time': 'datetime64[ns]'})
+        for entry in [s for s in list(df_in) if "_humidity_" in s]:
+            df_in[entry] = df_in[entry].apply(lambda x: 0 if pd.isna(x) else x)
+            df_in = df_in.astype({entry: 'int64'})
 
-        data: dict[str, int | float | str] = {'time': datetime.now().isoformat()}
-        sensors2.update(json_data2)
-        for entry in [s for s in list(sensors2) if "ext_temp" in s]:
-            data[entry] = sensors2[entry]
-        for entry in [s for s in list(sensors2) if "int_temp" in s]:
-            data[entry] = sensors2[entry]
-        for entry in [s for s in list(sensors2) if "ext_humidity" in s]:
-            data[entry] = sensors2[entry]
-        for entry in [s for s in list(sensors2) if "int_humidity" in s]:
-            data[entry] = sensors2[entry]
-        for entry in [s for s in list(sensors2) if "kwh_" in s]:
-            data[entry] = sensors2.get(entry)
+        for entry in [s for s in list(df_in) if "_temp_" in s]:
+            df_in[entry] = df_in[entry].apply(lambda x: 0.0 if pd.isna(x) else x)
+            df_in = df_in.astype({entry: 'float64'})
 
-        df: DataFrame = pd.DataFrame([data])
+        df_in = df_in[['time'] + [c for c in sorted(df_sensors.columns) if c != 'time']]
 
-        df = df.astype({'time': 'datetime64[ns]'})
-        df.set_index('time')
-        df = df.sort_values(by='time', ascending=True)
+        df_in.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
+                      compression={
+                          'method': 'zip',
+                          'compression': zipfile.ZIP_DEFLATED,
+                          'compresslevel': 9
+                      })
 
-        df_in = load_sensors()
-
-        if len(kwh_dict) > 0:
-            try:
-                start: Timestamp = Timestamp.now()
-                kwh_list: list[dict[str, float]] = [{'time': f'{k}:00', 'kwh_hydro_quebec': v} for k, v in kwh_dict.items()]
-                df_kwh: DataFrame = pd.DataFrame(kwh_list, columns=['time', 'kwh_hydro_quebec'])
-                df_kwh = df_kwh.astype({'time': 'datetime64[ns]'})
-                df_kwh.set_index('time')
-                kwh_first_timestamp: Timestamp = df_kwh['time'].head(1)[0]
-                kwh_last_timestamp: Timestamp = df_kwh['time'].tail(1)[len(df_kwh) - 1]
-                log.info(f'date range: {kwh_first_timestamp}...{kwh_last_timestamp}')
-
-                df_in = thermopro.load_sensors()
-                df_in['kwh_hydro_quebec'] = 0.0
-                df_in.astype({'kwh_hydro_quebec': float})
-                df_in['time'] = pd.to_datetime(df_in['time'])
-                df_in.astype({'time': 'datetime64[ns]'})
-                df_in.set_index('time')
-
-                for index in df_kwh.index.tolist():
-                    timestamp: Timestamp = df_kwh.iloc[index]['time']
-                    filtered_df_in = df_in[
-                        (df_in['time'].dt.year == timestamp.year) &
-                        (df_in['time'].dt.month == timestamp.month) &
-                        (df_in['time'].dt.day == timestamp.day) &
-                        (df_in['time'].dt.hour == timestamp.hour)
-                        ]
-                    df_in_indexes: list[int] | None = filtered_df_in.index.tolist() if len(filtered_df_in.index.tolist()) > 0 else None
-                    if df_in_indexes is not None:
-                        for df_in_index in df_in_indexes:
-                            df_in.loc[df_in_index, 'kwh_hydro_quebec'] = df_kwh.iloc[index]['kwh_hydro_quebec'] if df_kwh.iloc[index]['kwh_hydro_quebec'] else 0.0
-            except Exception as ex:
-                log.error(ex)
-                log.error(traceback.format_exc())
-
-        df_updated = pd.concat([df_in, df], ignore_index=True)
-        for entry in [s for s in list(sensors2) if "kwh_" in s]:
-            df_updated = df_updated.astype({entry: 'Float64'})
-
-        columns = df_updated.columns.tolist()
-        cols = ['time', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb']
-        for col in cols:
-            columns.remove(col)
-        df_updated = df_updated[cols + sorted(columns)]
-
-        df_updated['kwh_hydro_quebec'] = df_updated['kwh_hydro_quebec'].apply(lambda x: 0.0 if pd.isna(x) else x)
-        df_updated['kwh_neviweb'] = df_updated['kwh_neviweb'].apply(lambda x: 0.0 if pd.isna(x) else x)
-
-        df_updated.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
-                           compression={
-                               'method': 'zip',
-                               'compression': zipfile.ZIP_DEFLATED,
-                               'compresslevel': 9
-                           })
-        show_df(df_updated, title='save_sensors', max_rows=10)
-        log.info(f'Elapsed: {Timestamp.now() - start}, File of Sensors "{SENSORS_OUTPUT_JSON_FILE}" is saved.')
+        show_df(df_in, title='save_sensors', max_rows=10)
+        log.info(f'File of Sensors "{SENSORS_OUTPUT_JSON_FILE}" is saved.')
     except Exception as ex:
         log.error(ex)
         log.error(traceback.format_exc())
@@ -304,10 +242,10 @@ def set_up(log_name: str):
         os.mkdir(LOG_PATH)
 
     file_handler = logging.handlers.TimedRotatingFileHandler(LOG_NAME, when='midnight', interval=1, backupCount=7,
-                                                             encoding=None, delay=True, utc=False, atTime=None,
+                                                             encoding="utf-8", delay=True, utc=False, atTime=None,
                                                              errors=None)
     file_handler_error = logging.handlers.TimedRotatingFileHandler(log_name_error, when='midnight', interval=1, backupCount=7,
-                                                                   encoding=None, delay=True, utc=False, atTime=None,
+                                                                   encoding="utf-8", delay=True, utc=False, atTime=None,
                                                                    errors=None)
     file_handler_error.level = logging.ERROR
 

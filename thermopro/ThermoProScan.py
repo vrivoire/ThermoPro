@@ -46,6 +46,7 @@ class ThermoProScan:
         atexit.register(self.__cleanup_function)
 
     def __call_all(self) -> None:
+        now: datetime = datetime.now()
         json_data: dict[str, Any] = {}
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
@@ -100,7 +101,7 @@ class ThermoProScan:
                 data_dict: dict[str, Any] = {}
                 for col in COLUMNS:
                     if col == 'time':
-                        data_dict[col] = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+                        data_dict[col] = now
                     elif type(json_data.get(col)) == datetime:
                         data_dict[col] = json_data.get(col).strftime('%Y/%m/%d %H:%M:%S')
                     elif type(json_data.get(col)) == float and pd.isna(json_data.get(col)):
@@ -124,7 +125,7 @@ class ThermoProScan:
             self.set_kwh(kwh_dict, df1)
             thermopro.set_astype(df1)
             thermopro.save_json(df1)
-            thermopro.save_sensors(json_data, sensors2, kwh_dict)
+            thermopro.save_sensors(now, sensors2)
             self.save_bkp()
             thermopro.copy_to_cloud()
 
@@ -134,8 +135,7 @@ class ThermoProScan:
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
-
-        log.info("End task")
+        log.info(f"End task, Elapsed: {datetime.now().now() - now}")
 
     def __get_means_and_mins(self, json_data: dict[str, Any]) -> dict[str, int | float | str]:
         json_result: dict[str, int | float | str] = {}

@@ -1,12 +1,13 @@
 import sys
 import traceback
+import zipfile
 from datetime import datetime
 
 import pandas as pd
-from pandas import DataFrame, Timestamp
+from pandas import DataFrame
 
 import thermopro
-from thermopro import log
+from thermopro import log, SENSORS_OUTPUT_JSON_FILE
 
 json_data = {'open_temp': -10.6, 'open_feels_like': -17.42, 'open_humidity': 71, 'open_pressure': 1016, 'open_clouds': 100, 'open_visibility': 10000, 'open_wind_speed': 4.12, 'open_wind_gust': 0.0, 'open_wind_deg': 250, 'open_rain': 0.0, 'open_snow': 0.0, 'open_description': 'Clouds, overcast clouds', 'open_icon': '04n', 'open_sunrise': datetime(2026, 1, 23, 7, 24, 46), 'open_sunset': datetime(2026, 1, 23, 16, 47, 19), 'open_uvi': 0, 'kwh_bureau': 0.0, 'kwh_salon': 0.0, 'kwh_chambre': 0.0, 'kwh_salle-de-bain': 0.0, 'kwh_neviweb': 0.0, 'int_temp_bureau': 19.94, 'int_temp_salon': 19.82, 'int_temp_chambre': 18.44, 'int_temp_salle-de-bain': 19.8,
              'kwh_dict': {'2025-11-28 00': 0.57, '2025-11-28 01': 0.57, '2025-11-28 02': 0.56, '2025-11-28 03': 0.57, '2025-11-28 04': 0.49, '2025-11-28 05': 0.56, '2025-11-28 06': 0.74, '2025-11-28 07': 0.65, '2025-11-28 08': 0.55, '2025-11-28 09': 1.34, '2025-11-28 10': 0.74, '2025-11-28 11': 0.68, '2025-11-28 12': 0.64, '2025-11-28 13': 0.69, '2025-11-28 14': 0.61, '2025-11-28 15': 0.8, '2025-11-28 16': 0.74, '2025-11-28 17': 0.83, '2025-11-28 18': 0.72, '2025-11-28 19': 0.71, '2025-11-28 20': 0.61, '2025-11-28 21': 1.25, '2025-11-28 22': 0.54, '2025-11-28 23': 0.24, '2025-11-29 00': 0.2, '2025-11-29 01': 0.38, '2025-11-29 02': 0.53, '2025-11-29 03': 0.48, '2025-11-29 04': 0.49, '2025-11-29 05': 0.46, '2025-11-29 06': 0.59, '2025-11-29 07': 0.5, '2025-11-29 08': 0.58, '2025-11-29 09': 1.22, '2025-11-29 10': 0.63, '2025-11-29 11': 0.63, '2025-11-29 12': 0.36, '2025-11-29 13': 0.27, '2025-11-29 14': 0.3, '2025-11-29 15': 0.37, '2025-11-29 16': 0.38, '2025-11-29 17': 0.34,
@@ -76,7 +77,7 @@ json_data = {'open_temp': -10.6, 'open_feels_like': -17.42, 'open_humidity': 71,
                                       '2026-01-19 05': 0.72, '2026-01-19 06': 0.78, '2026-01-19 07': 0.74, '2026-01-19 08': 0.99, '2026-01-19 09': 0.53, '2026-01-19 10': 0.54, '2026-01-19 11': 0.51, '2026-01-19 12': 0.51, '2026-01-19 13': 0.78, '2026-01-19 14': 0.68, '2026-01-19 15': 1.18, '2026-01-19 16': 0.66, '2026-01-19 17': 1.81, '2026-01-19 18': 0.71, '2026-01-19 19': 0.73, '2026-01-19 20': 0.59, '2026-01-19 21': 0.54, '2026-01-19 22': 0.53, '2026-01-19 23': 0.6, '2026-01-20 00': 1.04, '2026-01-20 01': 0.58, '2026-01-20 02': 0.8, '2026-01-20 03': 0.91, '2026-01-20 04': 2.9, '2026-01-20 05': 0.89, '2026-01-20 06': 1.03, '2026-01-20 07': 1.29, '2026-01-20 08': 0.76, '2026-01-20 09': 0.74, '2026-01-20 10': 0.69, '2026-01-20 11': 0.68, '2026-01-20 12': 0.67, '2026-01-20 13': 1.08, '2026-01-20 14': 0.69, '2026-01-20 15': 0.79, '2026-01-20 16': 1.12, '2026-01-20 17': 1.07, '2026-01-20 18': 0.77, '2026-01-20 19': 0.83, '2026-01-20 20': 0.63, '2026-01-20 21': 0.57, '2026-01-20 22': 0.69,
                                       '2026-01-20 23': 0.62, '2026-01-21 00': 0.58, '2026-01-21 01': 0.94, '2026-01-21 02': 1.04, '2026-01-21 03': 1.65, '2026-01-21 04': 1.55, '2026-01-21 05': 0.93, '2026-01-21 06': 0.49, '2026-01-21 07': 0.8, '2026-01-21 08': 0.7, '2026-01-21 09': 0.77, '2026-01-21 10': 0.9, '2026-01-21 11': 1.99, '2026-01-21 12': 0.65, '2026-01-21 13': 1.33, '2026-01-21 14': 0.74, '2026-01-21 15': 1.17, '2026-01-21 16': 0.83, '2026-01-21 17': 0.93, '2026-01-21 18': 1.18, '2026-01-21 19': 0.8, '2026-01-21 20': 0.62, '2026-01-21 21': 0.64, '2026-01-21 22': 0.55, '2026-01-21 23': 0.51, '2026-01-22 00': 0.57, '2026-01-22 01': 0.52, '2026-01-22 02': 0.51, '2026-01-22 03': 1.19, '2026-01-22 04': 0.8, '2026-01-22 05': 1.72, '2026-01-22 06': 0.77, '2026-01-22 07': 0.69, '2026-01-22 08': 0.54, '2026-01-22 09': 1.14, '2026-01-22 10': 0.83, '2026-01-22 11': 1.4, '2026-01-22 12': 1.04, '2026-01-22 13': 1.19, '2026-01-22 14': 0.94, '2026-01-22 15': 0.72, '2026-01-22 16': 0.64,
                                       '2026-01-22 17': 1.3, '2026-01-22 18': 0.86, '2026-01-22 19': 0.78, '2026-01-22 20': 0.76, '2026-01-22 21': 0.61, '2026-01-22 22': 0.6, '2026-01-22 23': 0.59, '2026-01-23 00': 0.61, '2026-01-23 01': 0.61, '2026-01-23 02': 0.68, '2026-01-23 03': 0.18}, 'sensors': {...}}, 'ext_temp': -9.9, 'int_temp': 19.08, 'ext_humidity': 68, 'int_humidity': 42.5, 'ext_humidex': -10, 'int_humidex': 19}
-sensors = {'ext_temp_AmbientWeather-WH31B': -9.9, 'ext_humidity_AmbientWeather-WH31B': 67, 'int_temp_ThermoPro-TX7B': 18.1, 'int_humidity_ThermoPro-TX7B': 43, 'int_temp_Acurite-609TXC': 18.4, 'int_humidity_Acurite-609TXC': 42, 'ext_temp_Thermopro-TX2': -9.4, 'ext_humidity_Thermopro-TX2': 69}
+sensors = {'ext_temp_AmbientWeather-WH31B': -15.3, 'ext_humidity_AmbientWeather-WH31B': 56, 'int_temp_ThermoPro-TX7B': 18.1, 'int_humidity_ThermoPro-TX7B': 43, 'int_temp_Acurite-609TXC': 18.4, 'int_humidity_Acurite-609TXC': 42, 'ext_temp_Thermopro-TX2': -9.4, 'ext_humidity_Thermopro-TX2': 69}
 kwh_dict: dict[str, float] = {'2025-11-28 00': 0.57, '2025-11-28 01': 0.57, '2025-11-28 02': 0.56, '2025-11-28 03': 0.57, '2025-11-28 04': 0.49, '2025-11-28 05': 0.56, '2025-11-28 06': 0.74, '2025-11-28 07': 0.65, '2025-11-28 08': 0.55, '2025-11-28 09': 1.34, '2025-11-28 10': 0.74, '2025-11-28 11': 0.68, '2025-11-28 12': 0.64, '2025-11-28 13': 0.69, '2025-11-28 14': 0.61, '2025-11-28 15': 0.8, '2025-11-28 16': 0.74, '2025-11-28 17': 0.83, '2025-11-28 18': 0.72, '2025-11-28 19': 0.71, '2025-11-28 20': 0.61, '2025-11-28 21': 1.25, '2025-11-28 22': 0.54, '2025-11-28 23': 0.24, '2025-11-29 00': 0.2, '2025-11-29 01': 0.38, '2025-11-29 02': 0.53, '2025-11-29 03': 0.48, '2025-11-29 04': 0.49, '2025-11-29 05': 0.46, '2025-11-29 06': 0.59, '2025-11-29 07': 0.5, '2025-11-29 08': 0.58, '2025-11-29 09': 1.22, '2025-11-29 10': 0.63, '2025-11-29 11': 0.63, '2025-11-29 12': 0.36, '2025-11-29 13': 0.27, '2025-11-29 14': 0.3, '2025-11-29 15': 0.37, '2025-11-29 16': 0.38, '2025-11-29 17': 0.34,
                               '2025-11-29 18': 0.28, '2025-11-29 19': 0.51, '2025-11-29 20': 0.56, '2025-11-29 21': 1.28, '2025-11-29 22': 0.62, '2025-11-29 23': 0.5, '2025-11-30 00': 0.48, '2025-11-30 01': 0.47, '2025-11-30 02': 0.48, '2025-11-30 03': 0.51, '2025-11-30 04': 0.56, '2025-11-30 05': 0.51, '2025-11-30 06': 0.53, '2025-11-30 07': 0.55, '2025-11-30 08': 1.24, '2025-11-30 09': 0.63, '2025-11-30 10': 0.65, '2025-11-30 11': 0.51, '2025-11-30 12': 0.66, '2025-11-30 13': 0.52, '2025-11-30 14': 0.54, '2025-11-30 15': 0.6, '2025-11-30 16': 0.56, '2025-11-30 17': 0.72, '2025-11-30 18': 0.5, '2025-11-30 19': 0.74, '2025-11-30 20': 1.29, '2025-11-30 21': 0.46, '2025-11-30 22': 0.46, '2025-11-30 23': 0.46, '2025-12-01 00': 0.48, '2025-12-01 01': 0.54, '2025-12-01 02': 0.48, '2025-12-01 03': 0.5, '2025-12-01 04': 0.54, '2025-12-01 05': 0.49, '2025-12-01 06': 0.56, '2025-12-01 07': 0.53, '2025-12-01 08': 1.22, '2025-12-01 09': 0.72, '2025-12-01 10': 0.76, '2025-12-01 11': 0.68,
                               '2025-12-01 12': 0.55, '2025-12-01 13': 0.61, '2025-12-01 14': 0.7, '2025-12-01 15': 0.6, '2025-12-01 16': 0.46, '2025-12-01 17': 0.45, '2025-12-01 18': 0.54, '2025-12-01 19': 0.55, '2025-12-01 20': 1.16, '2025-12-01 21': 0.52, '2025-12-01 22': 0.51, '2025-12-01 23': 0.49, '2025-12-02 00': 0.56, '2025-12-02 01': 0.55, '2025-12-02 02': 0.49, '2025-12-02 03': 0.5, '2025-12-02 04': 0.49, '2025-12-02 05': 0.73, '2025-12-02 06': 0.76, '2025-12-02 07': 1.67, '2025-12-02 08': 0.69, '2025-12-02 09': 1.22, '2025-12-02 10': 0.73, '2025-12-02 11': 0.67, '2025-12-02 12': 0.7, '2025-12-02 13': 0.7, '2025-12-02 14': 0.65, '2025-12-02 15': 1.36, '2025-12-02 16': 0.72, '2025-12-02 17': 0.78, '2025-12-02 18': 0.59, '2025-12-02 19': 0.53, '2025-12-02 20': 0.54, '2025-12-02 21': 0.56, '2025-12-02 22': 0.62, '2025-12-02 23': 0.57, '2025-12-03 00': 0.54, '2025-12-03 01': 0.57, '2025-12-03 02': 0.62, '2025-12-03 03': 1.23, '2025-12-03 04': 0.78, '2025-12-03 05': 1.48,
@@ -112,134 +113,159 @@ kwh_dict: dict[str, float] = {'2025-11-28 00': 0.57, '2025-11-28 01': 0.57, '202
                               '2026-01-23 00': 0.61, '2026-01-23 01': 0.61, '2026-01-23 02': 0.68, '2026-01-23 03': 0.63, '2026-01-23 04': 1.11, '2026-01-23 05': 0.78, '2026-01-23 06': 2.11, '2026-01-23 07': 0.22}
 
 
-def save_sensors(json_data: dict, sensors: dict[str, int | float | str], kwh_dict: dict[str, float]) -> None:
+def save_sensors(sensors: dict[str, int | float | datetime]) -> None:
     try:
-        if len(kwh_dict) > 0:
-            try:
-                start: Timestamp = Timestamp.now()
-                kwh_list: list[dict[str, float]] = [{'time': f'{k}:00', 'kwh_hydro_quebec': v} for k, v in kwh_dict.items()]
-                df_kwh: DataFrame = pd.DataFrame(kwh_list, columns=['time', 'kwh_hydro_quebec'])
-                df_kwh = df_kwh.astype({'time': 'datetime64[ns]'})
-                df_kwh.set_index('time')
-                kwh_first_timestamp: Timestamp = df_kwh['time'].head(1)[0]
-                kwh_last_timestamp: Timestamp = df_kwh['time'].tail(1)[len(df_kwh) - 1]
-                log.info(f'date range: {kwh_first_timestamp}...{kwh_last_timestamp}')
+        sensors['time'] = datetime.now()
+        df_sensors: DataFrame = pd.DataFrame([sensors])
+        df_sensors = df_sensors.astype({'time': 'datetime64[ns]'})
+        sensors_columns: list[str] = df_sensors.columns.tolist()
 
-                df_in = thermopro.load_sensors()
-                df_in['kwh_hydro_quebec'] = 0.0
-                df_in.astype({'kwh_hydro_quebec': float})
-                df_in['time'] = pd.to_datetime(df_in['time'])
-                df_in.astype({'time': 'datetime64[ns]'})
-                df_in.set_index('time')
+        df_in: DataFrame = thermopro.load_sensors()
+        df_in = pd.concat([df_in, df_sensors], ignore_index=True)
+        df_in = df_in.astype({'time': 'datetime64[ns]'})
+        for entry in [s for s in list(df_in) if "_humidity_" in s]:
+            df_in[entry] = df_in[entry].apply(lambda x: 0 if pd.isna(x) else x)
+            df_in = df_in.astype({entry: 'int64'})
 
-                for index in df_kwh.index.tolist():
-                    timestamp: Timestamp = df_kwh.iloc[index]['time']
-                    filtered_df_in = df_in[
-                        (df_in['time'].dt.year == timestamp.year) &
-                        (df_in['time'].dt.month == timestamp.month) &
-                        (df_in['time'].dt.day == timestamp.day) &
-                        (df_in['time'].dt.hour == timestamp.hour)
-                        ]
-                    df_in_indexes: list[int] | None = filtered_df_in.index.tolist() if len(filtered_df_in.index.tolist()) > 0 else None
-                    if df_in_indexes is not None:
-                        for df_in_index in df_in_indexes:
-                            df_in.loc[df_in_index, 'kwh_hydro_quebec'] = df_kwh.iloc[index]['kwh_hydro_quebec'] if df_kwh.iloc[index]['kwh_hydro_quebec'] else 0.0
-                log.info(f'Elapsed: {Timestamp.now() - start}')
+        for entry in [s for s in list(df_in) if "_temp_" in s]:
+            df_in[entry] = df_in[entry].apply(lambda x: 0.0 if pd.isna(x) else x)
+            df_in = df_in.astype({entry: 'float64'})
 
-            except Exception as ex:
-                log.error(ex)
-                log.error(traceback.format_exc())
-        #
-        #         df_updated = pd.concat([df_in, df], ignore_index=True)
-        #         for entry in [s for s in list(sensors2) if "kwh_" in s]:
-        #             df_updated = df_updated.astype({entry: 'Float64'})
-        #
-        #         columns = df_updated.columns.tolist()
-        #         cols = ['time', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb']
-        #         for col in cols:
-        #             columns.remove(col)
-        #         df_updated = df_updated[cols + sorted(columns)]
-        #
-        #     except Exception as e:
-        #         log.error(e)
-        #         log.error(traceback.format_exc())
-        # else:
-        #     log.warning('kwh_dict is empty.')
-        #
-        # exit()
+        df_in = df_in[sensors_columns]
 
-        # kwh_list: list[dict[str, float]] = [{'time': f'{k}:00', 'kwh': v} for k, v in kwh_dict.items()]
-        # df_kw: DataFrame = pd.DataFrame(kwh_list, columns=['time', 'kwh'])
-        # df_kw = df_kw.astype({'kwh': 'Float64', 'time': 'datetime64[ns]'})
-        # df_kw.set_index('time')
-        # thermopro.show_df(df_kw)
-        # log.info(f"Mean Hydro: {round(df_kw.rolling(window=f'{DAYS_PER_MONTH}D', on='time')['kwh'].mean()[len(df_kw['kwh']) - 1], 2)}KWh")
+        df_in.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
+                      compression={
+                          'method': 'zip',
+                          'compression': zipfile.ZIP_DEFLATED,
+                          'compresslevel': 9
+                      })
 
-        # try:
-        #     json_data2 = copy.deepcopy(json_data)
-        # except TypeError as te:
-        #     log.error(te)
-        #     raise te
-        # try:
-        #     sensors2 = copy.deepcopy(sensors)
-        # except TypeError as te:
-        #     log.error(te)
-        #     raise te
+        # if len(kwh_dict) > 0:
+        #     try:
+        #         start: Timestamp = Timestamp.now()
+        #         kwh_list: list[dict[str, float]] = [{'time': f'{k}:00', 'kwh_hydro_quebec': v} for k, v in kwh_dict.items()]
+        #         df_kwh: DataFrame = pd.DataFrame(kwh_list, columns=['time', 'kwh_hydro_quebec'])
+        #         df_kwh = df_kwh.astype({'time': 'datetime64[ns]'})
+        #         df_kwh.set_index('time')
+        #         kwh_first_timestamp: Timestamp = df_kwh['time'].head(1)[0]
+        #         kwh_last_timestamp: Timestamp = df_kwh['time'].tail(1)[len(df_kwh) - 1]
+        #         log.info(f'date range: {kwh_first_timestamp}...{kwh_last_timestamp}')
         #
-        # json_data2.pop('sensors')
-        # json_data2.pop('kwh_dict')
-        #
-        # data: dict[str, int | float | str] = {'time': datetime.now().isoformat()}
-        # sensors2.update(json_data2)
-        # # sensors2 = sensors2.pop('kwh_dict')
-        # for entry in [s for s in list(sensors2) if "ext_temp" in s]:
-        #     data[entry] = sensors2[entry]
-        # for entry in [s for s in list(sensors2) if "int_temp" in s]:
-        #     data[entry] = sensors2[entry]
-        # for entry in [s for s in list(sensors2) if "ext_humidity" in s]:
-        #     data[entry] = sensors2[entry]
-        # for entry in [s for s in list(sensors2) if "int_humidity" in s]:
-        #     data[entry] = sensors2[entry]
-        # for entry in [s for s in list(sensors2) if "kwh_" in s]:
-        #     data[entry] = sensors2[entry] if pd.isna(sensors2[entry]) or pd.isnull(sensors2[entry]) else 0.0
-        #
-        # df: DataFrame = pd.DataFrame([data])
-        #
-        # columns = list(df)
-        # columns.remove('time')
-        # columns = ['time'] + columns
-        # df = df[columns]
-        #
-        # df = df.astype({'time': 'datetime64[ns]'})
-        # df.set_index('time')
-        # df = df.sort_values(by='time', ascending=True)
-        #
-        # for entry in [s for s in list(df) if "_temp" in s]:
-        #     df = df.astype({entry: 'Float64'})
-        # for entry in [s for s in list(df) if "kwh_" in s]:
-        #     df = df.astype({entry: 'Float64'})
-        # for entry in [s for s in list(df) if "_humidity" in s]:
-        #     df[entry] = df[entry].round().astype('Int64')
-        #
-        # df_in: DataFrame | None = None
-        # if os.path.exists(SENSORS_OUTPUT_JSON_FILE):
-        #     df_in: DataFrame = pd.read_json(SENSORS_OUTPUT_JSON_FILE, compression='zip')
-        # if df_in is None:
-        #     raise f"Unable to load file {SENSORS_OUTPUT_JSON_FILE}."
-        #
-        # df_updated = pd.concat([df_in, df], ignore_index=True)
-        # for entry in [s for s in list(sensors2) if "kwh_" in s]:
-        #     df_updated = df_updated.astype({entry: 'Float64'})
-        #     df_updated[entry] = df_updated[entry].apply(lambda x: 0.0 if pd.isnull(x) or pd.isna(x) else x)
-        #
-        # # df_updated.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
-        # #                    compression={
-        # #                        'method': 'zip',
-        # #                        'compression': zipfile.ZIP_DEFLATED,
-        # #                        'compresslevel': 9
-        # #                    })
-        # log.info(f'File of Sensors "{SENSORS_OUTPUT_JSON_FILE}" is saved with {len(df_updated)} rows.')
-        # thermopro.show_df(df_updated)
+
+    #         df_in['kwh_hydro_quebec'] = 0.0
+    #         df_in.astype({'kwh_hydro_quebec': float})
+    #         df_in['time'] = pd.to_datetime(df_in['time'])
+    #         df_in.astype({'time': 'datetime64[ns]'})
+    #         df_in.set_index('time')
+    #
+    #         for index in df_kwh.index.tolist():
+    #             timestamp: Timestamp = df_kwh.iloc[index]['time']
+    #             filtered_df_in = df_in[
+    #                 (df_in['time'].dt.year == timestamp.year) &
+    #                 (df_in['time'].dt.month == timestamp.month) &
+    #                 (df_in['time'].dt.day == timestamp.day) &
+    #                 (df_in['time'].dt.hour == timestamp.hour)
+    #                 ]
+    #             df_in_indexes: list[int] | None = filtered_df_in.index.tolist() if len(filtered_df_in.index.tolist()) > 0 else None
+    #             if df_in_indexes is not None:
+    #                 for df_in_index in df_in_indexes:
+    #                     df_in.loc[df_in_index, 'kwh_hydro_quebec'] = df_kwh.iloc[index]['kwh_hydro_quebec'] if df_kwh.iloc[index]['kwh_hydro_quebec'] else 0.0
+    #         log.info(f'Elapsed: {Timestamp.now() - start}')
+    #
+    #     except Exception as ex:
+    #         log.error(ex)
+    #         log.error(traceback.format_exc())
+    #
+    #         df_updated = pd.concat([df_in, df], ignore_index=True)
+    #         for entry in [s for s in list(sensors2) if "kwh_" in s]:
+    #             df_updated = df_updated.astype({entry: 'Float64'})
+    #
+    #         columns = df_updated.columns.tolist()
+    #         cols = ['time', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb']
+    #         for col in cols:
+    #             columns.remove(col)
+    #         df_updated = df_updated[cols + sorted(columns)]
+    #
+    #     except Exception as e:
+    #         log.error(e)
+    #         log.error(traceback.format_exc())
+    # else:
+    #     log.warning('kwh_dict is empty.')
+    #
+    # exit()
+
+    # kwh_list: list[dict[str, float]] = [{'time': f'{k}:00', 'kwh': v} for k, v in kwh_dict.items()]
+    # df_kw: DataFrame = pd.DataFrame(kwh_list, columns=['time', 'kwh'])
+    # df_kw = df_kw.astype({'kwh': 'Float64', 'time': 'datetime64[ns]'})
+    # df_kw.set_index('time')
+    # thermopro.show_df(df_kw)
+    # log.info(f"Mean Hydro: {round(df_kw.rolling(window=f'{DAYS_PER_MONTH}D', on='time')['kwh'].mean()[len(df_kw['kwh']) - 1], 2)}KWh")
+
+    # try:
+    #     json_data2 = copy.deepcopy(json_data)
+    # except TypeError as te:
+    #     log.error(te)
+    #     raise te
+    # try:
+    #     sensors2 = copy.deepcopy(sensors)
+    # except TypeError as te:
+    #     log.error(te)
+    #     raise te
+    #
+    # json_data2.pop('sensors')
+    # json_data2.pop('kwh_dict')
+    #
+    # data: dict[str, int | float | str] = {'time': datetime.now().isoformat()}
+    # sensors2.update(json_data2)
+    # # sensors2 = sensors2.pop('kwh_dict')
+    # for entry in [s for s in list(sensors2) if "ext_temp" in s]:
+    #     data[entry] = sensors2[entry]
+    # for entry in [s for s in list(sensors2) if "int_temp" in s]:
+    #     data[entry] = sensors2[entry]
+    # for entry in [s for s in list(sensors2) if "ext_humidity" in s]:
+    #     data[entry] = sensors2[entry]
+    # for entry in [s for s in list(sensors2) if "int_humidity" in s]:
+    #     data[entry] = sensors2[entry]
+    # for entry in [s for s in list(sensors2) if "kwh_" in s]:
+    #     data[entry] = sensors2[entry] if pd.isna(sensors2[entry]) or pd.isnull(sensors2[entry]) else 0.0
+    #
+    # df: DataFrame = pd.DataFrame([data])
+    #
+    # columns = list(df)
+    # columns.remove('time')
+    # columns = ['time'] + columns
+    # df = df[columns]
+    #
+    # df = df.astype({'time': 'datetime64[ns]'})
+    # df.set_index('time')
+    # df = df.sort_values(by='time', ascending=True)
+    #
+    # for entry in [s for s in list(df) if "_temp" in s]:
+    #     df = df.astype({entry: 'Float64'})
+    # for entry in [s for s in list(df) if "kwh_" in s]:
+    #     df = df.astype({entry: 'Float64'})
+    # for entry in [s for s in list(df) if "_humidity" in s]:
+    #     df[entry] = df[entry].round().astype('Int64')
+    #
+    # df_in: DataFrame | None = None
+    # if os.path.exists(SENSORS_OUTPUT_JSON_FILE):
+    #     df_in: DataFrame = pd.read_json(SENSORS_OUTPUT_JSON_FILE, compression='zip')
+    # if df_in is None:
+    #     raise f"Unable to load file {SENSORS_OUTPUT_JSON_FILE}."
+    #
+    # df_updated = pd.concat([df_in, df], ignore_index=True)
+    # for entry in [s for s in list(sensors2) if "kwh_" in s]:
+    #     df_updated = df_updated.astype({entry: 'Float64'})
+    #     df_updated[entry] = df_updated[entry].apply(lambda x: 0.0 if pd.isnull(x) or pd.isna(x) else x)
+    #
+    # # df_updated.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
+    # #                    compression={
+    # #                        'method': 'zip',
+    # #                        'compression': zipfile.ZIP_DEFLATED,
+    # #                        'compresslevel': 9
+    # #                    })
+    # log.info(f'File of Sensors "{SENSORS_OUTPUT_JSON_FILE}" is saved with {len(df_updated)} rows.')
+    # thermopro.show_df(df_updated)
     except Exception as ex:
         log.error(ex)
         log.error(traceback.format_exc())
@@ -247,5 +273,6 @@ def save_sensors(json_data: dict, sensors: dict[str, int | float | str], kwh_dic
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
-    save_sensors(json_data, sensors, kwh_dict)
+    save_sensors(sensors)
+    # save_sensors(json_data, sensors, kwh_dict)
     sys.exit()

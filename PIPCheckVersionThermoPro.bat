@@ -2,17 +2,17 @@
 echo --------------------------------- ThermoPro ---------------------------------
 
 cd %USERPROFILE%\Documents\NetBeansProjects\PycharmProjects\ThermoPro
-echo .
+echo.
 call .venv\Scripts\activate.bat
-echo .
+echo.
 pip list -v
-rem echo .
+rem echo.
 rem pip-review
-echo .
+echo.
 pip-review --interactive
-echo .
+echo.
 pip list
-echo .
+echo.
 pip freeze > requirements.txt
-echo .
+echo.
 pause
