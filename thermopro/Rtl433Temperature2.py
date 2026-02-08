@@ -180,9 +180,9 @@ class Rtl433Temperature2:
     def __warn_not_respondig(self, sensors: dict[str, str]):
         if len(sensors) > 0:
             string: str = ' RTL 433 Warning '.center(80, '*')
-            log.error(string)
-            log.error('*' + f'Sensor{'s' if len(sensors) > 1 else ''} {list(sensors)} NOT responding'.center(len(string) - 2) + '*')
-            log.error(string)
+            log.warning(string)
+            log.warning('*' + f'Sensor{'s' if len(sensors) > 1 else ''} {list(sensors)} NOT responding'.center(len(string) - 2) + '*')
+            log.warning(string)
 
     def __warn_battery(self, data: dict, threads: list[threading.Thread]):
         if data.get('battery_ok') == 0:

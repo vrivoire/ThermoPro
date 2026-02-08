@@ -47,7 +47,7 @@ class ThermoProGraph:
             global df
             self.clean_data()
 
-            mean: int = DAYS_PER_MONTH
+            mean: float = DAYS_PER_MONTH
 
             fig, ax1 = plt.subplots()
             ax2 = ax1.twinx()

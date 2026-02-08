@@ -46,7 +46,7 @@ class ThermoProScan:
         atexit.register(self.__cleanup_function)
 
     def __call_all(self) -> None:
-        now: datetime = datetime.now()
+        now: datetime = datetime.now().replace(second=0, microsecond=0)
         json_data: dict[str, Any] = {}
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
@@ -133,8 +133,8 @@ class ThermoProScan:
 
             log.info(f'Successfully ended.')
         except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
+            log.fatal(ex)
+            log.fatal(traceback.format_exc())
         log.info(f"End task, Elapsed: {datetime.now().now() - now}")
 
     def __get_means_and_mins(self, json_data: dict[str, Any]) -> dict[str, int | float | str]:

@@ -247,7 +247,7 @@ def set_up(log_name: str):
     file_handler_error = logging.handlers.TimedRotatingFileHandler(log_name_error, when='midnight', interval=1, backupCount=7,
                                                                    encoding="utf-8", delay=True, utc=False, atTime=None,
                                                                    errors=None)
-    file_handler_error.level = logging.ERROR
+    file_handler_error.setLevel(logging.WARNING)
 
     file_handler.namer = lambda name: name.replace(".log", "") + ".log"
     file_handler_error.namer = lambda name: name.replace(".log", "") + ".log"
