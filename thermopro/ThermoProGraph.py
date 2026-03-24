@@ -171,14 +171,7 @@ class ThermoProGraph:
 
             def on_changed(val):
                 slider_date.valtext.set_text(num2date(val).date())
-                df2: pd.DataFrame = df.set_index(['time'])
-
-                # https://www.google.com/search?q=Pandas4Warning%3A+Slicing+with+a+datetime.date+object+is+deprecated.+Explicitly+cast+to+Timestamp+instead.&oq=Pandas4Warning%3A+Slicing+with+a+datetime.date+object+is+deprecated.+Explicitly+cast+to+Timestamp+instead.&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIGCAEQRRg60gEHMTkxajBqNKgCALACAQ&sourceid=chrome&ie=UTF-8
-                # start_of_day = pd.Timestamp(num2date(val - mean).date())
-                # end_of_day = pd.Timestamp(num2date(val + mean).date())
-                # df2 = df2[(df2['time'] >= start_of_day) & (df2['time'] < end_of_day)]
-
-                df2 = df2[num2date(val - mean).date():num2date(val + mean).date()]
+                df2 = df[df['time'].dt.date.between(num2date(val - mean).date(), num2date(val - mean).date())]
                 window = (
                     val - mean,
                     val + 0.1,
@@ -456,9 +449,7 @@ class ThermoProGraph:
             def on_changed(val):
                 log.info(f'on_changed({num2date(val)}) -> from: {num2date(val - mean).date()}, to: {num2date(val + 1).date()}')
                 slider_date.valtext.set_text(num2date(val).date())
-                df2: pd.DataFrame = df.set_index(['time'])
-                df2 = df2[num2date(val - mean).date():num2date(val + 1).date()].ffill()
-
+                df2 = df[df['time'].dt.date.between(num2date(val - mean).date(), num2date(val + 1).date())]
                 if len(df2) > 0:
                     window = (
                         val - mean,

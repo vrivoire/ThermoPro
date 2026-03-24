@@ -9,6 +9,3 @@ call C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\PoidsPression\PIP
 echo.
 call C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ThermoPro\PIPCheckVersionThermoPro.bat
 echo.
-
-
-pause

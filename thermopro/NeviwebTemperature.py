@@ -326,7 +326,6 @@ class NeviwebTemperature:
 
         self._cookies.update(raw_res.cookies)
         data: list[dict[str, int]] = raw_res.json()
-        # log.info(f'get_device_hourly_stats: {data}')
         if "history" in data:
             return data["history"]
         else:
@@ -569,7 +568,7 @@ class NeviwebTemperature:
         self._cookies.update(raw_res.cookies)
         # Prepare data
         self.gateway_data = raw_res.json()
-        # log.info(f"Received gateway data:\n{json.dumps(self.gateway_data, indent=4, sort_keys=True, default=str)}")
+        # print(f"Received gateway data:\n{json.dumps(self.gateway_data, indent=4, sort_keys=True, default=str)}")
         if self._gateway_id2 is not None:
             try:
                 raw_res2 = requests.get(
@@ -649,7 +648,7 @@ class NeviwebTemperature:
         self._cookies.update(raw_res.cookies)
         # Prepare data
         data = raw_res.json()
-        # log.info(f"Received devices data: \n{json.dumps(data, indent=4, sort_keys=True, default=str)}")
+        # print(f"Received devices data: \n{json.dumps(data, indent=4, sort_keys=True, default=str)}")
         if "error" in data:
             if data["error"]["code"] == "USRSESSEXP":
                 log.error(
@@ -694,19 +693,19 @@ class NeviwebTemperature:
                     device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
 
             kwh_total = 0.0
-            device_hourly_stats_list: list[dict[str, int]] | None = []
             for device in self.gateway_data:
                 device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device['id'])
                 for group in self.groups:
-                    if group['id'] == device['group$id']:
+                    if group['id'] == device['group$id'] and device_hourly_stats_list is not None:
                         kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
                         kwh_total += kwh
                         result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh if not math.isnan(kwh) else 0.0
             result['kwh_neviweb'] = kwh_total if not math.isnan(kwh_total) else 0.0
 
             for device in self.gateway_data:
+                # print(device)
                 for group in self.groups:
-                    if group['id'] == device['group$id']:
+                    if group['id'] == device['group$id'] and device['roomTemperature'] is not None:
                         result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
 
             group_map = {g['id']: str(g['name']).replace(' ', '-').lower() for g in self.groups}
@@ -716,7 +715,7 @@ class NeviwebTemperature:
                 if device.get('group$id') in group_map
             ]
             for name in sorted(names):
-                log.info(f'>>>>>> {name}: {result['int_temp_' + name]}°C, {result['kwh_' + name]}  KWh')
+                log.info(f'>>>>>> {name}: {result.get('int_temp_' + name)}°C, {result.get('kwh_' + name)}  KWh')
             log.info(f'>>>>>> kwh_neviweb: {result['kwh_neviweb']}  KWh')
             log.info(f'result={result}')
         except Exception as ex:

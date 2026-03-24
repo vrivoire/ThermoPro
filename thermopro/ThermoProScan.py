@@ -251,7 +251,7 @@ class ThermoProScan:
                 sleep(10)
 
             self.__call_all()
-            schedule.every().hour.at(":00").do(self.__call_all)
+            schedule.every().hour.at(":01").do(self.__call_all)
             while True:
                 schedule.run_pending()
                 sleep(1)

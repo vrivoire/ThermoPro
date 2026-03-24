@@ -13,7 +13,7 @@ import pandas as pd
 from pandas import DataFrame
 
 import thermopro
-from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH
+from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, SENSORS
 
 
 def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> None:
@@ -24,16 +24,8 @@ def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> N
 
         df_in: DataFrame = thermopro.load_sensors()
         df_in = pd.concat([df_in, df_sensors], ignore_index=True)
-        df_in = df_in.astype({'time': 'datetime64[ns]'})
-        for entry in [s for s in list(df_in) if "_humidity_" in s]:
-            df_in[entry] = df_in[entry].apply(lambda x: 0 if pd.isna(x) else x)
-            df_in = df_in.astype({entry: 'int64'})
 
-        for entry in [s for s in list(df_in) if "_temp_" in s]:
-            df_in[entry] = df_in[entry].apply(lambda x: 0.0 if pd.isna(x) else x)
-            df_in = df_in.astype({entry: 'float64'})
-
-        df_in = df_in[['time'] + [c for c in sorted(df_sensors.columns) if c != 'time']]
+        df_in = df_in[['time'] + [c for c in sorted(df_in.columns) if c != 'time']]
 
         df_in.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
                       compression={
@@ -49,12 +41,33 @@ def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> N
         log.error(traceback.format_exc())
 
 
-def load_sensors() -> DataFrame | None:
+def load_sensors() -> DataFrame:
     df_in: DataFrame | None = None
     if os.path.exists(SENSORS_OUTPUT_JSON_FILE):
         df_in: DataFrame = pd.read_json(SENSORS_OUTPUT_JSON_FILE, compression='zip')
+
+    sensor_list: list[str] = []
+    for freq in SENSORS:
+        for name in SENSORS[freq]['sensors']:
+            for loc in ['ext', 'int']:
+                for tp in ['temp', 'humidity']:
+                    sensor_list.append(f'{loc}_{tp}_{name}')
+    sensor_list = ['time'] + sorted(sensor_list)
+
     if df_in is None:
-        raise f"Unable to load file {SENSORS_OUTPUT_JSON_FILE}."
+        df_in = pd.DataFrame(columns=sensor_list)
+
+    df_in = df_in[sensor_list]
+    for sensor in sensor_list:
+        if 'time' != sensor:
+            if "_humidity_" in sensor:
+                df_in = df_in.astype({sensor: 'Int64'})
+            if "_temp_" in sensor:
+                df_in = df_in.astype({sensor: 'float64'})
+        else:
+            df_in = df_in.astype({sensor: 'datetime64[ns]'})
+    df_in = df_in[sensor_list]
+
     return df_in
 
 
