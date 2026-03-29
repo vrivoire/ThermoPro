@@ -1,6 +1,6 @@
 aiocache==0.12.3
 aiohappyeyeballs==2.6.1
-aiohttp==3.13.3
+aiohttp==3.13.4
 aiosignal==1.4.0
 altgraph==0.17.5
 asgiref==3.11.1
@@ -44,7 +44,7 @@ pythonnet==3.0.5
 pytz==2026.1.post1
 pywebview==6.1
 pywin32-ctypes==0.2.3
-requests==2.32.5
+requests==2.33.0
 schedule==1.2.2
 setuptools==82.0.1
 six==1.17.0

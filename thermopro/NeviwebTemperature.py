@@ -429,7 +429,7 @@ class NeviwebTemperature:
                     self._gateway_id = networks[0]["id"]
                     self._network_name = networks[0]["name"]
                     self._occupancyMode = networks[0]["mode"]
-                    log.info("Selecting %s as first network", self._network_name)
+                    log.info("Selecting '%s' as first network", self._network_name)
                     if len(networks) > 1:
                         self._gateway_id2 = networks[1]["id"]
                         self._network_name2 = networks[1]["name"]

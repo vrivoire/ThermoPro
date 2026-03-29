@@ -10,7 +10,7 @@ from time import sleep
 from typing import Any
 
 import thermopro
-from constants import TIMEOUT, OUTPUT_RTL_433_FILE, SENSORS, RTL_433_EXE
+from constants import TIMEOUT, OUTPUT_RTL_433_FILE, RTL_433_EXE
 from thermopro import log
 
 
@@ -19,6 +19,7 @@ class Rtl433Temperature2:
 
     def __init__(self):
         log.info('       ----------------------- Start Rtl433Temperature2 -----------------------')
+        thermopro.sensors = None
 
     def call_rtl_433(self, result_queue: Queue):
         log.info('-------------------------- call_rtl_433 --------------------------')
@@ -34,9 +35,9 @@ class Rtl433Temperature2:
             self.__kill_rtl_433()
             self.__delete_json_file()
 
-            for freq in SENSORS:
-                sensors_list.update(SENSORS[freq]['sensors'])
-                self.__call_sensors(list(SENSORS[freq]['args']), dict(SENSORS[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
+            for freq in thermopro.get_sensors():
+                sensors_list.update(thermopro.get_sensors()[freq]['sensors'])
+                self.__call_sensors(list(thermopro.get_sensors()[freq]['args']), dict(thermopro.get_sensors()[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
 
             for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags', 'data']:
                 try:
@@ -51,7 +52,7 @@ class Rtl433Temperature2:
         self.__delete_json_file()
 
         for sensor in sorted(sensors_list):
-            log.info(f'>>>>>> {sensors_list[sensor]} {sensor}: {json_rtl_433.get(sensors_list[sensor] + '_temp_' + sensor)}°C, {json_rtl_433.get(sensors_list[sensor] + '_humidity_' + sensor)}%')
+            log.info(f'>>>>>> {sensors_list[sensor]} {sensor}: {json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor)}°C, {json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor)}%') if sensors_list.get(sensor) is not None else None
 
         result_queue.put({'sensors': json_rtl_433})
 
@@ -63,6 +64,10 @@ class Rtl433Temperature2:
     def __call_sensors(self, args: list[str | int], sensors: dict[str, str], json_rtl_433: dict[str, Any],
             ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float],
             threads: list[threading.Thread]):
+
+        for sensor in list(sensors.keys()):
+            sensors.pop(sensor) if sensors[sensor] is None else None
+
         log.info('-------------------------- __call_sensors --------------------------')
         log.info(f'args: {args}')
         log.info(f'sensors: {sensors}')

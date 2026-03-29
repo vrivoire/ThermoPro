@@ -7,13 +7,16 @@ import subprocess
 import traceback
 import zipfile
 from datetime import datetime
+from typing import Any
 
 import pandas
 import pandas as pd
 from pandas import DataFrame
 
 import thermopro
-from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, SENSORS
+from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE
+
+sensors: dict[str, dict[str, list[str | Any] | dict[str, str | None]] | dict[str, list[str] | dict[str, str]]] | None = None
 
 
 def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> None:
@@ -41,14 +44,39 @@ def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> N
         log.error(traceback.format_exc())
 
 
+def get_sensors() -> dict[str, dict[str, list[str | Any] | dict[str, str | None]] | dict[str, list[str] | dict[str, str]]] | None:
+    global sensors
+    if sensors is None:
+        log.info(f"Loading sensors from sensor_list.json...")
+        try:
+            with open(f"{POIDS_PRESSION_PATH}/sensor_list.json", 'r') as file:
+                sensors = json.load(file)
+
+            for freq in sensors:
+                for i, token in enumerate(sensors[freq]['args']):
+                    try:
+                        start: int = token.find('{') + 1
+                        end: int = token.find('}')
+                        if start != -1 and end != -1:
+                            sensors[freq]['args'][i] = sensors[freq]['args'][i].replace(token[start - 1:end + 1], str(getattr(constants, token[start:end])))
+                    except AttributeError as ae:
+                        pass
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+            raise ex
+
+    return sensors
+
+
 def load_sensors() -> DataFrame:
     df_in: DataFrame | None = None
     if os.path.exists(SENSORS_OUTPUT_JSON_FILE):
         df_in: DataFrame = pd.read_json(SENSORS_OUTPUT_JSON_FILE, compression='zip')
 
     sensor_list: list[str] = []
-    for freq in SENSORS:
-        for name in SENSORS[freq]['sensors']:
+    for freq in get_sensors():
+        for name in get_sensors()[freq]['sensors']:
             for loc in ['ext', 'int']:
                 for tp in ['temp', 'humidity']:
                     sensor_list.append(f'{loc}_{tp}_{name}')
@@ -222,28 +250,6 @@ def ppretty(value: object, tab_char: object = '\t', return_char: object = '\n', 
         log.error(ex)
         log.error(traceback.format_exc())
     return None
-    # nlch: str = return_char + tab_char * (indent + 1)
-    # if type(value) is dict:
-    #     value = sorted(dict(value.items()), key=lambda item: item[0].lower())
-    #     items = [
-    #         nlch + repr(key) + ': ' + ppretty(value[key], tab_char, return_char, indent + 1)
-    #         for key in value
-    #     ]
-    #     return '{%s}' % (','.join(items) + return_char + tab_char * indent)
-    # elif type(value) is list:
-    #     items = [
-    #         nlch + ppretty(item, tab_char, return_char, indent + 1)
-    #         for item in value
-    #     ]
-    #     return '[%s]' % (','.join(items) + return_char + tab_char * indent)
-    # elif type(value) is tuple:
-    #     items = [
-    #         nlch + ppretty(item, tab_char, return_char, indent + 1)
-    #         for item in value
-    #     ]
-    #     return '(%s)' % (','.join(items) + return_char + tab_char * indent)
-    # else:
-    #     return repr(value)
 
 
 def set_up(log_name: str):

@@ -35,6 +35,7 @@ class ThermoProGraph:
 
     def __init__(self):
         log.info('Starting ThermoProGraph')
+        thermopro.sensors = None
         global df
         df = thermopro.load_json()
         self.clean_data()

@@ -47,6 +47,7 @@ class ThermoProScan:
 
     def __call_all(self) -> None:
         now: datetime = datetime.now().replace(second=0, microsecond=0)
+        thermopro.sensors = None
         json_data: dict[str, Any] = {}
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
