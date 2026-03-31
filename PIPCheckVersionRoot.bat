@@ -2,13 +2,15 @@
 echo --------------------------------- Root ---------------------------------
 
 cd %USERPROFILE%\Documents\NetBeansProjects\PycharmProjects
-echo.
+echo:
 pip list -v
-echo.
+echo:
+pip-review
+echo:
 pip-review --interactive
-echo.
+echo:
 pip list
-echo.
+echo:
 pip freeze > requirements.txt
-echo.
+echo:
 pause

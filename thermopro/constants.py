@@ -10,7 +10,7 @@ BKP_DAYS = 5
 
 LOG_NAME: str = ''
 
-sys.path.append(f'{HOME_PATH}/Documents/BkpScripts')
+sys.path.append(f'{HOME_PATH}/Documents/BkpScripts/ThermoPro')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
 COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb', 'ext_humidex', 'int_humidex'] +

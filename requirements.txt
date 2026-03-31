@@ -25,9 +25,9 @@ MarkupSafe==3.0.3
 matplotlib==3.10.8
 mplcursors==0.7.1
 multidict==6.7.1
-numpy==2.4.3
+numpy==2.4.4
 packaging==26.0
-pandas==3.0.1
+pandas==3.0.2
 pandas-stubs==3.0.0.260204
 pefile==2024.8.26
 pillow==12.1.1
@@ -44,7 +44,7 @@ pythonnet==3.0.5
 pytz==2026.1.post1
 pywebview==6.1
 pywin32-ctypes==0.2.3
-requests==2.33.0
+requests==2.33.1
 schedule==1.2.2
 setuptools==82.0.1
 six==1.17.0

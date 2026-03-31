@@ -2,10 +2,10 @@ rem @echo off
 echo --------------------------------- All ---------------------------------
 powershell "start \"cmd\" \"/C call C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ThermoPro\PIPCheckVersionRoot.bat\" -v runAs"
 pause
-echo.
+echo:
 call C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ImdbSearchPY\PIPCheckVersionImdb.bat
-echo.
+echo:
 call C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\PoidsPression\PIPCheckVersionPoidsPression.bat
-echo.
+echo:
 call C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ThermoPro\PIPCheckVersionThermoPro.bat
-echo.
+echo:
