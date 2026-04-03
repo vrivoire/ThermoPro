@@ -7,16 +7,15 @@ import subprocess
 import traceback
 import zipfile
 from datetime import datetime
-from typing import Any
 
 import pandas
 import pandas as pd
 from pandas import DataFrame
 
 import thermopro
-from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE
+from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS
 
-sensors: dict[str, dict[str, list[str | Any] | dict[str, str | None]] | dict[str, list[str] | dict[str, str]]]
+sensors: dict[str, dict[str, list[str]] | dict[str, str | None]]
 
 
 def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> None:
@@ -44,12 +43,12 @@ def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> N
         log.error(traceback.format_exc())
 
 
-def get_sensors() -> dict[str, dict[str, list[str | Any] | dict[str, str | None]] | dict[str, list[str] | dict[str, str]]]:
+def get_sensors() -> dict[str, dict[str, list[str]] | dict[str, str | None]]:
     global sensors
     if sensors is None:
         log.info(f"Loading sensors from sensor_list.json...")
         try:
-            with open(f'{HOME_PATH}/Documents/BkpScripts/ThermoPro/sensor_list.json', 'r') as file:
+            with open(f'{BKP_SCRIPTS}/sensor_list.json', 'r') as file:
                 sensors = json.load(file)
 
             for freq in sensors:
@@ -116,7 +115,7 @@ def save_json(df: DataFrame) -> None:
 
 def copy_to_cloud() -> None:
     for drive in ['OneDrive', 'Mega', 'Icedrive', 'Documents']:
-        destination_folder = f"{HOME_PATH}{drive}/PoidsPression"
+        destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
         try:
             if os.path.isdir(destination_folder):
                 try:

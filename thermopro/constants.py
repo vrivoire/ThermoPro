@@ -1,16 +1,17 @@
 import os
 import sys
 
-HOME_PATH = f"{os.getenv('USERPROFILE')}/".replace('\\', '/')
-LOG_PATH = f"{HOME_PATH}Documents/NetBeansProjects/PycharmProjects/logs/"
+HOME_PATH = f"{os.getenv('USERPROFILE')}".replace('\\', '/')
+LOG_PATH = f"{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/logs/"
+BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 
-POIDS_PRESSION_PATH = f"{HOME_PATH}GoogleDrive/PoidsPression/"
-BKP_PATH = f'{POIDS_PRESSION_PATH}bkp/'
+POIDS_PRESSION_PATH = f"{HOME_PATH}/GoogleDrive/PoidsPression/"
+BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
 BKP_DAYS = 5
 
 LOG_NAME: str = ''
 
-sys.path.append(f'{HOME_PATH}/Documents/BkpScripts/ThermoPro')
+sys.path.append(f'{BKP_SCRIPTS}/')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
 COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb', 'ext_humidex', 'int_humidex'] +
@@ -29,7 +30,7 @@ OUTPUT_RTL_433_FILE: str = f"{POIDS_PRESSION_PATH}rtl_433.json"
 # RTL_433_VERSION = '25.12'
 RTL_433_VERSION = 'nightly'
 TIMEOUT: int = 5 * 60
-RTL_433_EXE_PATH: str = f"{HOME_PATH}Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
+RTL_433_EXE_PATH: str = f"{HOME_PATH}/Documents/NetBeansProjects/rtl_433-win-x64-{RTL_433_VERSION}/rtl_433_64bit_static.exe"
 RTL_433_EXE = RTL_433_EXE_PATH[RTL_433_EXE_PATH.rfind('/') + 1:]
 
 DAYS_PER_MONTH = 30.437  # https://www.britannica.com/science/time/Standard-time

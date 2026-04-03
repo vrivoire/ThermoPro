@@ -202,13 +202,13 @@ class ThermoProScan:
                                        [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
                                        [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
             log.info(f'Files to bkp: {in_file_list}')
-            out_file_list: list[str] = [BKP_PATH + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
+            out_file_list: list[str] = [BKP_PATH + '/' + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
             log.info(f'out_file_list: {out_file_list}')
             for i, name in enumerate(in_file_list):
                 shutil.copy2(in_file_list[i], out_file_list[i])
 
             file_name = 'ThermoProScan'
-            zip_file_name = f'{BKP_PATH}{file_name}_{datetime.now().strftime("%Y-%m-%d")}.zip'
+            zip_file_name = f'{BKP_PATH}/{file_name}_{datetime.now().strftime("%Y-%m-%d")}.zip'
             with zipfile.ZipFile(zip_file_name, "a", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
                 for file in out_file_list:
                     zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
@@ -223,7 +223,7 @@ class ThermoProScan:
 
             try:
                 [os.remove(out_file) for out_file in out_file_list]
-                old_zip_file_name = f'{BKP_PATH}{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
+                old_zip_file_name = f'{BKP_PATH}/{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
                 if os.path.isfile(old_zip_file_name):
                     log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
                     os.remove(old_zip_file_name)

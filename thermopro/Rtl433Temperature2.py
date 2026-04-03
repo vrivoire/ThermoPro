@@ -15,6 +15,8 @@ from thermopro import log
 
 
 # rtl_433_64bit_static.exe -R 02 -R 162 -R 245 -f 433M -f 915M
+
+
 class Rtl433Temperature2:
 
     def __init__(self):
@@ -30,16 +32,20 @@ class Rtl433Temperature2:
         int_temp_list: list[float] = []
         threads: list[threading.Thread] = []
         sensors_list: dict[str, str] = {}
+        sensor_size: int = 0
 
         try:
             self.__kill_rtl_433()
             self.__delete_json_file()
 
             for freq in thermopro.get_sensors():
+                for sensor in thermopro.get_sensors()[freq]['sensors'].keys():
+                    sensor_size = max(len(sensor), sensor_size)
+
                 sensors_list.update(thermopro.get_sensors()[freq]['sensors'])
                 self.__call_sensors(list(thermopro.get_sensors()[freq]['args']), dict(thermopro.get_sensors()[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
 
-            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags', 'data']:
+            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags', 'data', 'mod', 'noise', 'rssi', 'snr', 'freq', 'freq1', 'freq2']:
                 try:
                     json_rtl_433.pop(item)
                 except KeyError:
@@ -51,8 +57,11 @@ class Rtl433Temperature2:
         self.__kill_rtl_433()
         self.__delete_json_file()
 
-        for sensor in sorted(sensors_list):
-            log.info(f'>>>>>> {sensors_list[sensor]} {sensor}: {json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor)}°C, {json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor)}%') if sensors_list.get(sensor) is not None else None
+        for loc in ['ext', 'int', None]:
+            for freq in list(thermopro.get_sensors().keys()):
+                for sensor in thermopro.get_sensors()[freq]['sensors'].keys():
+                    if thermopro.get_sensors()[freq]['sensors'][sensor] == loc:
+                        log.info(f'>>>>>> {sensors_list[sensor]} {sensor:<{sensor_size + 1}}: {json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor)}°C, {json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor)}%')
 
         result_queue.put({'sensors': json_rtl_433})
 
@@ -61,7 +70,7 @@ class Rtl433Temperature2:
                 thread.join(60)
             log.info("Threads stopped.")
 
-    def __call_sensors(self, args: list[str | int], sensors: dict[str, str], json_rtl_433: dict[str, Any],
+    def __call_sensors(self, args: list[str | int], sensors: dict, json_rtl_433: dict[str, Any],
             ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float],
             threads: list[threading.Thread]):
 
@@ -99,6 +108,18 @@ class Rtl433Temperature2:
                         log.info(f'{model}, {list(sensors.keys())}')
                         if model in sensors.keys():
                             log.info(f'>>>>>> {data.get('model')}: {data}')
+                            log.info('_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _')
+                            log.info(f'Model     : {data.get("model")}'.ljust(52) + f'Time      : {data.get("time")}')
+                            log.info(f'Temp.     : {data.get("temperature_C")} °C '.ljust(26) + f'Humidity  : {data.get("humidity")} % '.ljust(26) + f'Battery   : {data.get("battery_ok")} '.ljust(26))
+                            log.info(
+                                f'Modulation: {data.get("mod")} '.ljust(26) +
+                                (f'Freq      : {data.get("freq")} MHz '.ljust(26) if data.get("freq") else '') +
+                                (f'Freq1     : {data.get("freq1")} MHz '.ljust(26) if data.get("freq1") else '') +
+                                (f'Freq2     : {data.get("freq2")} MHz'.ljust(26) if data.get("freq2") else '')
+                            )
+                            log.info(f'RSSI      : {data.get("rssi")} dB'.ljust(26) + f'SNR       : {data.get("snr")} dB'.ljust(26) + f'Noise     : {data.get("noise")} dB'.ljust(26))
+                            log.info('_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _')
+
                             data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
                             self.__warn_battery(data, threads)
                             sensors.pop(model)
