@@ -1,11 +1,5 @@
-import matplotlib.pyplot as plt
-import numpy as np
+data = [("Alice", 24), ("Bob", 19), ("Charlie", 30)]
 
-# Create some sample data
-data = np.random.rand(10, 10)
-
-# Display the data using the 'Reds' colormap
-plt.imshow(data, cmap='Reds', interpolation='nearest')
-plt.colorbar(label='Value')
-plt.title("Red Gradient with Matplotlib 'Reds'")
-plt.show()
+# Print Rows
+for name, age in data:
+    print(f"{name:<10} {age:<5}")

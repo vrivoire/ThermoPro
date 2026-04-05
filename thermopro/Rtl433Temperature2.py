@@ -33,6 +33,7 @@ class Rtl433Temperature2:
         threads: list[threading.Thread] = []
         sensors_list: dict[str, str] = {}
         sensor_size: int = 0
+        summary_list: list[str] = []
 
         try:
             self.__kill_rtl_433()
@@ -43,7 +44,7 @@ class Rtl433Temperature2:
                     sensor_size = max(len(sensor), sensor_size)
 
                 sensors_list.update(thermopro.get_sensors()[freq]['sensors'])
-                self.__call_sensors(list(thermopro.get_sensors()[freq]['args']), dict(thermopro.get_sensors()[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads)
+                summary_list.extend(self.__call_sensors(list(thermopro.get_sensors()[freq]['args']), dict(thermopro.get_sensors()[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads))
 
             for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags', 'data', 'mod', 'noise', 'rssi', 'snr', 'freq', 'freq1', 'freq2']:
                 try:
@@ -57,6 +58,7 @@ class Rtl433Temperature2:
         self.__kill_rtl_433()
         self.__delete_json_file()
 
+        log.info('\n' + "".join(summary_list))
         for loc in ['ext', 'int', None]:
             for freq in list(thermopro.get_sensors().keys()):
                 for sensor in thermopro.get_sensors()[freq]['sensors'].keys():
@@ -71,9 +73,10 @@ class Rtl433Temperature2:
             log.info("Threads stopped.")
 
     def __call_sensors(self, args: list[str | int], sensors: dict, json_rtl_433: dict[str, Any],
-            ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float],
-            threads: list[threading.Thread]):
+            ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int],
+            int_temp_list: list[float], threads: list[threading.Thread]) -> list[str]:
 
+        summary: list[str] = []
         for sensor in list(sensors.keys()):
             sensors.pop(sensor) if sensors[sensor] is None else None
 
@@ -108,17 +111,7 @@ class Rtl433Temperature2:
                         log.info(f'{model}, {list(sensors.keys())}')
                         if model in sensors.keys():
                             log.info(f'>>>>>> {data.get('model')}: {data}')
-                            log.info('_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _')
-                            log.info(f'Model     : {data.get("model")}'.ljust(52) + f'Time      : {data.get("time")}')
-                            log.info(f'Temp.     : {data.get("temperature_C")} °C '.ljust(26) + f'Humidity  : {data.get("humidity")} % '.ljust(26) + f'Battery   : {data.get("battery_ok")} '.ljust(26))
-                            log.info(
-                                f'Modulation: {data.get("mod")} '.ljust(26) +
-                                (f'Freq      : {data.get("freq")} MHz '.ljust(26) if data.get("freq") else '') +
-                                (f'Freq1     : {data.get("freq1")} MHz '.ljust(26) if data.get("freq1") else '') +
-                                (f'Freq2     : {data.get("freq2")} MHz'.ljust(26) if data.get("freq2") else '')
-                            )
-                            log.info(f'RSSI      : {data.get("rssi")} dB'.ljust(26) + f'SNR       : {data.get("snr")} dB'.ljust(26) + f'Noise     : {data.get("noise")} dB'.ljust(26))
-                            log.info('_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _')
+                            self.append_summary(data, summary)
 
                             data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
                             self.__warn_battery(data, threads)
@@ -137,6 +130,20 @@ class Rtl433Temperature2:
         finally:
             self.__kill_rtl_433()
             self.__delete_json_file()
+            return summary
+
+    def append_summary(self, data: dict, summary: list[str]):
+        summary.append(f' {int(data.get("freq")) if data.get("freq") else int(data.get("freq1"))} MHz '.center(84, '_') + '\n')
+        summary.append(f'Model     : {data.get("model")}'.ljust(52) + f'Time      : {data.get("time")}\n')
+        summary.append(f'Temp.     : {data.get("temperature_C")} °C '.ljust(26) + f'Humidity  : {data.get("humidity")} % '.ljust(26) + f'Battery   : {data.get("battery_ok")} '.ljust(26) + '\n')
+        summary.append(
+            f'Modulation: {data.get("mod")} '.ljust(26) +
+            (f'Freq      : {data.get("freq")} MHz '.ljust(26) if data.get("freq") else '') +
+            (f'Freq1     : {data.get("freq1")} MHz '.ljust(26) if data.get("freq1") else '') +
+            (f'Freq2     : {data.get("freq2")} MHz'.ljust(26) if data.get("freq2") else '') +
+            '\n'
+        )
+        summary.append(f'RSSI      : {data.get("rssi")} dB'.ljust(26) + f'SNR       : {data.get("snr")} dB'.ljust(26) + f'Noise     : {data.get("noise")} dB'.ljust(26) + '\n')
 
     def __is_rtl_433_alive(self) -> bool | None:
         try:

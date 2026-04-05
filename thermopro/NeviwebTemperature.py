@@ -715,8 +715,8 @@ class NeviwebTemperature:
                 if device.get('group$id') in group_map
             ]
             for name in sorted(names):
-                log.info(f'>>>>>> {name}: {result.get('int_temp_' + name)}°C, {result.get('kwh_' + name)}  KWh')
-            log.info(f'>>>>>> kwh_neviweb: {result['kwh_neviweb']}  KWh')
+                log.info(f'>>>>>> {name}: {result.get('int_temp_' + name)}°C, {result.get('kwh_' + name)}KWh')
+            log.info(f'>>>>>> kwh_neviweb: {result['kwh_neviweb']}KWh')
             log.info(f'result={result}')
         except Exception as ex:
             log.error(ex)
