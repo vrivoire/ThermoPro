@@ -138,7 +138,7 @@ class ThermoProScan:
             log.fatal(traceback.format_exc())
         log.info(f"End task, Elapsed: {datetime.now().now() - now}")
 
-    def __get_means_and_mins(self, json_data: dict[str, int | float | str | None]) -> dict[str, int | float | str]:
+    def __get_means_and_mins(self, json_data: dict[str, int | float | str | None]) -> dict[str, int | float | str | None]:
         json_result: dict[str, int | float | str | None] = {}
         ext_temperature_list: list[float | None] = []
         for entry in [s for s in list(json_data) if "ext_temp_" in s]:
@@ -158,7 +158,7 @@ class ThermoProScan:
         ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
         json_result['ext_humidity'] = ext_humidity
 
-        room_humidity_list: list[int] = []
+        room_humidity_list: list[int | None] = []
         for entry in [s for s in list(json_data) if "int_humidity_" in s]:
             room_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
         int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
@@ -167,10 +167,10 @@ class ThermoProScan:
         json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
         json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
 
-        log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin:\t{min(ext_temperature_list):<5}\tmax:\t{max(ext_temperature_list):<5}\t{ext_temperature_list}')
-        log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin:\t{min(room_temperature_list):<5}\tmax:\t{max(room_temperature_list):<5}\t{room_temperature_list}')
-        log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin:\t{min(ext_humidity_list):<5}\tmax:\t{max(ext_humidity_list):<5}\t{ext_humidity_list}')
-        log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin:\t{min(room_humidity_list):<5}\tmax:\t{max(room_humidity_list):<5}\t{room_humidity_list}')
+        log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
+        log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
+        log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
+        log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
         log.info(f'>>>>>> ext_humidex:  {json_result['ext_humidex']}')
         log.info(f'>>>>>> int_humidex:  {json_result['int_humidex']}')
 

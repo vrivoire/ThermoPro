@@ -25,7 +25,7 @@ class Rtl433Temperature2:
 
     def call_rtl_433(self, result_queue: Queue):
         log.info('-------------------------- call_rtl_433 --------------------------')
-        json_rtl_433: dict[str, int | float | str] = {}
+        json_rtl_433: dict[str, int | float | str | None] = {}
         ext_humidity_list: list[int] = []
         ext_temp_list: list[float] = []
         int_humidity_list: list[int] = []
@@ -63,7 +63,13 @@ class Rtl433Temperature2:
             for freq in list(thermopro.get_sensors().keys()):
                 for sensor in thermopro.get_sensors()[freq]['sensors'].keys():
                     if thermopro.get_sensors()[freq]['sensors'][sensor] == loc:
-                        log.info(f'>>>>>> {sensors_list[sensor]} {sensor:<{sensor_size + 1}}: {json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor)}°C, {json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor)}%')
+                        temp = json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor) if json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor) else ''
+                        hum = json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor) if json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor) else ''
+                        log.info(
+                            f'>>>>>> {sensors_list[sensor]} {sensor:<{sensor_size + 1}} '
+                            f'{temp:>6}°C'
+                            f'{hum:>6}%'
+                        )
 
         result_queue.put({'sensors': json_rtl_433})
 

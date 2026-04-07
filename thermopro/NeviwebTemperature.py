@@ -703,7 +703,6 @@ class NeviwebTemperature:
             result['kwh_neviweb'] = kwh_total if not math.isnan(kwh_total) else 0.0
 
             for device in self.gateway_data:
-                # print(device)
                 for group in self.groups:
                     if group['id'] == device['group$id'] and device['roomTemperature'] is not None:
                         result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
@@ -714,9 +713,10 @@ class NeviwebTemperature:
                 for device in self.gateway_data
                 if device.get('group$id') in group_map
             ]
+            name_size = max((len(name) for name in names), default=0)
             for name in sorted(names):
-                log.info(f'>>>>>> {name}: {result.get('int_temp_' + name)}°C, {result.get('kwh_' + name)}KWh')
-            log.info(f'>>>>>> kwh_neviweb: {result['kwh_neviweb']}KWh')
+                log.info(f'>>>>>> {name:<{name_size + 1}} {result.get('int_temp_' + name):>6}°C {result.get('kwh_' + name):>6}KWh') if (result.get('kwh_' + name) is not None or result.get('int_temp_' + name) is not None) else None
+            log.info(f'>>>>>> {'kwh_neviweb':<{name_size + 1}} {result['kwh_neviweb']:>4}KWh')
             log.info(f'result={result}')
         except Exception as ex:
             log.error(ex)
