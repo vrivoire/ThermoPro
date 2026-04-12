@@ -2,6 +2,8 @@ import traceback
 from collections.abc import Sequence
 from datetime import timedelta
 
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.dates as m_dates
 import mplcursors
 import pandas as pd
@@ -138,6 +140,7 @@ class SensorsGraph:
 
 
 if __name__ == '__main__':
+    print(matplotlib.get_backend())
     thermopro.set_up(__file__)
     thermoProGraph: SensorsGraph = SensorsGraph()
     thermoProGraph.create_graph_sensors()

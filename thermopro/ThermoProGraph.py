@@ -9,6 +9,8 @@ from collections.abc import Sequence
 from datetime import timedelta
 from typing import Any
 
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.dates as m_dates
 import matplotlib.pyplot as plt
 import mplcursors
@@ -22,7 +24,7 @@ from matplotlib.widgets import CheckButtons, Slider, Button
 import thermopro
 from constants import MIN_HPA, MAX_HPA, DAYS_PER_MONTH
 from thermopro import log
-from thermopro.Tooltip import Tooltip
+# from thermopro.Tooltip import Tooltip
 
 root = tkinter.Tk()
 SCREEN_WIDTH: int = root.winfo_screenwidth()
@@ -163,12 +165,12 @@ class ThermoProGraph:
             )
             check.on_clicked(on_check_clicked)
 
-            def on_click(event: MouseEvent) -> None:
-                if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
-                    tooltip: Tooltip = Tooltip()
-                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT, mean)
-
-            fig.canvas.mpl_connect('button_press_event', on_click)
+            # def on_click(event: MouseEvent) -> None:
+            #     if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
+            #         tooltip: Tooltip = Tooltip()
+            #         tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT, mean)
+            #
+            # fig.canvas.mpl_connect('button_press_event', on_click)
 
             def on_changed(val):
                 slider_date.valtext.set_text(num2date(val).date())

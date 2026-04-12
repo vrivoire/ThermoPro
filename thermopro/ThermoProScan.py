@@ -22,7 +22,7 @@ from dateutil.relativedelta import relativedelta
 from pandas import DataFrame
 
 import thermopro
-from constants import NEVIWEB_EMAIL, NEVIWEB_PASSWORD, COLUMNS, BKP_PATH, BKP_DAYS, POIDS_PRESSION_PATH
+from constants import COLUMNS, BKP_PATH, BKP_DAYS, POIDS_PRESSION_PATH
 from thermopro import log, show_df
 from thermopro.HydroQuébecPower import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
@@ -248,10 +248,6 @@ class ThermoProScan:
 
     def start(self):
         try:
-            while not os.path.exists(POIDS_PRESSION_PATH):
-                log.warning(f'The path "{POIDS_PRESSION_PATH}" not ready.')
-                sleep(10)
-
             self.__call_all()
             schedule.every().hour.at(":01").do(self.__call_all)
             while True:

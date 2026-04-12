@@ -13,7 +13,7 @@ import pandas as pd
 from pandas import DataFrame
 
 import thermopro
-from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS
+from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS, CLOUD_PATHS
 
 sensors: dict[str, dict[str, list[str]] | dict[str, str | None]]
 
@@ -68,7 +68,7 @@ def get_sensors() -> dict[str, dict[str, list[str]] | dict[str, str | None]]:
     return sensors
 
 
-def load_sensors() -> DataFrame:
+def load_sensors() -> DataFrame | None:
     df_in: DataFrame | None = None
     if os.path.exists(SENSORS_OUTPUT_JSON_FILE):
         df_in: DataFrame = pd.read_json(SENSORS_OUTPUT_JSON_FILE, compression='zip')
@@ -114,17 +114,20 @@ def save_json(df: DataFrame) -> None:
 
 
 def copy_to_cloud() -> None:
-    for drive in ['OneDrive', 'Mega', 'Icedrive', 'Documents']:
+    for drive in CLOUD_PATHS:
         destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
         try:
-            if os.path.isdir(destination_folder):
-                try:
-                    shutil.rmtree(destination_folder)
-                    log.info(f"Directory and all contents at '{destination_folder}' deleted successfully.")
-                except OSError as e:
-                    log.error(f"Error: {destination_folder} : {e.strerror}")
-            shutil.copytree(POIDS_PRESSION_PATH, destination_folder, dirs_exist_ok=True)
-            log.info(f"Folder and contents successfully copied from '{POIDS_PRESSION_PATH}' to '{destination_folder}'")
+            if not os.path.isdir(destination_folder):
+                os.makedirs(destination_folder)
+            try:
+                shutil.rmtree(destination_folder, ignore_errors=True)
+                log.info(f"Directory and all contents at '{destination_folder}' deleted successfully.")
+                os.makedirs(destination_folder, exist_ok=True)
+                shutil.copytree(POIDS_PRESSION_PATH, destination_folder, dirs_exist_ok=True, ignore_dangling_symlinks=False)
+                log.info(f"Folder and contents successfully copied from '{POIDS_PRESSION_PATH}' to '{destination_folder}'")
+            except OSError as e:
+                log.error(f"Error: {POIDS_PRESSION_PATH} -> {destination_folder} : {e}")
+                raise e
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())

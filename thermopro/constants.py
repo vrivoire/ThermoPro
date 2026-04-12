@@ -5,8 +5,9 @@ HOME_PATH = f"{os.getenv('USERPROFILE')}".replace('\\', '/')
 LOG_PATH = f"{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/logs/"
 BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 
-POIDS_PRESSION_PATH = f"{HOME_PATH}/GoogleDrive/PoidsPression/"
+POIDS_PRESSION_PATH = f"{HOME_PATH}/Documents/PoidsPression/"
 BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
+CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive/Mon disque']
 BKP_DAYS = 5
 
 LOG_NAME: str = ''

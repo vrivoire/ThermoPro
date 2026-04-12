@@ -66,7 +66,7 @@ class Rtl433Temperature2:
                         temp = json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor) if json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor) else ''
                         hum = json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor) if json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor) else ''
                         log.info(
-                            f'>>>>>> {sensors_list[sensor]} {sensor:<{sensor_size + 1}} '
+                            f'>>>>>> {sensors_list[sensor]} {freq} {loc} {sensor:<{sensor_size + 1}} '
                             f'{temp:>6}°C'
                             f'{hum:>6}%'
                         )
@@ -117,6 +117,7 @@ class Rtl433Temperature2:
                         log.info(f'{model}, {list(sensors.keys())}')
                         if model in sensors.keys():
                             log.info(f'>>>>>> {data.get('model')}: {data}')
+                            data['loc'] = sensors.get(data.get('model'))
                             self.append_summary(data, summary)
 
                             data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
@@ -136,10 +137,10 @@ class Rtl433Temperature2:
         finally:
             self.__kill_rtl_433()
             self.__delete_json_file()
-            return summary
+        return summary
 
     def append_summary(self, data: dict, summary: list[str]):
-        summary.append(f' {int(data.get("freq")) if data.get("freq") else int(data.get("freq1"))} MHz '.center(84, '_') + '\n')
+        summary.append(f' {int(data.get("freq")) if data.get("freq") else int(data.get("freq1"))} MHz {data.get('loc')} '.center(84, '_') + '\n')
         summary.append(f'Model     : {data.get("model")}'.ljust(52) + f'Time      : {data.get("time")}\n')
         summary.append(f'Temp.     : {data.get("temperature_C")} °C '.ljust(26) + f'Humidity  : {data.get("humidity")} % '.ljust(26) + f'Battery   : {data.get("battery_ok")} '.ljust(26) + '\n')
         summary.append(
