@@ -30,15 +30,6 @@ from thermopro.OpenWeather import OpenWeather
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
 
 
-# C:\Users\ADELE\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
-# https://github.com/merbanan/rtl_433
-# https://github.com/dvd-dev/hilo/
-
-
-# sys.path.append(f'{HOME_PATH}/Documents//BkpScripts')
-# from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD
-
-
 class ThermoProScan:
 
     def __init__(self):
@@ -46,6 +37,7 @@ class ThermoProScan:
         atexit.register(self.__cleanup_function)
 
     def __call_all(self) -> None:
+        log.info(f'Schedule set: {schedule.get_jobs()}')
         now: datetime = datetime.now().replace(second=0, microsecond=0)
         thermopro.sensors = None
         json_data: dict[str, Any] = {}
@@ -162,18 +154,21 @@ class ThermoProScan:
         for entry in [s for s in list(json_data) if "int_humidity_" in s]:
             room_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
         int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
-        json_result['int_humidity'] = int_humidity
 
+        json_result['int_humidity'] = int_humidity
         json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
         json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
 
-        log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
-        log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
-        log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
-        log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
-        log.info(f'>>>>>> ext_humidex:  {json_result['ext_humidex']}')
-        log.info(f'>>>>>> int_humidex:  {json_result['int_humidex']}')
-
+        try:
+            log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
+            log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
+            log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
+            log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
+            log.info(f'>>>>>> ext_humidex:  {json_result['ext_humidex']}')
+            log.info(f'>>>>>> int_humidex:  {json_result['int_humidex']}')
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
         return json_result
 
     def set_kwh(self, kwh_dict: dict[str, float], df: DataFrame) -> None:
@@ -248,8 +243,9 @@ class ThermoProScan:
 
     def start(self):
         try:
-            self.__call_all()
             schedule.every().hour.at(":01").do(self.__call_all)
+            self.__call_all()
+            log.info(f'Schedule started... {schedule.get_jobs()}')
             while True:
                 schedule.run_pending()
                 sleep(1)
@@ -258,6 +254,7 @@ class ThermoProScan:
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
+            self.__cleanup_function()
 
     def __cleanup_function(self):
         try:
