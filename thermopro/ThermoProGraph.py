@@ -10,12 +10,12 @@ from datetime import timedelta
 from typing import Any
 
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.dates as m_dates
 import matplotlib.pyplot as plt
 import mplcursors
 import pandas as pd
-from matplotlib.backend_bases import MouseEvent
 from matplotlib.container import BarContainer
 from matplotlib.dates import date2num, num2date
 from matplotlib.lines import Line2D
@@ -24,6 +24,7 @@ from matplotlib.widgets import CheckButtons, Slider, Button
 import thermopro
 from constants import MIN_HPA, MAX_HPA, DAYS_PER_MONTH
 from thermopro import log
+
 # from thermopro.Tooltip import Tooltip
 
 root = tkinter.Tk()
@@ -173,38 +174,38 @@ class ThermoProGraph:
             # fig.canvas.mpl_connect('button_press_event', on_click)
 
             def on_changed(val):
+                log.info(f'on_changed({num2date(val)}) -> from: {num2date(val - mean).date()}, to: {num2date(val + 1).date()}')
                 slider_date.valtext.set_text(num2date(val).date())
-                df2 = df[df['time'].dt.date.between(num2date(val - mean).date(), num2date(val - mean).date())]
-                window = (
+                df2 = df[df['time'].dt.date.between(num2date(val - mean).date(), num2date(val + 1).date())]
+
+                ax1.axis((
                     val - mean,
                     val + 0.1,
                     0,
                     100
-                )
-                ax1.axis(window)
+                ))
                 ax1.set_yticks(list(range(0, 101, 10)))
                 ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m/%d'))
                 ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
-                window2 = (
+                ax2.axis((
                     val - mean,
                     val + 0.1,
                     min(
-                        df2['ext_temp'].min(numeric_only=True),
-                        df2['ext_humidex'].min(numeric_only=True),
-                        df2['int_temp'].min(numeric_only=True),
-                        df2['open_temp'].min(numeric_only=True),
-                        df2['open_feels_like'].min(numeric_only=True)
+                        df2['ext_temp'].min(numeric_only=True, skipna=True),
+                        df2['ext_humidex'].min(numeric_only=True, skipna=True),
+                        df2['int_temp'].min(numeric_only=True, skipna=True),
+                        df2['open_temp'].min(numeric_only=True, skipna=True),
+                        df2['open_feels_like'].min(numeric_only=True, skipna=True)
                     ) - 1,
                     max(
-                        df2['ext_temp'].max(numeric_only=True),
-                        df2['ext_humidex'].max(numeric_only=True),
-                        df2['int_temp'].max(numeric_only=True),
-                        df2['open_temp'].max(numeric_only=True),
-                        df2['open_feels_like'].max(numeric_only=True)
+                        df2['ext_temp'].max(numeric_only=True, skipna=True),
+                        df2['ext_humidex'].max(numeric_only=True, skipna=True),
+                        df2['int_temp'].max(numeric_only=True, skipna=True),
+                        df2['open_temp'].max(numeric_only=True, skipna=True),
+                        df2['open_feels_like'].max(numeric_only=True, skipna=True)
                     ) + 1
-                )
-                ax2.axis(window2)
+                ))
                 ax2.set_yticks(list(range(
                     int(min(
                         df2['ext_temp'].min(numeric_only=True),
@@ -442,12 +443,12 @@ class ThermoProGraph:
             )
             check.on_clicked(on_clicked)
 
-            def on_click(event: MouseEvent) -> None:
-                if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
-                    tooltip: Tooltip = Tooltip()
-                    tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT, mean)
-
-            fig.canvas.mpl_connect('button_press_event', on_click)
+            # def on_click(event: MouseEvent) -> None:
+            #     if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
+            #         tooltip: Tooltip = Tooltip()
+            #         tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT, mean)
+            #
+            # fig.canvas.mpl_connect('button_press_event', on_click)
 
             def on_changed(val):
                 log.info(f'on_changed({num2date(val)}) -> from: {num2date(val - mean).date()}, to: {num2date(val + 1).date()}')
@@ -470,7 +471,7 @@ class ThermoProGraph:
                     ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m/%d'))
                     ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
 
-                    window2 = (
+                    ax2.axis((
                         val - mean,
                         val + 0.1,
                         min(
@@ -483,8 +484,7 @@ class ThermoProGraph:
                             df2['int_temp'].max(numeric_only=True, skipna=True),
                             df2['open_temp'].max(numeric_only=True, skipna=True),
                         ) + 2.0
-                    )
-                    ax2.axis(window2)
+                    ))
                     ax2.set_yticks(list(range(
                         int(min(
                             df2['ext_temp'].min(numeric_only=True, skipna=True),
@@ -519,7 +519,7 @@ class ThermoProGraph:
                 ax1.xaxis.set_minor_formatter(m_dates.DateFormatter('%d'))
                 ax1.xaxis.set_minor_locator(m_dates.WeekdayLocator(byweekday=m_dates.SU.weekday, interval=1))
 
-                window = (
+                ax2.axis((
                     df['time'][0] - timedelta(hours=1),
                     df["time"][df["time"].size - 1] + timedelta(hours=1),
                     min(
@@ -532,8 +532,7 @@ class ThermoProGraph:
                         df['int_temp'].max(numeric_only=True, skipna=True),
                         df['open_temp'].max(numeric_only=True, skipna=True),
                     ) + 2.0
-                )
-                ax2.axis(window)
+                ))
                 ax2.set_yticks(list(range(
                     int(min(
                         df['ext_temp'].min(numeric_only=True, skipna=True),

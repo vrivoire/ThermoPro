@@ -117,8 +117,11 @@ def copy_to_cloud() -> None:
     for drive in CLOUD_PATHS:
         destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
         try:
+            if not os.path.isdir(POIDS_PRESSION_PATH):
+                raise f"Source folder '{POIDS_PRESSION_PATH}' does not exist."
             if not os.path.isdir(destination_folder):
-                os.makedirs(destination_folder)
+                raise f"Destination folder '{destination_folder}' does not exist."
+
             try:
                 shutil.rmtree(destination_folder, ignore_errors=True)
                 log.info(f"Directory and all contents at '{destination_folder}' deleted successfully.")

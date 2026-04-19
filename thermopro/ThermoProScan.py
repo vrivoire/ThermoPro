@@ -136,24 +136,24 @@ class ThermoProScan:
         for entry in [s for s in list(json_data) if "ext_temp_" in s]:
             ext_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
         ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
-        json_result['ext_temp'] = ext_temp
+        json_result['ext_temp'] = ext_temp if ext_temp else 0.0
 
         room_temperature_list: list[float] = []
         for entry in [s for s in list(json_data) if "int_temp_" in s]:
             room_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
         int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
-        json_result['int_temp'] = int_temp
+        json_result['int_temp'] = int_temp if int_temp else 0.0
 
         ext_humidity_list: list[int] = []
         for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
             ext_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
         ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
-        json_result['ext_humidity'] = ext_humidity
+        json_result['ext_humidity'] = ext_humidity if ext_humidity else 0
 
         room_humidity_list: list[int | None] = []
         for entry in [s for s in list(json_data) if "int_humidity_" in s]:
             room_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
-        int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else None
+        int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else 0
 
         json_result['int_humidity'] = int_humidity
         json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
@@ -194,6 +194,9 @@ class ThermoProScan:
 
     def save_bkp(self) -> None:
         try:
+            if not os.path.isdir(POIDS_PRESSION_PATH):
+                raise f"Source folder '{POIDS_PRESSION_PATH}' does not exist."
+
             in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
                                        [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
                                        [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
