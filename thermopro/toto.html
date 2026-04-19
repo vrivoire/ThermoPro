@@ -5,20 +5,21 @@
     <title>ThermoPro</title>
     <style>
         #weather-widget {
-			border: 1px solid;
-			color: #80808061;
-			width: 300px;
-			background: #80808036;
-			padding: 3px;
-			position: relative;
-			font-family: Space Grotesk,Arial,sans-serif;
-			-webkit-font-smoothing: antialiased;
-			-moz-osx-font-smoothing: grayscale;
-			color: #48484a;
-			width: 19em;
-			margin: 0;
-			padding: 0;
-		}
+            border: 1px solid;
+            color: #80808061;
+            width: 300px;
+            background: #80808036;
+            padding: 3px;
+            position: relative;
+            font-family: Space Grotesk, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            color: #48484a;
+            width: 19em;
+            margin: 0;
+            padding: 0;
+        }
+
         .current-temp {
             display: flex;
             align-items: center;
@@ -30,6 +31,7 @@
             font-weight: 100;
             margin-right: 8pt;
         }
+
         .weather-items {
             font-size: 15px;
             list-style: none;
@@ -49,7 +51,8 @@
 <body>
 <div id="weather-widget">
     <span style="color: #eb6e4b;display: block;text-align: center;font-weight: bold;margin-top: 1em;">06 November 2025 21:01</span>
-    <span class="current-temp"><img loading="eager" src="https://openweathermap.org/img/wn/03n@2x.png">&nbsp;0.2&deg;C</span>
+    <span class="current-temp"><img loading="eager"
+                                    src="https://openweathermap.org/img/wn/03n@2x.png">&nbsp;0.2&deg;C</span>
     <div style="font-weight: 700;padding-left: 10px;">
         <span title="Humidex: 0&deg;C.">Feels like -3.0&deg;C</span><br>
         Clouds, scattered clouds
@@ -66,8 +69,12 @@
     <hr>
     <ul class="weather-items">
         <li>
-            <span title="Mean: 0.582 KWh"><img loading="eager" src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Hydro-Qu%C3%A9bec_logo.svg" width="50"> 0.39 KWh</span>&nbsp;
-            <img loading="eager" src="https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/7b/9b/75/7b9b754b-cc8c-5a36-3468-9ea5838af4ab/AppIcon-0-0-1x_U007epad-0-1-0-85-220.jpeg/200x200ia-75.webp" width="20"> 0.00 KWh
+            <span title="Mean: 0.582 KWh"><img loading="eager"
+                                               src="https://upload.wikimedia.org/wikipedia/commons/a/ae/Hydro-Qu%C3%A9bec_logo.svg"
+                                               width="50"> 0.39 KWh</span>&nbsp;
+            <img loading="eager"
+                 src="https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/7b/9b/75/7b9b754b-cc8c-5a36-3468-9ea5838af4ab/AppIcon-0-0-1x_U007epad-0-1-0-85-220.jpeg/200x200ia-75.webp"
+                 width="20"> 0.00 KWh
         </li>
         <li><span style="color:black" title="">&#127777; &#127968; 18.5&deg;C &nbsp; &#128167; 32%</span>
         </li>

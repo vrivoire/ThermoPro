@@ -36,10 +36,10 @@ RTL_433_EXE = RTL_433_EXE_PATH[RTL_433_EXE_PATH.rfind('/') + 1:]
 
 DAYS_PER_MONTH = 30.437  # https://www.britannica.com/science/time/Standard-time
 
-OPEN_LAT = 45.509  # Montreal
-OPEN_LON = -73.588  # Montreal
-# OPEN_LAT = 45.55064  # Angus
-# OPEN_LON = -73.56062 # Angus
+# OPEN_LAT = 45.509  # Montreal
+# OPEN_LON = -73.588  # Montreal
+OPEN_LAT = 45.55064  # Angus
+OPEN_LON = -73.56062  # Angus
 WEATHER_URL = f'https://api.openweathermap.org/data/3.0/onecall?lat={OPEN_LAT}&lon={OPEN_LON}&exclude=minutely,hourly,daily,alerts&appid={OPEN_WEATHER_API_KEY}&units=metric&lang=en'
 
 MIN_HPA = 970

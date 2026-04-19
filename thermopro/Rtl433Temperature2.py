@@ -79,8 +79,8 @@ class Rtl433Temperature2:
             log.info("Threads stopped.")
 
     def __call_sensors(self, args: list[str | int], sensors: dict, json_rtl_433: dict[str, Any],
-            ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int],
-            int_temp_list: list[float], threads: list[threading.Thread]) -> list[str]:
+                       ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int],
+                       int_temp_list: list[float], threads: list[threading.Thread]) -> list[str]:
 
         summary: list[str] = []
         for sensor in list(sensors.keys()):

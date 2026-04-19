@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from datetime import timedelta
 
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.dates as m_dates
 import mplcursors

@@ -23,9 +23,9 @@ class HydroQuébec:
         log.info('              ----------------------- Starting HydroQuébec -----------------------')
 
     async def __get_kwh_list(self,
-            result_queue: Queue,
-            weeks=4
-    ) -> None:
+                             result_queue: Queue,
+                             weeks=4
+                             ) -> None:
         web_user: WebUser | None = None
         kwh_dict: dict[str, float | None] = {}
         try:
