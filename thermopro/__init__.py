@@ -2,7 +2,6 @@ import json
 import logging as log
 import logging.handlers
 import os.path
-import shutil
 import subprocess
 import traceback
 import zipfile
@@ -10,10 +9,11 @@ from datetime import datetime
 
 import pandas
 import pandas as pd
+import schedule
 from pandas import DataFrame
 
 import thermopro
-from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS, CLOUD_PATHS
+from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS, CLOUD_PATHS, ROBOCOPY_RETURNCODES
 
 sensors: dict[str, dict[str, list[str]] | dict[str, str | None]]
 
@@ -113,27 +113,49 @@ def save_json(df: DataFrame) -> None:
     log.info('JSON saved')
 
 
-def copy_to_cloud() -> None:
-    for drive in CLOUD_PATHS:
-        destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
-        try:
-            if not os.path.isdir(POIDS_PRESSION_PATH):
-                raise f"Source folder '{POIDS_PRESSION_PATH}' does not exist."
-            if not os.path.isdir(destination_folder):
-                raise f"Destination folder '{destination_folder}' does not exist."
+def display_schedule() -> None:
+    log.info('Schedule set:')
+    for job in schedule.get_jobs():
+        log.info(f'---> {job.__repr__()}')
 
-            try:
-                shutil.rmtree(destination_folder, ignore_errors=True)
-                log.info(f"Directory and all contents at '{destination_folder}' deleted successfully.")
+
+def copy_to_cloud() -> None:
+    try:
+        for drive in CLOUD_PATHS:
+            log.warning(' Start send to clouds '.center(80, '*'))
+            destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
+
+            if not os.path.isdir(POIDS_PRESSION_PATH):
+                raise Exception(f"Source folder '{POIDS_PRESSION_PATH}' does not exist.")
+            if not os.path.isdir(destination_folder):
                 os.makedirs(destination_folder, exist_ok=True)
-                shutil.copytree(POIDS_PRESSION_PATH, destination_folder, dirs_exist_ok=True, ignore_dangling_symlinks=False)
-                log.info(f"Folder and contents successfully copied from '{POIDS_PRESSION_PATH}' to '{destination_folder}'")
-            except OSError as e:
-                log.error(f"Error: {POIDS_PRESSION_PATH} -> {destination_folder} : {e}")
-                raise e
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
+
+            args: list[str] = ['robocopy', POIDS_PRESSION_PATH, destination_folder, '/MIR', '/NP', '/NDL', '/S', '/E', '/NJH', '/NJS', '/FFT', '/XF', '*.ffs_tmp', 'desktop.ini', 'rtl_433.json', 'Renpho Health-R_PmJP0']
+            try:
+                log.warning(f'args: {' '.join(args)}')
+                completed_process = subprocess.run(
+                    args,
+                    capture_output=True,
+                    timeout=TIMEOUT,
+                    encoding="cp437",
+                    check=False,
+                    shell=True,
+                    text=True
+                )
+                log.warning(f'returncode: {completed_process.returncode}: {ROBOCOPY_RETURNCODES.get(completed_process.returncode)}')
+                if completed_process.returncode > 0:
+                    log.warning(f'stdout: {completed_process.stdout}')
+                    log.warning(f'stderr: {completed_process.stderr}')
+            except subprocess.TimeoutExpired as timeoutExpired:
+                log.error(f"TimeoutExpired, returned: {timeoutExpired}")
+            except Exception as ex:
+                log.error(ex)
+                log.error(traceback.format_exc())
+    except Exception as ex:
+        log.error(ex)
+        log.error(traceback.format_exc())
+    log.warning(' End send to clouds '.center(80, '*'))
+    display_schedule()
 
 
 def load_json() -> DataFrame:

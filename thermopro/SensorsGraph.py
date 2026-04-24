@@ -63,7 +63,7 @@ class SensorsGraph:
                         humidity_list.append(line)
                     if '_temp_' in col and pd.isna(df[col].min()) == False:
                         mi = min(df[col].min(), mi) if not pd.isna(df[col].min()) else mi
-                        ma = max(df[col].max(), mi) if not pd.isna(df[col].max()) else ma
+                        ma = max(df[col].max(), ma) if not pd.isna(df[col].max()) else ma
                         line, = ax2.plot(df["time"], df[col], color='xkcd:scarlet', label=f'°C {pos} {name}')
                         temp_list.append(line)
 

@@ -60,11 +60,6 @@ class ThermoProGraph:
             ax1.grid(axis='y', color='blue', linewidth=0.2)
             ax1.set_yticks(list(range(0, 101, 10)))
 
-            ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
-            int_humidity, = ax1.plot(df["time"], df["int_humidity"], color='xkcd:blue', label='Int. %')
-            open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
-            open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
-
             ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
             ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
             ax1.xaxis.set_minor_formatter(m_dates.DateFormatter('%d'))
@@ -75,37 +70,71 @@ class ThermoProGraph:
             plt.xticks(rotation=45, ha='right', fontsize='9')
             plt.gcf().autofmt_xdate()
 
-            ext_humidex, = ax2.plot(df["time"], df["ext_humidex"], color='xkcd:pink', label='Humidex')
-            open_feels_like, = ax2.plot(df["time"], df["open_feels_like"], color='xkcd:rose pink', label='Feels like °C')
-            ext_temp, = ax2.plot(df["time"], df["ext_temp"], color='xkcd:scarlet', label='Ext. °C')
-            int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
-            open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
-
             ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
             ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
 
-            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
-            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
-            mean_ext_humidity, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='Mean ext %')
-            mean_int_humidity, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_humidity'].mean(), color='xkcd:dark blue', alpha=0.3, label='Mean int %')
-
-            # https://mplcursors.readthedocs.io/en/stable/index.html
+            open_pressure, = ax1.plot(df["time"], (df["open_pressure"] - MIN_HPA) / ((MAX_HPA - MIN_HPA) / 100), color='xkcd:black', label='hPa')
             mplcursors.cursor(open_pressure, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {int(float(sel[1][1]) * float((MAX_HPA - MIN_HPA) / 100.0) + MIN_HPA)} {sel[0].get_label()}'
             ))
+
+            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean(), color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
             mplcursors.cursor(mean_ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
+
+            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_temp'].mean(), color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
             mplcursors.cursor(mean_int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
+
+            mean_ext_humidity, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_humidity'].mean(), color='xkcd:deep blue', alpha=0.3, label='Mean ext %')
             mplcursors.cursor(mean_ext_humidity, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
+
+            mean_int_humidity, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_humidity'].mean(), color='xkcd:dark blue', alpha=0.3, label='Mean int %')
             mplcursors.cursor(mean_int_humidity, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
+
+            ext_humidity, = ax1.plot(df["time"], df["ext_humidity"], color='xkcd:royal blue', label='Ext. %')
+            mplcursors.cursor(ext_humidity, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+
+            int_humidity, = ax1.plot(df["time"], df["int_humidity"], color='xkcd:blue', label='Int. %')
+            mplcursors.cursor(int_humidity, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+
+            open_humidity, = ax1.plot(df["time"], df["open_humidity"], color='xkcd:sky blue', label='Open %')
+            mplcursors.cursor(open_humidity, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+
+            ext_temp, = ax2.plot(df["time"], df["ext_temp"], color='xkcd:scarlet', label='Ext. °C')
+            mplcursors.cursor(ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+
+            int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
             mplcursors.cursor(int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+
+            open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
+            mplcursors.cursor(open_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+
+            ext_humidex, = ax2.plot(df["time"], df["ext_humidex"], color='xkcd:pink', label='Humidex')
+            mplcursors.cursor(ext_humidex, hover=2).connect("add", lambda sel: sel.annotation.set_text(
+                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
+            ))
+
+            open_feels_like, = ax2.plot(df["time"], df["open_feels_like"], color='xkcd:rose pink', label='Feels like °C')
+            mplcursors.cursor(open_feels_like, hover=2).connect("add", lambda sel: sel.annotation.set_text(
                 f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
             ))
 

@@ -8,7 +8,7 @@ BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 POIDS_PRESSION_PATH = f"{HOME_PATH}/Documents/PoidsPression/"
 BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
 CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive/Mon disque']
-BKP_DAYS = 5
+BKP_DAYS = 4
 
 LOG_NAME: str = ''
 
@@ -44,3 +44,14 @@ WEATHER_URL = f'https://api.openweathermap.org/data/3.0/onecall?lat={OPEN_LAT}&l
 
 MIN_HPA = 970
 MAX_HPA = 1085
+
+ROBOCOPY_RETURNCODES: dict[int, str] = {
+    0: 'No files were copied. No failure was met. No files were mismatched. The files already exist in the destination directory; so the copy operation was skipped.',
+    1: 'All files were copied successfully.',
+    2: "There are some additional files in the destination directory that aren't present in the source directory. No files were copied.",
+    3: 'Some files were copied. Additional files were present. No failure was met.',
+    5: 'Some files were copied. Some files were mismatched. No failure was met.',
+    6: 'Additional files and mismatched files exist. No files were copied and no failures were met. Which means that the files already exist in the destination directory.',
+    7: 'Files were copied, a file mismatch was present, and additional files were present.',
+    8: "Several files didn't copy."
+}

@@ -37,7 +37,6 @@ class ThermoProScan:
         atexit.register(self.__cleanup_function)
 
     def __call_all(self) -> None:
-        log.info(f'Schedule set: {schedule.get_jobs()}')
         now: datetime = datetime.now().replace(second=0, microsecond=0)
         thermopro.sensors = None
         json_data: dict[str, Any] = {}
@@ -70,10 +69,10 @@ class ThermoProScan:
             while not result_queue.empty():
                 json_data.update(result_queue.get())
 
-            sensors1: dict[str, int | float | str] = json_data['sensors']
-            sensors2: dict[str, int | float | str] = dict(sensors1)
+            sensors1: dict[str, int | float | datetime] = json_data['sensors']
+            sensors2: dict[str, int | float | datetime] = dict(sensors1)
             sensors1.update(json_data)
-            json_result: dict[str, int | float | str] = self.__get_means_and_mins(sensors1)
+            json_result: dict[str, int | float | str | None] = self.__get_means_and_mins(sensors1)
             json_data.update(json_result)
 
             kwh_dict: dict[str, float] = json_data['kwh_dict']
@@ -120,17 +119,15 @@ class ThermoProScan:
             thermopro.save_json(df1)
             thermopro.save_sensors(now, sensors2)
             self.save_bkp()
-            thermopro.copy_to_cloud()
-
             show_df(df1, title='__call_all')
-
-            log.info(f'Successfully ended.')
         except Exception as ex:
             log.fatal(ex)
             log.fatal(traceback.format_exc())
+
+        thermopro.display_schedule()
         log.info(f"End task, Elapsed: {datetime.now().now() - now}")
 
-    def __get_means_and_mins(self, json_data: dict[str, int | float | str | None]) -> dict[str, int | float | str | None]:
+    def __get_means_and_mins(self, json_data: dict[str, int | float | datetime]) -> dict[str, int | float | str | None]:
         json_result: dict[str, int | float | str | None] = {}
         ext_temperature_list: list[float | None] = []
         for entry in [s for s in list(json_data) if "ext_temp_" in s]:
@@ -246,9 +243,16 @@ class ThermoProScan:
 
     def start(self):
         try:
+            schedule.every().day.at("00:10").do(thermopro.copy_to_cloud)
+            schedule.every().day.at("06:10").do(thermopro.copy_to_cloud)
+            schedule.every().day.at("12:10").do(thermopro.copy_to_cloud)
+            schedule.every().day.at("18:10").do(thermopro.copy_to_cloud)
+
             schedule.every().hour.at(":01").do(self.__call_all)
+
             self.__call_all()
-            log.info(f'Schedule started... {schedule.get_jobs()}')
+            thermopro.copy_to_cloud()
+
             while True:
                 schedule.run_pending()
                 sleep(1)

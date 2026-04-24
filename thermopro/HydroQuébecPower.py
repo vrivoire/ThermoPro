@@ -2,6 +2,7 @@
 import asyncio
 import math
 import traceback
+from collections.abc import Iterator
 from datetime import datetime
 from io import StringIO
 from queue import Queue
@@ -11,6 +12,8 @@ from dateutil.relativedelta import relativedelta
 from hydroqc.contract.common import Contract
 from hydroqc.types.consump import ConsumpHourlyResultTyping, ConsumpHourlyResultsTyping, ConsumpHourlyTyping
 from hydroqc.webuser import WebUser
+from pandas import DataFrame
+from pandas.io.parsers import TextFileReader
 
 import thermopro
 from constants import HYDRO_EMAIL, HYDRO_PASSWORD
@@ -46,8 +49,8 @@ class HydroQuébec:
                     start_date = datetime.now() - relativedelta(weeks=0)
                     end_date = datetime.now() - relativedelta(weeks=weeks)
                     log.info(f'Date range: from: {end_date.strftime('%Y-%m-%d %H:%M')}, to: {start_date.strftime('%Y-%m-%d %H:%M')}')
-                    string: StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
-                    df = pd.read_csv(string, sep=';')
+                    string: Iterator[list[str | int | float]] | StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
+                    df: DataFrame | TextFileReader = pd.read_csv(string, sep=";")
                     log.info(f'Data parsed, from: {df.iloc[-1]['Date et heure']}, to: {df.iloc[0]['Date et heure']}, rows: {len(df)}')
                     df['Date et heure'].astype('datetime64[ns]')
                     df.set_index('Date et heure')
