@@ -282,7 +282,12 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
-    thermopro.copy_to_cloud()
+    # orient = 'split'
+    # file_name = f'{THERMO_PRO_SCAN_OUTPUT_JSON_FILE[:THERMO_PRO_SCAN_OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json.zip'
+    df: DataFrame | None = thermopro.load_json()
+    show_df(df, title='__call_all')
+    thermopro.save_json(df)
+
     # df = thermopro.load_json()
     # thermopro.save_json(df)
     # thermopro.show_df(df)

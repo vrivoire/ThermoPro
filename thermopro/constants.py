@@ -7,7 +7,7 @@ BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 
 POIDS_PRESSION_PATH = f"{HOME_PATH}/Documents/PoidsPression/"
 BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
-CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive/Mon disque']
+CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive/Mon disque', 'TeraBox']
 BKP_DAYS = 4
 
 LOG_NAME: str = ''

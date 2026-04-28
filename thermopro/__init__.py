@@ -98,88 +98,16 @@ def load_sensors() -> DataFrame | None:
     return df_in
 
 
-def save_json(df: DataFrame) -> None:
-    df = set_astype(df)
-    df.to_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
-               compression={
-                   'method': 'zip',
-                   'compression': zipfile.ZIP_DEFLATED,
-                   'compresslevel': 9
-               })
-
-    # for orient in ['columns', 'index', 'split', 'table']:
-    #     print(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json')
-    #     df.to_json(f'{OUTPUT_JSON_FILE[:OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json', orient=orient, indent=4, date_format='iso')
-    log.info('JSON saved')
-
-
-def display_schedule() -> None:
-    log.info('Schedule set:')
-    for job in schedule.get_jobs():
-        log.info(f'---> {job.__repr__()}')
-
-
-def copy_to_cloud() -> None:
-    try:
-        for drive in CLOUD_PATHS:
-            log.warning(' Start send to clouds '.center(80, '*'))
-            destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
-
-            if not os.path.isdir(POIDS_PRESSION_PATH):
-                raise Exception(f"Source folder '{POIDS_PRESSION_PATH}' does not exist.")
-            if not os.path.isdir(destination_folder):
-                os.makedirs(destination_folder, exist_ok=True)
-
-            args: list[str] = ['robocopy', POIDS_PRESSION_PATH, destination_folder, '/MIR', '/NP', '/NDL', '/S', '/E', '/NJH', '/NJS', '/FFT', '/XF', '*.ffs_tmp', 'desktop.ini', 'rtl_433.json', 'Renpho Health-R_PmJP0']
-            try:
-                log.warning(f'args: {' '.join(args)}')
-                completed_process = subprocess.run(
-                    args,
-                    capture_output=True,
-                    timeout=TIMEOUT,
-                    encoding="cp437",
-                    check=False,
-                    shell=True,
-                    text=True
-                )
-                log.warning(f'returncode: {completed_process.returncode}: {ROBOCOPY_RETURNCODES.get(completed_process.returncode)}')
-                if completed_process.returncode > 0:
-                    log.warning(f'stdout: {completed_process.stdout}')
-                    log.warning(f'stderr: {completed_process.stderr}')
-            except subprocess.TimeoutExpired as timeoutExpired:
-                log.error(f"TimeoutExpired, returned: {timeoutExpired}")
-            except Exception as ex:
-                log.error(ex)
-                log.error(traceback.format_exc())
-    except Exception as ex:
-        log.error(ex)
-        log.error(traceback.format_exc())
-    log.warning(' End send to clouds '.center(80, '*'))
-    display_schedule()
-
-
-def load_json() -> DataFrame:
+def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> DataFrame:
     try:
         df: DataFrame | None = None
 
-        if os.path.exists(THERMO_PRO_SCAN_OUTPUT_JSON_FILE):
-            log.info(f'Loading file {THERMO_PRO_SCAN_OUTPUT_JSON_FILE}')
-            df: DataFrame = pandas.read_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE, compression='zip')
-
-        # if os.path.exists(OUTPUT_JSON_FILE):
-        #     log.info(f'Loading file {OUTPUT_JSON_FILE}')
-        #     df: DataFrame = pandas.read_json(OUTPUT_JSON_FILE)
-        # elif os.path.exists(OUTPUT_CSV_FILE):
-        #     log.info(f'Loading file {OUTPUT_CSV_FILE}')
-        #     df: DataFrame = pandas.read_csv(OUTPUT_CSV_FILE)
-        # else:
-        #     raise f"The files {OUTPUT_JSON_FILE} and {OUTPUT_CSV_FILE} do not exist."
-
-        # df = df.drop('ext_humidity_Acurite-609TXC', axis=1)
-        # df = df.drop('ext_temp_Acurite-609TXC', axis=1)
+        if os.path.exists(thermo_pro_scan_output_json_file):
+            log.info(f'Loading file {thermo_pro_scan_output_json_file}')
+            df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file, compression='zip', orient='split')
 
         if df is None:
-            raise f"Unable to load file {THERMO_PRO_SCAN_OUTPUT_JSON_FILE}"
+            raise f"Unable to load file {thermo_pro_scan_output_json_file}"
         else:
             df = set_astype(df)
             for col in ['time', 'open_sunrise', 'open_sunset']:
@@ -202,6 +130,63 @@ def load_json() -> DataFrame:
         log.error(ex)
         log.error(traceback.format_exc())
         raise ex
+
+
+def save_json(df: DataFrame, thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> None:
+    df = set_astype(df)
+    df.to_json(thermo_pro_scan_output_json_file, orient='split', indent=4, date_format='iso',
+               compression={
+                   'method': 'zip',
+                   'compression': zipfile.ZIP_LZMA,
+                   'compresslevel': 9
+               })
+    log.info(f'{thermo_pro_scan_output_json_file}\t\t{os.path.getsize(thermo_pro_scan_output_json_file)} bytes')
+    log.info('JSON saved')
+
+
+def display_schedule() -> None:
+    log.info('Schedule set:')
+    for job in schedule.get_jobs():
+        log.info(f'---> {job.__repr__()}')
+
+
+def copy_to_cloud() -> None:
+    try:
+        for drive in CLOUD_PATHS:
+            log.info(' Start send to clouds '.center(80, '*'))
+            destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
+
+            if not os.path.isdir(POIDS_PRESSION_PATH):
+                raise Exception(f"Source folder '{POIDS_PRESSION_PATH}' does not exist.")
+            if not os.path.isdir(destination_folder):
+                os.makedirs(destination_folder, exist_ok=True)
+
+            args: list[str] = ['robocopy', POIDS_PRESSION_PATH, destination_folder, '/MIR', '/NP', '/NDL', '/S', '/E', '/NJH', '/NJS', '/FFT', '/XF', '*.ffs_tmp', 'desktop.ini', 'rtl_433.json', 'Renpho Health-R_PmJP0']
+            try:
+                log.info(f'args: {' '.join(args)}')
+                completed_process = subprocess.run(
+                    args,
+                    capture_output=True,
+                    timeout=TIMEOUT,
+                    encoding="cp437",
+                    check=False,
+                    shell=True,
+                    text=True
+                )
+                log.info(f'robocopy returncode: {completed_process.returncode}: {ROBOCOPY_RETURNCODES.get(completed_process.returncode)}')
+                if completed_process.returncode > 0:
+                    log.info(f'robocopy stdout: {completed_process.stdout}')
+                    log.error(f'robocopy stderr: {completed_process.stderr}')
+            except subprocess.TimeoutExpired as timeoutExpired:
+                log.error(f"TimeoutExpired, returned: {timeoutExpired}")
+            except Exception as ex:
+                log.error(ex)
+                log.error(traceback.format_exc())
+    except Exception as ex:
+        log.error(ex)
+        log.error(traceback.format_exc())
+    log.info(' End send to clouds '.center(80, '*'))
+    display_schedule()
 
 
 def set_astype(df: DataFrame) -> DataFrame:

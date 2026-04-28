@@ -13,11 +13,11 @@ frozenlist==1.8.0
 Hydro-Quebec-API-Wrapper==4.2.6
 idna==3.13
 kiwisolver==1.5.0
-matplotlib==3.10.8
+matplotlib==3.10.9
 mplcursors==0.7.1
 multidict==6.7.1
 numpy==2.4.4
-packaging==26.1
+packaging==26.2
 pandas==3.0.2
 pefile==2024.8.26
 pillow==12.2.0
@@ -34,6 +34,6 @@ requests==2.33.1
 schedule==1.2.2
 setuptools==82.0.1
 six==1.17.0
-tzdata==2026.1
+tzdata==2026.2
 urllib3==2.6.3
 yarl==1.23.0
