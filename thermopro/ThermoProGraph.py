@@ -349,6 +349,9 @@ class ThermoProGraph:
 
             plt.draw()
             plt.ioff()
+
+            thermopro.set_icon('ThermoPro.png')
+
             plt.show()
             # plt.ioff()
 
@@ -649,6 +652,7 @@ class ThermoProGraph:
             fig.canvas.manager.set_window_title('ThermoPro Energy')
             mng = plt.get_current_fig_manager()
             mng.window.state('zoomed')
+            thermopro.set_icon('ThermoPro.png')
             plt.show()
 
         except Exception as ex:

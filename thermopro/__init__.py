@@ -1,21 +1,39 @@
+import glob
 import json
 import logging as log
 import logging.handlers
 import os.path
+import shutil
 import subprocess
+import tkinter as tk
 import traceback
 import zipfile
 from datetime import datetime
+from pathlib import Path
 
 import pandas
 import pandas as pd
 import schedule
+from dateutil.relativedelta import relativedelta
+from matplotlib import pyplot as plt
 from pandas import DataFrame
 
 import thermopro
-from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS, CLOUD_PATHS, ROBOCOPY_RETURNCODES
+from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS, CLOUD_PATHS, ROBOCOPY_RETURNCODES, BKP_PATH, BKP_DAYS
 
 sensors: dict[str, dict[str, list[str]] | dict[str, str | None]]
+
+
+def set_icon(icon_name: str):
+    path1: str = f'{Path(__file__).parent.parent.resolve()}/{icon_name}'
+    if os.path.isfile(path1):
+        plt.get_current_fig_manager().window.iconphoto(False, tk.PhotoImage(file=path1))
+    else:
+        path2: str = f'{Path(__file__).parent.parent.parent.parent.parent.resolve()}/{icon_name}'
+        if os.path.isfile(path2):
+            plt.get_current_fig_manager().window.iconphoto(False, tk.PhotoImage(file=path2))
+        else:
+            log.info(f'Not setting window icon, {path1} & {path2} icon not exists')
 
 
 def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> None:
@@ -24,7 +42,7 @@ def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> N
         df_sensors: DataFrame = pd.DataFrame([sensors])
         df_sensors = df_sensors.astype({'time': 'datetime64[ns]'})
 
-        df_in: DataFrame = thermopro.load_sensors()
+        df_in: DataFrame = load_sensors()
         df_in = pd.concat([df_in, df_sensors], ignore_index=True)
 
         df_in = df_in[['time'] + [c for c in sorted(df_in.columns) if c != 'time']]
@@ -32,7 +50,7 @@ def save_sensors(now: datetime, sensors: dict[str, int | float | datetime]) -> N
         df_in.to_json(SENSORS_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso',
                       compression={
                           'method': 'zip',
-                          'compression': zipfile.ZIP_DEFLATED,
+                          'compression': zipfile.ZIP_LZMA,
                           'compresslevel': 9
                       })
 
@@ -148,6 +166,49 @@ def display_schedule() -> None:
     log.info('Schedule set:')
     for job in schedule.get_jobs():
         log.info(f'---> {job.__repr__()}')
+
+
+def save_bkp() -> None:
+    try:
+        if not os.path.isdir(POIDS_PRESSION_PATH):
+            raise f"Source folder '{POIDS_PRESSION_PATH}' does not exist."
+
+        in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
+                                   [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
+                                   [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
+        log.info(f'Files to bkp: {thermopro.ppretty(in_file_list)}')
+        out_file_list: list[str] = [BKP_PATH + '/' + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
+        log.info(f'out_file_list: {out_file_list}')
+        for i, name in enumerate(in_file_list):
+            shutil.copy2(in_file_list[i], out_file_list[i])
+
+        file_name = 'ThermoProScan'
+        zip_file_name = f'{BKP_PATH}/{file_name}_{datetime.now().strftime('%Y-%m-%d')}.zip'
+        with zipfile.ZipFile(zip_file_name, "w", compression=zipfile.ZIP_LZMA, compresslevel=9) as zip_file:
+            for file in out_file_list:
+                zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
+
+                original: float = 0.0
+                compressed: float = 0.0
+                for info in zip_file.infolist():
+                    original += info.file_size / 1024
+                    compressed += info.compress_size / 1024
+            log.info(f"Zipped files, original: {round(original, 2)} Ko, compressed: {round(compressed, 2)} Ko. ratio: {round(100 - (compressed / original) * 100, 2)}%")
+            log.info(f"Zip file created at: {zip_file_name}")
+
+        try:
+            [os.remove(out_file) for out_file in out_file_list]
+            old_zip_file_name = f'{BKP_PATH}/{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
+            # log.info(f'old_zip_file_name: {old_zip_file_name}')
+            if os.path.isfile(old_zip_file_name):
+                log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
+                os.remove(old_zip_file_name)
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
+    except Exception as ex:
+        log.error(ex)
+        log.error(traceback.format_exc())
 
 
 def copy_to_cloud() -> None:

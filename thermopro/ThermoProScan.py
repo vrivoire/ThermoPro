@@ -1,16 +1,11 @@
 # start pyinstaller --onedir ThermoProScan.py --icon=ThermoPro.jpg --nowindowed --noconsole
 import atexit
-import glob
 import json
 import math
-import os
-import os.path
-import shutil
 import statistics
 import sys
 import threading
 import traceback
-import zipfile
 from datetime import datetime
 from queue import Queue
 from time import sleep
@@ -18,11 +13,10 @@ from typing import Any
 
 import pandas as pd
 import schedule
-from dateutil.relativedelta import relativedelta
 from pandas import DataFrame
 
 import thermopro
-from constants import COLUMNS, BKP_PATH, BKP_DAYS, POIDS_PRESSION_PATH
+from constants import COLUMNS
 from thermopro import log, show_df
 from thermopro.HydroQuébecPower import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
@@ -118,7 +112,7 @@ class ThermoProScan:
             thermopro.set_astype(df1)
             thermopro.save_json(df1)
             thermopro.save_sensors(now, sensors2)
-            self.save_bkp()
+            thermopro.save_bkp()
             show_df(df1, title='__call_all')
         except Exception as ex:
             log.fatal(ex)
@@ -189,47 +183,6 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    def save_bkp(self) -> None:
-        try:
-            if not os.path.isdir(POIDS_PRESSION_PATH):
-                raise f"Source folder '{POIDS_PRESSION_PATH}' does not exist."
-
-            in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
-                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
-                                       [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
-            log.info(f'Files to bkp: {in_file_list}')
-            out_file_list: list[str] = [BKP_PATH + '/' + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
-            log.info(f'out_file_list: {out_file_list}')
-            for i, name in enumerate(in_file_list):
-                shutil.copy2(in_file_list[i], out_file_list[i])
-
-            file_name = 'ThermoProScan'
-            zip_file_name = f'{BKP_PATH}/{file_name}_{datetime.now().strftime("%Y-%m-%d")}.zip'
-            with zipfile.ZipFile(zip_file_name, "a", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
-                for file in out_file_list:
-                    zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
-
-                    original: float = 0.0
-                    compressed: float = 0.0
-                    for info in zip_file.infolist():
-                        original += info.file_size / 1024
-                        compressed += info.compress_size / 1024
-                log.info(f"Zipped files, original: {round(original, 2)} Ko, compressed: {round(compressed, 2)} Ko. ratio: {round(100 - (compressed / original) * 100, 2)}%")
-                log.info(f"Zip file created at: {zip_file_name}")
-
-            try:
-                [os.remove(out_file) for out_file in out_file_list]
-                old_zip_file_name = f'{BKP_PATH}/{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
-                if os.path.isfile(old_zip_file_name):
-                    log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
-                    os.remove(old_zip_file_name)
-            except Exception as ex:
-                log.error(ex)
-                log.error(traceback.format_exc())
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-
     def __get_humidex(self, temp: float, humidity: int) -> int | None:
         if temp is not None and humidity is not None:
             kelvin = temp + 273
@@ -282,11 +235,13 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
+    # thermoProScan.save_bkp()
+
     # orient = 'split'
     # file_name = f'{THERMO_PRO_SCAN_OUTPUT_JSON_FILE[:THERMO_PRO_SCAN_OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json.zip'
-    df: DataFrame | None = thermopro.load_json()
-    show_df(df, title='__call_all')
-    thermopro.save_json(df)
+    # df: DataFrame | None = thermopro.load_json()
+    # show_df(df, title='__call_all')
+    # thermopro.save_json(df)
 
     # df = thermopro.load_json()
     # thermopro.save_json(df)
