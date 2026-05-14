@@ -14,11 +14,11 @@ from thermopro import log
 class OpenWeather:
 
     def __init__(self):
-        log.info('       ----------------------- Start OpenWeather -----------------------')
+        log.info(' Start OpenWeather '.center(100, '*'))
 
     # https://home.openweathermap.org/statistics/onecall_30
     def load_open_weather(self, result_queue: Queue):
-        log.info("   ----------------------- Start load_open_weather -----------------------")
+        log.info(' Start load_open_weather '.center(100, '*'))
         try:
             response = requests.get(WEATHER_URL)
             resp = response.json()
@@ -56,6 +56,7 @@ class OpenWeather:
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
+        log.info(' End load_open_weather '.center(100, '*'))
 
 
 if __name__ == "__main__":

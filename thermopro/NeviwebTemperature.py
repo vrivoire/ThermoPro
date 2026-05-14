@@ -289,8 +289,7 @@ class NeviwebTemperature:
             ignore_miwi=None,
             timeout=REQUESTS_TIMEOUT
     ):
-        log.info('      ----------------------- Starting NeviwebTemperature -----------------------')
-        """Initialize the client object."""
+        log.info(' Starting NeviwebTemperature '.center(100, '*'))
         self.hass = hass
         self._email = username
         self._password = password
@@ -312,11 +311,11 @@ class NeviwebTemperature:
         self._occupancyMode = None
         self.user = None
 
-    def get_device_hourly_stats(self, device_id) -> list[dict[str, int]] | None:
+    def get_device_hourly_stats(self, device: dict) -> list[dict[str, int]] | None:
         """Get device power consumption (in Wh) for the last 24 hours."""
         try:
             raw_res = requests.get(
-                DEVICE_DATA_URL + str(device_id) + "/consumption/hourly",
+                DEVICE_DATA_URL + str(device['id']) + "/consumption/hourly",
                 headers=self._headers,
                 cookies=self._cookies,
                 timeout=self._timeout,
@@ -329,7 +328,7 @@ class NeviwebTemperature:
         if "history" in data:
             return data["history"]
         else:
-            log.error(f"Hourly stat error: {data}")
+            log.warning(f"Hourly stat error for device: id: {device['id']}, name: {device['name']} --> {data}")
             return None
 
     def login(self):
@@ -677,7 +676,7 @@ class NeviwebTemperature:
                 raise ex
 
     def load_neviweb(self, result_queue: Queue):
-        log.info("  ----------------------- Start load_neviweb -----------------------")
+        log.info(' Start load_neviweb '.center(100, '*'))
         result: dict[str, int | float | None] = {}
         try:
             log.info(f'login={self.login()}')
@@ -694,7 +693,7 @@ class NeviwebTemperature:
 
             kwh_total = 0.0
             for device in self.gateway_data:
-                device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device['id'])
+                device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device)
                 for group in self.groups:
                     if group['id'] == device['group$id'] and device_hourly_stats_list is not None:
                         kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
@@ -724,6 +723,7 @@ class NeviwebTemperature:
         finally:
             log.info(f'logout={self.logout()}')
             result_queue.put(result)
+        log.info(f' End load_neviweb '.center(100, '*'))
 
 
 if __name__ == '__main__':

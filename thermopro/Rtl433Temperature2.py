@@ -20,11 +20,11 @@ from thermopro import log
 class Rtl433Temperature2:
 
     def __init__(self):
-        log.info('       ----------------------- Start Rtl433Temperature2 -----------------------')
+        log.info(' Start Rtl433Temperature2 '.center(100, '*'))
         thermopro.sensors = None
 
     def call_rtl_433(self, result_queue: Queue):
-        log.info('-------------------------- call_rtl_433 --------------------------')
+        log.info(' Start call_rtl_433 '.center(100, '*'))
         json_rtl_433: dict[str, int | float | str | None] = {}
         ext_humidity_list: list[int] = []
         ext_temp_list: list[float] = []
@@ -78,17 +78,18 @@ class Rtl433Temperature2:
                 thread.join(60)
             log.info("Threads stopped.")
 
+        log.info(' End call_rtl_433 '.center(100, '*'))
+
     def __call_sensors(self, args: list[str | int], sensors: dict, json_rtl_433: dict[str, Any],
                        ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int],
                        int_temp_list: list[float], threads: list[threading.Thread]) -> list[str]:
 
+        log.info(f' Start __call_sensors {list(sensors.keys())} '.center(100, '*'))
         summary: list[str] = []
         for sensor in list(sensors.keys()):
             sensors.pop(sensor) if sensors[sensor] is None else None
 
-        log.info('-------------------------- __call_sensors --------------------------')
         log.info(f'args: {args}')
-        log.info(f'sensors: {sensors}')
         try:
             self.__kill_rtl_433()
             self.__delete_json_file()
@@ -137,6 +138,8 @@ class Rtl433Temperature2:
         finally:
             self.__kill_rtl_433()
             self.__delete_json_file()
+
+        log.info(f' End __call_sensors '.center(100, '*'))
         return summary
 
     def append_summary(self, data: dict, summary: list[str]):
@@ -198,7 +201,7 @@ class Rtl433Temperature2:
                 shell=True,
                 text=True
             )
-            if completed_process.returncode == 0:
+            if completed_process.returncode == 0 or completed_process.returncode == 1:
                 log.info(f'{RTL_433_EXE} stopped.')
             else:
                 log.warning(f'{RTL_433_EXE} return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')

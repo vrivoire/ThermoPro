@@ -23,12 +23,13 @@ from thermopro import log
 class HydroQuébec:
 
     def __init__(self):
-        log.info('              ----------------------- Starting HydroQuébec -----------------------')
+        log.info(' Starting HydroQuébec '.center(100, '*'))
 
     async def __get_kwh_list(self,
                              result_queue: Queue,
                              weeks=4
                              ) -> None:
+        log.info(' Start get_kwh_list '.center(100, '*'))
         web_user: WebUser | None = None
         kwh_dict: dict[str, float | None] = {}
         try:
@@ -45,7 +46,7 @@ class HydroQuébec:
                 contract: Contract = web_user.customers[0].accounts[0].contracts[0]
 
                 try:
-                    log.info('---------------------------- get_hourly_energy ----------------------------')
+                    log.info(' get_hourly_energy '.center(100, '*'))
                     start_date = datetime.now() - relativedelta(weeks=0)
                     end_date = datetime.now() - relativedelta(weeks=weeks)
                     log.info(f'Date range: from: {end_date.strftime('%Y-%m-%d %H:%M')}, to: {start_date.strftime('%Y-%m-%d %H:%M')}')
@@ -73,7 +74,7 @@ class HydroQuébec:
                     log.error(traceback.format_exc())
 
                 try:
-                    log.info('---------------------------- get_today_hourly_consumption ----------------------------')
+                    log.info(' get_today_hourly_consumption '.center(100, '*'))
                     today_hourly_consumption: ConsumpHourlyTyping = await contract.get_today_hourly_consumption()
                     if today_hourly_consumption.get('success'):
                         crt: ConsumpHourlyResultsTyping = today_hourly_consumption.get('results')
@@ -101,6 +102,7 @@ class HydroQuébec:
                 await web_user.close_session()
                 log.info('Session closed')
             result_queue.put({'kwh_dict': kwh_dict})
+        log.info(' End get_kwh_list '.center(100, '*'))
 
     def start(self, result_queue: Queue):
         loop = asyncio.new_event_loop()
