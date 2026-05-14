@@ -31,16 +31,13 @@ class ThermoProScan:
         atexit.register(self.__cleanup_function)
 
     def __call_all(self) -> None:
+        log.warning(' Start __call_all '.center(100, '*'))
         now: datetime = datetime.now().replace(second=0, microsecond=0)
         thermopro.sensors = None
         json_data: dict[str, Any] = {}
         threads: list[threading.Thread] = []
         result_queue: Queue = Queue()
         try:
-            log.info('')
-            log.info('--------------------------------------------------------------------------------')
-            log.info("Start task.")
-
             thread: threading.Thread = threading.Thread(target=Rtl433Temperature2().call_rtl_433, args=(result_queue,))
             threads.append(thread)
             thread.start()
@@ -78,9 +75,7 @@ class ThermoProScan:
                     except KeyError as ke:
                         log.warning(ke)
 
-            log.info('----------------------------------------------')
             log.info(f'Got all new data:\n{json.dumps(json_data, indent=4, sort_keys=True, default=str)}')
-            log.info('----------------------------------------------')
 
             df1: DataFrame = thermopro.load_json()
             if json_data:
@@ -112,14 +107,14 @@ class ThermoProScan:
             thermopro.set_astype(df1)
             thermopro.save_json(df1)
             thermopro.save_sensors(now, sensors2)
-            thermopro.save_bkp()
+            # thermopro.save_bkp()
             show_df(df1, title='__call_all')
         except Exception as ex:
             log.fatal(ex)
             log.fatal(traceback.format_exc())
 
         thermopro.display_schedule()
-        log.info(f"End task, Elapsed: {datetime.now().now() - now}")
+        log.warning(f' End __call_all Elapsed: {datetime.now().now() - now} '.center(100, '*'))
 
     def __get_means_and_mins(self, json_data: dict[str, int | float | datetime]) -> dict[str, int | float | str | None]:
         json_result: dict[str, int | float | str | None] = {}
@@ -196,15 +191,11 @@ class ThermoProScan:
 
     def start(self):
         try:
-            schedule.every().day.at("00:10").do(thermopro.copy_to_cloud)
-            schedule.every().day.at("06:10").do(thermopro.copy_to_cloud)
-            schedule.every().day.at("12:10").do(thermopro.copy_to_cloud)
-            schedule.every().day.at("18:10").do(thermopro.copy_to_cloud)
-
+            self.set_frequency(4)
             schedule.every().hour.at(":01").do(self.__call_all)
 
             self.__call_all()
-            thermopro.copy_to_cloud()
+            # thermopro.copy_to_cloud()
 
             while True:
                 schedule.run_pending()
@@ -215,6 +206,16 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
             self.__cleanup_function()
+
+    def set_frequency(self, frequency_per_day: int = 4):
+        log.info(f'Creating schedule at: {frequency_per_day} per day')
+        values: dict[int, int] = {1: 24, 2: 12, 3: 8, 4: 6, 6: 4, 8: 3, 12: 2, 24: 1}
+        if frequency_per_day not in values:
+            raise ValueError(f"Invalid frequency: {frequency_per_day}")
+        i: int = 0
+        while i < 24:
+            i += values[frequency_per_day]
+            schedule.every().day.at(f"{i % 24:02d}:10").do(thermopro.copy_to_cloud)
 
     def __cleanup_function(self):
         try:
@@ -235,14 +236,26 @@ if __name__ == '__main__':
     thermoProScan.start()
     sys.exit()
 
-    # thermoProScan.save_bkp()
-
-    # orient = 'split'
-    # file_name = f'{THERMO_PRO_SCAN_OUTPUT_JSON_FILE[:THERMO_PRO_SCAN_OUTPUT_JSON_FILE.rfind('.')]}_{orient}.json.zip'
-    # df: DataFrame | None = thermopro.load_json()
-    # show_df(df, title='__call_all')
-    # thermopro.save_json(df)
-
     # df = thermopro.load_json()
     # thermopro.save_json(df)
     # thermopro.show_df(df)
+
+# schedule.every().day.at("00:10").do(thermopro.copy_to_cloud)
+# schedule.every().day.at("06:10").do(thermopro.copy_to_cloud)
+# schedule.every().day.at("12:10").do(thermopro.copy_to_cloud)
+# schedule.every().day.at("18:10").do(thermopro.copy_to_cloud)
+
+
+# def set_frequency(frequency_per_day: int = 4):
+#     log.info(f'Creating schedule at: {frequency_per_day} per day')
+#     values: dict[int, int] = {1: 24, 2: 12, 3: 8, 4: 6, 6: 4, 8: 3, 12: 2, 24: 1}
+#     if frequency_per_day not in values:
+#         raise ValueError(f"Invalid frequency: {frequency_per_day}")
+#     i: int = 0
+#     while i < 24:
+#         i += values[frequency_per_day]
+#         schedule.every().day.at(f"{i % 24:02d}:10").do(thermopro.copy_to_cloud)
+#
+#
+# set_frequency(8)
+# thermopro.display_schedule()

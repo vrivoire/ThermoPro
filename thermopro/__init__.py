@@ -116,50 +116,64 @@ def load_sensors() -> DataFrame | None:
     return df_in
 
 
+# PURGE !???!!!!!????
+# timeout: int = int(TIMEOUT / 60)
+# df_conditional_drop = df.drop(df[
+#                                   (df['time'].dt.minute >= int32(3 * timeout)) &
+#                                   (df['time'].dt.minute <= int32(60 - timeout)) &
+#                                   (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
+#                                   ].index)
+# log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
+# df = df_conditional_drop.reset_index(drop=True)
 def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> DataFrame:
+    df: DataFrame | None = None
     try:
-        df: DataFrame | None = None
-
-        if os.path.exists(thermo_pro_scan_output_json_file):
-            log.info(f'Loading file {thermo_pro_scan_output_json_file}')
-            df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file, compression='zip', orient='split')
-
-        if df is None:
-            raise f"Unable to load file {thermo_pro_scan_output_json_file}"
-        else:
-            df = set_astype(df)
-            for col in ['time', 'open_sunrise', 'open_sunset']:
-                df = df.astype({col: 'datetime64[ns]'})
-
-            # PURGE !???!!!!!????
-            # timeout: int = int(TIMEOUT / 60)
-            # df_conditional_drop = df.drop(df[
-            #                                   (df['time'].dt.minute >= int32(3 * timeout)) &
-            #                                   (df['time'].dt.minute <= int32(60 - timeout)) &
-            #                                   (df['time'] <= (datetime.now() - relativedelta(weeks=1)))
-            #                                   ].index)
-            # log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
-            # df = df_conditional_drop.reset_index(drop=True)
-
-            df = df[COLUMNS]
-
-            return df
+        if os.path.exists(thermo_pro_scan_output_json_file + '.zip'):
+            log.info(f'Loading file {thermo_pro_scan_output_json_file + '.zip'}')
+            df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file + '.zip', compression='zip', orient='records')
     except Exception as ex:
+        log.info('NOT JSON zip loaded')
         log.error(ex)
         log.error(traceback.format_exc())
-        raise ex
+        try:
+            if os.path.exists(thermo_pro_scan_output_json_file):
+                log.info(f'Loading file {thermo_pro_scan_output_json_file}')
+                df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file, orient='records')
+        except Exception as ex:
+            log.info('NOT JSON loaded')
+            log.error(ex)
+            log.error(traceback.format_exc())
+            raise ex
+
+    if df is None:
+        raise f"Unable to load file {thermo_pro_scan_output_json_file + '.zip'}"
+    else:
+        df = df[COLUMNS]
+        df = set_astype(df)
+        for col in ['time', 'open_sunrise', 'open_sunset']:
+            df = df.astype({col: 'datetime64[ns]'})
+    return df
 
 
 def save_json(df: DataFrame, thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> None:
-    df = set_astype(df)
-    df.to_json(thermo_pro_scan_output_json_file, orient='split', indent=4, date_format='iso',
-               compression={
-                   'method': 'zip',
-                   'compression': zipfile.ZIP_LZMA,
-                   'compresslevel': 9
-               })
-    log.info(f'{thermo_pro_scan_output_json_file}\t\t{os.path.getsize(thermo_pro_scan_output_json_file)} bytes')
-    log.info('JSON saved')
+    try:
+        if df is None or len(df) == 0:
+            raise Exception("The DataFrame is None. Unable to save file")
+
+        df = set_astype(df)
+        df.to_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
+        df.to_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE + '.zip', orient='records', indent=4, date_format='iso',
+                   compression={
+                       'method': 'zip',
+                       'compression': zipfile.ZIP_LZMA,
+                       'compresslevel': 9
+                   })
+        log.info(f'JSON saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.zip')} bytes')
+    except Exception as ex:
+        log.info('NOT JSON saved')
+        log.error(ex)
+        log.error(traceback.format_exc())
+        raise ex
 
 
 def display_schedule() -> None:
@@ -169,22 +183,25 @@ def display_schedule() -> None:
 
 
 def save_bkp() -> None:
+    log.warning(' Start save_bkp '.center(100, '*'))
     try:
         if not os.path.isdir(POIDS_PRESSION_PATH):
             raise f"Source folder '{POIDS_PRESSION_PATH}' does not exist."
 
-        in_file_list: list[str] = ([files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
-                                   [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
-                                   [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))])
+        in_file_list: list[str] = (
+            # [files_csv.replace('\\', '/') for files_csv in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.csv'))] +
+            # [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
+            [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))]
+        )
         log.info(f'Files to bkp: {thermopro.ppretty(in_file_list)}')
         out_file_list: list[str] = [BKP_PATH + '/' + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
-        log.info(f'out_file_list: {out_file_list}')
+        log.info(f'out_file_list: {thermopro.ppretty(out_file_list)}')
         for i, name in enumerate(in_file_list):
             shutil.copy2(in_file_list[i], out_file_list[i])
 
         file_name = 'ThermoProScan'
         zip_file_name = f'{BKP_PATH}/{file_name}_{datetime.now().strftime('%Y-%m-%d')}.zip'
-        with zipfile.ZipFile(zip_file_name, "w", compression=zipfile.ZIP_LZMA, compresslevel=9) as zip_file:
+        with zipfile.ZipFile(zip_file_name, "a", compression=zipfile.ZIP_LZMA, compresslevel=9) as zip_file:
             for file in out_file_list:
                 zip_file.write(file, arcname=file[file.replace('\\', '/').rfind('/') + 1:])
 
@@ -199,22 +216,27 @@ def save_bkp() -> None:
         try:
             [os.remove(out_file) for out_file in out_file_list]
             old_zip_file_name = f'{BKP_PATH}/{file_name}_{(datetime.now() - relativedelta(days=BKP_DAYS)).strftime('%Y-%m-%d')}.zip'
-            # log.info(f'old_zip_file_name: {old_zip_file_name}')
             if os.path.isfile(old_zip_file_name):
                 log.info(f'Deleting {BKP_DAYS} days old: {old_zip_file_name}')
                 os.remove(old_zip_file_name)
+
+            # for file_name in in_file_list:
+            #     print(f'os.remove({file_name})')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
     except Exception as ex:
         log.error(ex)
         log.error(traceback.format_exc())
+    log.warning(' End save_bkp '.center(100, '*'))
 
 
 def copy_to_cloud() -> None:
+    log.warning(' Start copy_to_cloud '.center(100, '*'))
     try:
+        thermopro.save_bkp()
+
         for drive in CLOUD_PATHS:
-            log.info(' Start send to clouds '.center(80, '*'))
             destination_folder = f"{HOME_PATH}/{drive}/PoidsPression"
 
             if not os.path.isdir(POIDS_PRESSION_PATH):
@@ -234,20 +256,23 @@ def copy_to_cloud() -> None:
                     shell=True,
                     text=True
                 )
-                log.info(f'robocopy returncode: {completed_process.returncode}: {ROBOCOPY_RETURNCODES.get(completed_process.returncode)}')
+                log.warning(f'Drive: {drive}, robocopy returncode: {completed_process.returncode}: {ROBOCOPY_RETURNCODES.get(completed_process.returncode)}')
                 if completed_process.returncode > 0:
-                    log.info(f'robocopy stdout: {completed_process.stdout}')
-                    log.error(f'robocopy stderr: {completed_process.stderr}')
+                    log.info(f'Drive: {drive}, robocopy stdout: {completed_process.stdout}')
+                    if completed_process.stderr is not None and not completed_process.stderr.strip() == '':
+                        log.error(f'Drive: {drive}, robocopy stderr: {completed_process.stderr}')
+
             except subprocess.TimeoutExpired as timeoutExpired:
-                log.error(f"TimeoutExpired, returned: {timeoutExpired}")
+                log.error(f"Drive: {drive}, TimeoutExpired, returned: {timeoutExpired}")
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
     except Exception as ex:
         log.error(ex)
         log.error(traceback.format_exc())
-    log.info(' End send to clouds '.center(80, '*'))
+
     display_schedule()
+    log.warning(' End copy_to_cloud '.center(100, '*'))
 
 
 def set_astype(df: DataFrame) -> DataFrame:

@@ -8,7 +8,7 @@ BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 POIDS_PRESSION_PATH = f"{HOME_PATH}/Documents/PoidsPression/"
 BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
 CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive/Mon disque', 'TeraBox']
-BKP_DAYS = 14
+BKP_DAYS = 5
 
 LOG_NAME: str = ''
 
@@ -22,7 +22,7 @@ COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'i
                       )
                       )
 
-THERMO_PRO_SCAN_OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json.zip"
+THERMO_PRO_SCAN_OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
 SENSORS_OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}Sensors.json.zip"
 
 LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
