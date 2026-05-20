@@ -44,9 +44,14 @@ class Rtl433Temperature2:
                     sensor_size = max(len(sensor), sensor_size)
 
                 sensors_list.update(thermopro.get_sensors()[freq]['sensors'])
-                summary_list.extend(self.__call_sensors(list(thermopro.get_sensors()[freq]['args']), dict(thermopro.get_sensors()[freq]['sensors']), json_rtl_433, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, threads))
+                summary_list.extend(self.__call_sensors(list(thermopro.get_sensors()[freq]['args']),
+                                                        dict(thermopro.get_sensors()[freq]['sensors']), json_rtl_433,
+                                                        ext_humidity_list, ext_temp_list, int_humidity_list,
+                                                        int_temp_list, threads))
 
-            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic', 'humidity', 'status', 'flags', 'data', 'mod', 'noise', 'rssi', 'snr', 'freq', 'freq1', 'freq2']:
+            for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic',
+                         'humidity', 'status', 'flags', 'data', 'mod', 'noise', 'rssi', 'snr', 'freq', 'freq1',
+                         'freq2']:
                 try:
                     json_rtl_433.pop(item)
                 except KeyError:
@@ -63,8 +68,10 @@ class Rtl433Temperature2:
             for freq in list(thermopro.get_sensors().keys()):
                 for sensor in thermopro.get_sensors()[freq]['sensors'].keys():
                     if thermopro.get_sensors()[freq]['sensors'][sensor] == loc:
-                        temp = json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor) if json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor) else ''
-                        hum = json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor) if json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor) else ''
+                        temp = json_rtl_433.get(sensors_list.get(sensor) + '_temp_' + sensor) if json_rtl_433.get(
+                            sensors_list.get(sensor) + '_temp_' + sensor) else ''
+                        hum = json_rtl_433.get(sensors_list.get(sensor) + '_humidity_' + sensor) if json_rtl_433.get(
+                            sensors_list.get(sensor) + '_humidity_' + sensor) else ''
                         log.info(
                             f'>>>>>> {sensors_list[sensor]} {freq} {loc} {sensor:<{sensor_size + 1}} '
                             f'{temp:>6}°C'
@@ -89,7 +96,6 @@ class Rtl433Temperature2:
         for sensor in list(sensors.keys()):
             sensors.pop(sensor) if sensors[sensor] is None else None
 
-        log.info(f'args: {args}')
         try:
             self.__kill_rtl_433()
             self.__delete_json_file()
@@ -102,7 +108,8 @@ class Rtl433Temperature2:
                 i += 1
                 sleep(0.2)
             if not os.path.exists(OUTPUT_RTL_433_FILE):
-                raise Exception(f'File not found: {OUTPUT_RTL_433_FILE} and is_rtl_433_alive: {self.__is_rtl_433_alive()} and i: {i}')
+                raise Exception(
+                    f'File not found: {OUTPUT_RTL_433_FILE} and is_rtl_433_alive: {self.__is_rtl_433_alive()} and i: {i}')
             log.info(f"Found file {OUTPUT_RTL_433_FILE} and is_rtl_433_alive: {self.__is_rtl_433_alive()} and i: {i}")
 
             with open(OUTPUT_RTL_433_FILE, 'r') as f:
@@ -121,7 +128,8 @@ class Rtl433Temperature2:
                             data['loc'] = sensors.get(data.get('model'))
                             self.append_summary(data, summary)
 
-                            data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
+                            data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list,
+                                                    int_temp_list, sensors[model])
                             self.__warn_battery(data, threads)
                             sensors.pop(model)
                             log.info(f'Removed: {model}')
@@ -143,17 +151,17 @@ class Rtl433Temperature2:
         return summary
 
     def append_summary(self, data: dict, summary: list[str]):
-        summary.append(f' {int(data.get("freq")) if data.get("freq") else int(data.get("freq1"))} MHz {data.get('loc')} '.center(84, '_') + '\n')
+        summary.append(f' {int(data.get("freq")) if data.get("freq") else int(data.get("freq1"))} MHz {data.get('loc')} '.center(84, '-') + '\n')
         summary.append(f'Model     : {data.get("model")}'.ljust(52) + f'Time      : {data.get("time")}\n')
-        summary.append(f'Temp.     : {data.get("temperature_C")} °C '.ljust(26) + f'Humidity  : {data.get("humidity")} % '.ljust(26) + f'Battery   : {data.get("battery_ok")} '.ljust(26) + '\n')
+        summary.append(f'Temp.     : {data.get("temperature_C")}°C '.ljust(26) + f'Humidity  : {data.get("humidity")}% '.ljust(26) + f'Battery   : {'✓' if data.get("battery_ok") == 1 else '❌'} '.ljust(26) + '\n')
         summary.append(
             f'Modulation: {data.get("mod")} '.ljust(26) +
-            (f'Freq      : {data.get("freq")} MHz '.ljust(26) if data.get("freq") else '') +
-            (f'Freq1     : {data.get("freq1")} MHz '.ljust(26) if data.get("freq1") else '') +
-            (f'Freq2     : {data.get("freq2")} MHz'.ljust(26) if data.get("freq2") else '') +
+            (f'Freq      : {data.get("freq")}MHz '.ljust(26) if data.get("freq") else '') +
+            (f'Freq1     : {data.get("freq1")}MHz '.ljust(26) if data.get("freq1") else '') +
+            (f'Freq2     : {data.get("freq2")}MHz'.ljust(26) if data.get("freq2") else '') +
             '\n'
         )
-        summary.append(f'RSSI      : {data.get("rssi")} dB'.ljust(26) + f'SNR       : {data.get("snr")} dB'.ljust(26) + f'Noise     : {data.get("noise")} dB'.ljust(26) + '\n')
+        summary.append(f'RSSI      : {data.get("rssi")}dB'.ljust(26) + f'SNR       : {data.get("snr")}dB'.ljust(26) + f'Noise     : {data.get("noise")}dB'.ljust(26) + '\n')
 
     def __is_rtl_433_alive(self) -> bool | None:
         try:
@@ -184,7 +192,8 @@ class Rtl433Temperature2:
                 if completed_process.returncode == 0:
                     log.info(f'{RTL_433_EXE} killed.')
                 else:
-                    log.warning(f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout.replace('\n', ' ')}, stderr: {completed_process.stderr.replace('\n', ' ')}')
+                    log.warning(
+                        f'Return code: {completed_process.returncode}, stdout: {completed_process.stdout.replace('\n', ' ')}, stderr: {completed_process.stderr.replace('\n', ' ')}')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -204,7 +213,8 @@ class Rtl433Temperature2:
             if completed_process.returncode == 0 or completed_process.returncode == 1:
                 log.info(f'{RTL_433_EXE} stopped.')
             else:
-                log.warning(f'{RTL_433_EXE} return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')
+                log.warning(
+                    f'{RTL_433_EXE} return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')
 
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned: {timeoutExpired}")
@@ -234,11 +244,14 @@ class Rtl433Temperature2:
             log.error('*' + f"Sensor {data.get('model')} battery is weak...".center(len(string) - 2) + '*')
             log.error(string)
             if datetime.now().strftime("%H") == '00':
-                thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW, args=(0, f"Sensor {data.get('model')}'s battery is weak...", "RTL 433 Warning", 0x30))
+                thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW,
+                                          args=(0, f"Sensor {data.get('model')}'s battery is weak...",
+                                                "RTL 433 Warning", 0x30))
                 thread.start()
                 threads.append(thread)
 
-    def __fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
+    def __fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float],
+                    int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
         # try:
         #     print(f'data={data['data']} --> {int(data['data'], 16)}') if data.get('data') is not None else None
         #     print(f'--> {datetime.fromtimestamp(int(data['data'], 16))}') if data.get('data') is not None else None

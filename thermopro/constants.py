@@ -8,26 +8,31 @@ BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 POIDS_PRESSION_PATH = f"{HOME_PATH}/Documents/PoidsPression/"
 BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
 CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive/Mon disque', 'TeraBox']
-BKP_DAYS = 5
+BKP_DAYS = 7
 
 LOG_NAME: str = ''
 
 sys.path.append(f'{BKP_SCRIPTS}/')
 from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
 
-COLUMNS: list[str] = (['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec', 'kwh_neviweb', 'ext_humidex', 'int_humidex'] +
-                      sorted(
-                          ['int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds', 'open_description', 'open_humidity', 'open_icon',
-                           'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi', 'open_visibility', 'open_wind_deg', 'open_wind_gust', 'open_wind_speed']
-                      )
-                      )
+COLUMNS: list[str] = (
+        ['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec',
+         'kwh_neviweb', 'ext_humidex', 'int_humidex'] +
+        sorted(
+            ['int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau',
+             'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds', 'open_description', 'open_humidity',
+             'open_icon',
+             'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi',
+             'open_visibility', 'open_wind_deg', 'open_wind_gust', 'open_wind_speed']
+        )
+)
 
 THERMO_PRO_SCAN_OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}ThermoProScan.json"
 SENSORS_OUTPUT_JSON_FILE = f"{POIDS_PRESSION_PATH}Sensors.json.zip"
 
 LOCATION = f'{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/ThermoPro/'
 
-OUTPUT_RTL_433_FILE: str = f"{POIDS_PRESSION_PATH}rtl_433.json"
+OUTPUT_RTL_433_FILE: str = f"{os.getenv('TEMP')}/rtl_433.json"
 # RTL_433_VERSION = '25.12'
 RTL_433_VERSION = 'nightly'
 TIMEOUT: int = 5 * 60

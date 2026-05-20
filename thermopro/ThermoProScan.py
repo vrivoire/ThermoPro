@@ -22,6 +22,7 @@ from thermopro.HydroQuébecPower import HydroQuébec
 from thermopro.NeviwebTemperature import NeviwebTemperature
 from thermopro.OpenWeather import OpenWeather
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
+from thermopro.ThermoProGraph import ThermoProGraph
 
 
 class ThermoProScan:
@@ -107,7 +108,11 @@ class ThermoProScan:
             thermopro.set_astype(df1)
             thermopro.save_json(df1)
             thermopro.save_sensors(now, sensors2)
-            # thermopro.save_bkp()
+
+            thermoProGraph: ThermoProGraph = ThermoProGraph()
+            thermoProGraph.create_graph_energy(show_window=False)
+            thermoProGraph.create_graph_temperature(show_window=False)
+
             show_df(df1, title='__call_all')
         except Exception as ex:
             log.fatal(ex)
@@ -146,10 +151,14 @@ class ThermoProScan:
         json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
 
         try:
-            log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
-            log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
-            log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
-            log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
+            log.info(
+                f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
+            log.info(
+                f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
+            log.info(
+                f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
+            log.info(
+                f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
             log.info(f'>>>>>> ext_humidex:  {json_result['ext_humidex']}')
             log.info(f'>>>>>> int_humidex:  {json_result['int_humidex']}')
         except Exception as ex:
@@ -163,7 +172,8 @@ class ThermoProScan:
                 keys: list[str] = sorted(kwh_dict.keys())
                 start_date = datetime.strptime(keys[0][0:10], "%Y-%m-%d")
                 end_date = datetime.now()
-                log.info(f'Setting hydro KWH, kwh_list size: {len(keys)}, first: {keys[0][0:10]}, last: {keys[len(keys) - 1][0:10]}')
+                log.info(
+                    f'Setting hydro KWH, kwh_list size: {len(keys)}, first: {keys[0][0:10]}, last: {keys[len(keys) - 1][0:10]}')
                 filtered_df = df.loc[(df['time'] >= start_date) & (df['time'] <= end_date)]
                 filtered_df['time'].astype('datetime64[ns]')
                 filtered_df.set_index('time')
