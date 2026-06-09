@@ -109,9 +109,9 @@ class ThermoProScan:
             thermopro.save_json(df1)
             thermopro.save_sensors(now, sensors2)
 
-            thermoProGraph: ThermoProGraph = ThermoProGraph()
-            thermoProGraph.create_graph_energy(show_window=False)
-            thermoProGraph.create_graph_temperature(show_window=False)
+            thermo_pro_graph: ThermoProGraph = ThermoProGraph()
+            thermo_pro_graph.create_graph_energy(show_window=False)
+            thermo_pro_graph.create_graph_temperature(show_window=False)
 
             show_df(df1, title='__call_all')
         except Exception as ex:
@@ -151,14 +151,10 @@ class ThermoProScan:
         json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
 
         try:
-            log.info(
-                f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
-            log.info(
-                f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
-            log.info(
-                f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
-            log.info(
-                f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
+            log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
+            log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
+            log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
+            log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
             log.info(f'>>>>>> ext_humidex:  {json_result['ext_humidex']}')
             log.info(f'>>>>>> int_humidex:  {json_result['int_humidex']}')
         except Exception as ex:

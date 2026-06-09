@@ -314,8 +314,7 @@ def set_astype(df: DataFrame) -> DataFrame:
     for col in ['time', 'open_sunrise', 'open_sunset']:
         df = df.astype({col: 'datetime64[ns]'})
         columns.remove(col)
-    for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'open_clouds', 'open_humidity', 'open_pressure',
-                'open_visibility', 'open_wind_deg']:
+    for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg']:
         try:
             df[col] = df[col].round().astype('Int64')
             df[col] = df[col].apply(lambda x: 0 if pd.isna(x) else x)
@@ -344,7 +343,7 @@ def set_astype(df: DataFrame) -> DataFrame:
     df = df.sort_values(by='time', ascending=True)
     df['kwh_hydro_quebec'] = df['kwh_hydro_quebec'].apply(lambda x: 0.0 if pd.isna(x) else x)
     df['kwh_neviweb'] = df['kwh_neviweb'].apply(lambda x: 0.0 if pd.isna(x) else x)
-
+    df = df[COLUMNS]
     return df
 
 

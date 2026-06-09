@@ -363,7 +363,7 @@ class NeviwebTemperature:
         if "history" in data:
             return data["history"]
         else:
-            log.warning(f"Hourly stat error for device: id: {device['id']}, name: {device['name']} --> {data}")
+            log.info(f"Hourly stat error for device: id: {device['id']}, name: {device['name']} --> {data}")
             return None
 
     def login(self):
@@ -663,7 +663,6 @@ class NeviwebTemperature:
         data = {}
         # Http requests
         try:
-            # log.info(attributes)
             raw_res = requests.get(
                 DEVICE_DATA_URL
                 + str(device_id)
@@ -682,13 +681,27 @@ class NeviwebTemperature:
         self._cookies.update(raw_res.cookies)
         # Prepare data
         data = raw_res.json()
-        # print(f"Received devices data: \n{json.dumps(data, indent=4, sort_keys=True, default=str)}")
+        # print(f"Received devices data: {attributes}\n{json.dumps(data, indent=4, sort_keys=True, default=str)}")
         if "error" in data:
             if data["error"]["code"] == "USRSESSEXP":
-                log.error(
-                    "Session expired. Set a scan_interval less"
-                    + "than 10 minutes, otherwise the session will end."
-                )
+                log.error("Session expired. Set a scan_interval less than 10 minutes, otherwise the session will end.")
+            elif data["error"]["code"] == "SVCINVREQ":
+                try:
+                    raw_res = requests.get(
+                        DEVICE_DATA_URL
+                        + str(device_id)
+                        + "/attribute?attributes="
+                        + ",".join(['roomTemperature']),
+                        headers=self._headers,
+                        cookies=self._cookies,
+                        timeout=self._timeout
+                    )
+                except requests.exceptions.ReadTimeout:
+                    return {"errorCode": "ReadTimeout"}
+                except Exception as e:
+                    raise Exception("Cannot get device attributes", e)
+                data = raw_res.json()
+                # print(f"2 Received devices data:\n{json.dumps(data, indent=4, sort_keys=True, default=str)}")
         return data
 
     def logout(self):
@@ -732,8 +745,7 @@ class NeviwebTemperature:
                 device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device)
                 for group in self.groups:
                     if group['id'] == device['group$id'] and device_hourly_stats_list is not None:
-                        kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000,
-                                           3)
+                        kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
                         kwh_total += kwh
                         result[f'kwh_{str(group['name']).replace(' ', '-').lower()}'] = kwh if not math.isnan(
                             kwh) else 0.0
@@ -744,8 +756,7 @@ class NeviwebTemperature:
             for device in self.gateway_data:
                 for group in self.groups:
                     if group['id'] == device['group$id'] and device['roomTemperature'] is not None:
-                        result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device[
-                            'roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
+                        result[f'int_temp_{str(group['name']).replace(' ', '-').lower()}'] = device['roomTemperature'] if not math.isnan(device['roomTemperature']) else 0.0
 
             group_map = {g['id']: str(g['name']).replace(' ', '-').lower() for g in self.groups}
             names = [
@@ -755,7 +766,7 @@ class NeviwebTemperature:
             ]
             name_size = max((len(name) for name in names), default=0)
             for name in sorted(names):
-                _temp = result.get('int_temp_' + name) if result.get('int_temp_' + name) else 0.0
+                _temp = float(result.get('int_temp_' + name)) if result.get('int_temp_' + name) else 0.0
                 _kwh = result.get('kwh_' + name) if result.get('kwh_' + name) else 0
                 log.info(f'>>>>>> {name:<{name_size + 1}} {_temp:>6}°C {_kwh:>6}KWh')
             log.info(f'>>>>>> {'kwh_neviweb':<{name_size + 1}} {result['kwh_neviweb']:>4}KWh')
