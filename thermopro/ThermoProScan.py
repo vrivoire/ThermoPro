@@ -19,7 +19,7 @@ import thermopro
 from constants import COLUMNS
 from thermopro import log, show_df
 from thermopro.HydroQuébecPower import HydroQuébec
-from thermopro.NeviwebTemperature import NeviwebTemperature
+from thermopro.NeviwebTempPwr import NeviwebTempPwr
 from thermopro.OpenWeather import OpenWeather
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
 from thermopro.ThermoProGraph import ThermoProGraph
@@ -43,7 +43,7 @@ class ThermoProScan:
             threads.append(thread)
             thread.start()
 
-            thread: threading.Thread = threading.Thread(target=NeviwebTemperature().load_neviweb, args=(result_queue,))
+            thread: threading.Thread = threading.Thread(target=NeviwebTempPwr().load_neviweb, args=(result_queue,))
             threads.append(thread)
             thread.start()
 

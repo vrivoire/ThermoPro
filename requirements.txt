@@ -13,7 +13,7 @@ frozenlist==1.8.0
 Hydro-Quebec-API-Wrapper==4.2.6
 idna==3.18
 kiwisolver==1.5.0
-matplotlib==3.10.9
+matplotlib==3.11.0
 mplcursors==0.7.1
 multidict==6.7.1
 numpy==2.4.6
