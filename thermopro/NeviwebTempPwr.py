@@ -126,14 +126,17 @@ class NeviwebTempPwr:
             log.info(f"Hourly stat error for device: id: {device_id}, name: {device_id} --> {data}")
             return None
 
-    def get_groups(self):
-        for device in self.gateway_data:
-            datas = self.get_group(device['location$id'])
-            for data in datas:
-                self.groups[data['id']] = data
-        # print(f'groups:\n{thermopro.ppretty(self.groups)}')
+    def get_groups(self) -> None:
+        for id in set([device['location$id'] for device in self.gateway_data]):
+            datas: list[dict[str, Any]] | None = self.get_group(id)
+            if datas is not None:
+                for data in datas:
+                    self.groups[data['id']] = data
+            else:
+                raise Exception("Cannot get Neviweb's groups")
+        print(f'groups:\n{thermopro.ppretty(self.groups)}')
 
-    def get_group(self, location_id: int) -> list[dict[str, int]] | None:
+    def get_group(self, location_id: int) -> list[dict[str, Any]] | None:
         if self._account is None:
             log.error("Account ID is empty check your username and password to log into Neviweb...")
         else:
@@ -144,11 +147,11 @@ class NeviwebTempPwr:
                     cookies=self._cookies,
                     timeout=self._timeout,
                 )
-                group = raw_res.json()
+                group: list[dict[str, Any]] = raw_res.json()
                 # print(f'group: location: {location_id}\n{thermopro.ppretty(group)}')
                 return group
             except OSError:
-                raise Exception("Cannot get Neviweb's groups")
+                raise Exception("Cannot get Neviweb's group")
 
     def get_locations(self):
         if self._account is None:
