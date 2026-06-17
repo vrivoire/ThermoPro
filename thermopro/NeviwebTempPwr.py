@@ -42,12 +42,12 @@ class NeviwebTempPwr:
         self._timeout = timeout
         self._occupancyMode = None
 
-        self.user = None
-        self.locations = None
-        self.groups: dict[int, dict] = {}
+        self.user = {}
+        self.locations = {}
+        self.groups: dict[str, list[dict[str, Any]]] = {}
         self.gateway_data = {}
 
-    def login(self):
+    def login(self) -> bool:
         input_data: dict[str, str | int] = {
             "username": self._email,
             "password": self._password,
@@ -75,7 +75,7 @@ class NeviwebTempPwr:
         self._cookies = raw_res.cookies
         data = raw_res.json()
         # print(f'login:\n{thermopro.ppretty(data)}')
-        log.info("Login response: %s", data)
+        # log.info("Login response: %s", data)
         if "error" in data:
             if data["error"]["code"] == "ACCSESSEXC":
                 log.error("Too many active sessions. Close all neviweb130 sessions you have opened on other platform (mobile, browser, ...), wait a few minutes, then reboot Home Assistant.")
@@ -127,18 +127,19 @@ class NeviwebTempPwr:
             return None
 
     def get_groups(self) -> None:
-        for id in set([device['location$id'] for device in self.gateway_data]):
+        for id in set([device['location$id'] for device in self.gateway_data.values()]):
             datas: list[dict[str, Any]] | None = self.get_group(id)
             if datas is not None:
                 for data in datas:
                     self.groups[data['id']] = data
             else:
                 raise Exception("Cannot get Neviweb's groups")
-        print(f'groups:\n{thermopro.ppretty(self.groups)}')
+        # print(f'groups:\n{thermopro.ppretty(self.groups)}')
 
     def get_group(self, location_id: int) -> list[dict[str, Any]] | None:
         if self._account is None:
             log.error("Account ID is empty check your username and password to log into Neviweb...")
+            return None
         else:
             try:
                 raw_res = requests.get(
@@ -187,9 +188,13 @@ class NeviwebTempPwr:
             )
         except OSError:
             raise Exception("Cannot get gateway data")
+
         self._cookies.update(raw_res.cookies)
-        self.gateway_data = raw_res.json()
-        # print(f'gateway_data:\n{thermopro.ppretty(self.gateway_data)}')
+
+        for device in raw_res.json():
+            self.gateway_data[device['id']] = device
+
+        # print(f'***gateway_data:\n{thermopro.ppretty(self.gateway_data)}')
 
     def get_device_attributes(self, device_id, attributes):
         try:
@@ -224,15 +229,16 @@ class NeviwebTempPwr:
                 self.get_gateway_data()
                 self.get_groups()
 
-                for device in self.gateway_data:
+                for device_id in self.gateway_data:
                     columns = [ATTR_ROOM_TEMPERATURE]
-                    data: dict[str, Any] = self.get_device_attributes(device["id"], columns)
+                    data: dict[str, Any] = self.get_device_attributes(device_id, columns)
                     for name in columns:
-                        device[name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
+                        self.gateway_data[device_id][name] = data.get(name)['value'] if data.get(name) and type(data.get(name)) == dict and data.get(name).get('value') else None
 
                 kwh_total = 0.0
-                for device in self.gateway_data:
-                    device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device['id'])
+                for device_id in self.gateway_data:
+                    device_hourly_stats_list: list[dict[str, int]] | None = self.get_device_hourly_stats(device_id)
+                    device = self.gateway_data[device_id]
                     group_name = str(self.groups[device["group$id"]]['name']).replace(' ', '-').lower()
                     if device_hourly_stats_list is not None:
                         kwh: float = round(device_hourly_stats_list[len(device_hourly_stats_list) - 1]["period"] / 1000, 3)
