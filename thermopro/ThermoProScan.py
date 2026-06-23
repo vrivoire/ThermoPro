@@ -201,13 +201,13 @@ class ThermoProScan:
             schedule.every().hour.at(":01").do(self.__call_all)
 
             self.__call_all()
-            # thermopro.copy_to_cloud()
 
+            log.info("Schedule set and first __call_all done, entering loop.")
             while True:
                 schedule.run_pending()
                 sleep(1)
         except KeyboardInterrupt as ki:
-            pass
+            log.error(f'KeyboardInterrupt: {ki}')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())

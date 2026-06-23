@@ -4,6 +4,7 @@ from queue import Queue
 from typing import Any
 
 import requests
+from pandas import DataFrame
 from requests import Response
 
 import thermopro
@@ -63,6 +64,7 @@ class NeviwebTempPwr:
                 allow_redirects=False,
                 timeout=self._timeout,
             )
+            # raise Exception('toto')
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -105,7 +107,10 @@ class NeviwebTempPwr:
                 resp = raw_res.json()
                 return resp
             except OSError as ex:
-                raise ex
+                log.error(ex)
+                log.error(traceback.format_exc())
+                return "Account ID is empty"
+                # raise Exception("Cannot log out")
 
     def get_device_hourly_stats(self, device_id: int) -> list[dict[str, int]] | None:
         try:
@@ -258,9 +263,26 @@ class NeviwebTempPwr:
                     log.info(f'>>>>>> {name:<{name_size + 1}} {_temp:>6}°C {_kwh:>6}KWh')
                 log.info(f'>>>>>> {'kwh_neviweb':<{name_size + 1}} {result['kwh_neviweb']:>4}KWh')
                 log.info(f'result={result}')
+
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
+            log.error("Using previous data")
+            df: DataFrame = thermopro.load_json()
+            last_row_series = df.iloc[-1]
+            # print(last_row_series)
+            result = {
+                "int_temp_bureau": last_row_series['int_temp_bureau'],
+                "int_temp_chambre": last_row_series['int_temp_chambre'],
+                "int_temp_corridor": last_row_series['int_temp_corridor'],
+                "int_temp_salle-de-bain": last_row_series['int_temp_salle-de-bain'],
+                "int_temp_salon": last_row_series['int_temp_salon'],
+                "kwh_bureau": last_row_series['kwh_bureau'],
+                "kwh_chambre": last_row_series['kwh_chambre'],
+                "kwh_neviweb": last_row_series['kwh_neviweb'],
+                "kwh_salle-de-bain": last_row_series['kwh_salle-de-bain'],
+                "kwh_salon": last_row_series['kwh_salon'],
+            }
         finally:
             log.info(f'logout={self.logout()}')
             result_queue.put(result)

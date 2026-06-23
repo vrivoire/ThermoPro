@@ -195,8 +195,7 @@ def save_json(df: DataFrame, thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OU
                        'compression': zipfile.ZIP_LZMA,
                        'compresslevel': 9
                    })
-        log.info(
-            f'JSON saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.zip')} bytes')
+        log.info(f'JSON saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.zip')} bytes')
     except Exception as ex:
         log.error(' NOT JSON saved '.center(100, '*'))
         log.error(ex)

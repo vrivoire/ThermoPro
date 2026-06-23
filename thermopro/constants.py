@@ -7,7 +7,7 @@ BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 
 POIDS_PRESSION_PATH = f"{HOME_PATH}/Documents/PoidsPression/"
 BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
-CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive/Mon disque', 'TeraBox']
+CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive', 'TeraBox']
 BKP_DAYS = 7
 
 LOG_NAME: str = ''
@@ -19,7 +19,7 @@ COLUMNS: list[str] = (
         ['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec',
          'kwh_neviweb', 'ext_humidex', 'int_humidex'] +
         sorted(
-            ['int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau',
+            ['int_temp_bureau', 'int_temp_chambre', 'int_temp_salle-de-bain', 'int_temp_salon', 'kwh_bureau', 'int_temp_corridor',
              'kwh_chambre', 'kwh_salle-de-bain', 'kwh_salon', 'open_clouds', 'open_description', 'open_humidity',
              'open_icon',
              'open_pressure', 'open_rain', 'open_snow', 'open_sunrise', 'open_sunset', 'open_temp', 'open_uvi',

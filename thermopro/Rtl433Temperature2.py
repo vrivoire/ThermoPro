@@ -213,8 +213,7 @@ class Rtl433Temperature2:
             if completed_process.returncode == 0 or completed_process.returncode == 1:
                 log.info(f'{RTL_433_EXE} stopped.')
             else:
-                log.warning(
-                    f'{RTL_433_EXE} return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')
+                log.warning(f'{RTL_433_EXE} return code: {completed_process.returncode}, {completed_process.stdout.replace('\n', ' ')}, {completed_process.stderr.replace('\n', ' ')}')
 
         except subprocess.TimeoutExpired as timeoutExpired:
             log.error(f"TimeoutExpired, returned: {timeoutExpired}")
@@ -238,12 +237,16 @@ class Rtl433Temperature2:
             log.warning(string)
 
     def __warn_battery(self, data: dict, threads: list[threading.Thread]):
+        # print(data.get('battery_ok'), type(data.get('battery_ok')))
+        # data['battery_ok'] = 0
         if data.get('battery_ok') == 0:
             string: str = ' RTL 433 Warning '.center(80, '*')
             log.error(string)
             log.error('*' + f"Sensor {data.get('model')} battery is weak...".center(len(string) - 2) + '*')
             log.error(string)
-            if datetime.now().strftime("%H") == '00':
+            print(datetime.now().strftime("%H"))
+            if datetime.now().strftime("%H") == '06':
+                log.error(f"Displaying popup for {data.get('model')}")
                 thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW,
                                           args=(0, f"Sensor {data.get('model')}'s battery is weak...",
                                                 "RTL 433 Warning", 0x30))
