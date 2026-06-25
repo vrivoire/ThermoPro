@@ -290,7 +290,6 @@ class NeviwebTempPwr:
 
 
 if __name__ == '__main__':
-
     thermopro.set_up(__file__)
     result_queue: Queue = Queue()
     neviweb_temperature: NeviwebTempPwr = NeviwebTempPwr()

@@ -4,12 +4,15 @@ import logging as log
 import logging.handlers
 import os.path
 import shutil
+import smtplib
+import ssl
 import subprocess
 import tkinter
 import tkinter as tk
 import traceback
 import zipfile
 from datetime import datetime
+from email.message import EmailMessage
 from pathlib import Path
 
 import pandas
@@ -23,9 +26,34 @@ from pandas import DataFrame
 import thermopro
 from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, \
     POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS, \
-    CLOUD_PATHS, ROBOCOPY_RETURNCODES, BKP_PATH, BKP_DAYS
+    CLOUD_PATHS, ROBOCOPY_RETURNCODES, BKP_PATH, BKP_DAYS, BELL_EMAIL, BELL_PASSWORD, GOOGLE_EMAIL
 
 sensors: dict[str, dict[str, list[str]] | dict[str, str | None]]
+
+
+def send_email(subject: str, content):
+    SMTP_SERVER = "smtphm.sympatico.ca"
+    SMTP_PORT = 587
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = BELL_EMAIL
+    msg["To"] = GOOGLE_EMAIL
+    msg.set_content(content)
+
+    context = ssl.create_default_context()
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.ehlo()  # Identify yourself to the server
+            server.starttls(context=context)
+            server.ehlo()  # Re-identify yourself over the encrypted connection
+            server.login(BELL_EMAIL, BELL_PASSWORD)
+            server.send_message(msg)
+            log.info("Email sent successfully!")
+    except Exception as ex:
+        log.error(f"An error occurred: {ex}")
+        log.error(ex)
+        log.error(traceback.format_exc())
 
 
 def save_window(fig: Figure, image_name: str) -> None:
@@ -262,8 +290,8 @@ def save_bkp() -> None:
 
 
 def copy_to_cloud() -> None:
-    log.warning(' Start copy_to_cloud '.center(100, '*'))
     try:
+        log.warning(' Start copy_to_cloud '.center(100, '*'))
         thermopro.save_bkp()
 
         for drive in CLOUD_PATHS:
@@ -300,12 +328,12 @@ def copy_to_cloud() -> None:
             except Exception as ex:
                 log.error(ex)
                 log.error(traceback.format_exc())
+
+            display_schedule()
+            log.warning(' End copy_to_cloud '.center(100, '*'))
     except Exception as ex:
         log.error(ex)
         log.error(traceback.format_exc())
-
-    display_schedule()
-    log.warning(' End copy_to_cloud '.center(100, '*'))
 
 
 def set_astype(df: DataFrame) -> DataFrame:
@@ -313,7 +341,7 @@ def set_astype(df: DataFrame) -> DataFrame:
     for col in ['time', 'open_sunrise', 'open_sunset']:
         df = df.astype({col: 'datetime64[ns]'})
         columns.remove(col)
-    for col in ['ext_humidex', 'ext_humidity', 'int_humidity', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg']:
+    for col in ['int_humidex', 'ext_humidex', 'ext_humidity', 'int_humidity', 'open_clouds', 'open_humidity', 'open_pressure', 'open_visibility', 'open_wind_deg']:
         try:
             df[col] = df[col].round().astype('Int64')
             df[col] = df[col].apply(lambda x: 0 if pd.isna(x) else x)

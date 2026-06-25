@@ -13,7 +13,7 @@ BKP_DAYS = 7
 LOG_NAME: str = ''
 
 sys.path.append(f'{BKP_SCRIPTS}/')
-from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD
+from Secrets import OPEN_WEATHER_API_KEY, NEVIWEB_EMAIL, NEVIWEB_PASSWORD, HYDRO_EMAIL, HYDRO_PASSWORD, BELL_EMAIL, BELL_PASSWORD, GOOGLE_EMAIL
 
 COLUMNS: list[str] = (
         ['time', 'open_feels_like', 'ext_temp', 'ext_humidity', 'int_temp', 'int_humidity', 'kwh_hydro_quebec',

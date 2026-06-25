@@ -1,4 +1,3 @@
-import ctypes
 import json
 import os
 import subprocess
@@ -11,7 +10,7 @@ from typing import Any
 
 import thermopro
 from constants import TIMEOUT, OUTPUT_RTL_433_FILE, RTL_433_EXE
-from thermopro import log
+from thermopro import log, send_email
 
 
 # rtl_433_64bit_static.exe -R 02 -R 162 -R 245 -f 433M -f 915M
@@ -30,7 +29,6 @@ class Rtl433Temperature2:
         ext_temp_list: list[float] = []
         int_humidity_list: list[int] = []
         int_temp_list: list[float] = []
-        threads: list[threading.Thread] = []
         sensors_list: dict[str, str] = {}
         sensor_size: int = 0
         summary_list: list[str] = []
@@ -47,7 +45,7 @@ class Rtl433Temperature2:
                 summary_list.extend(self.__call_sensors(list(thermopro.get_sensors()[freq]['args']),
                                                         dict(thermopro.get_sensors()[freq]['sensors']), json_rtl_433,
                                                         ext_humidity_list, ext_temp_list, int_humidity_list,
-                                                        int_temp_list, threads))
+                                                        int_temp_list))
 
             for item in ['time', 'temperature_C', 'model', 'subtype', 'id', 'channel', 'battery_ok', 'button', 'mic',
                          'humidity', 'status', 'flags', 'data', 'mod', 'noise', 'rssi', 'snr', 'freq', 'freq1',
@@ -80,16 +78,11 @@ class Rtl433Temperature2:
 
         result_queue.put({'sensors': json_rtl_433})
 
-        if len(threads) > 0:
-            for thread in threads:
-                thread.join(60)
-            log.info("Threads stopped.")
-
         log.info(' End call_rtl_433 '.center(100, '*'))
 
     def __call_sensors(self, args: list[str | int], sensors: dict, json_rtl_433: dict[str, Any],
                        ext_humidity_list: list[int], ext_temp_list: list[float], int_humidity_list: list[int],
-                       int_temp_list: list[float], threads: list[threading.Thread]) -> list[str]:
+                       int_temp_list: list[float]) -> list[str]:
 
         log.info(f' Start __call_sensors {list(sensors.keys())} '.center(100, '*'))
         summary: list[str] = []
@@ -128,9 +121,9 @@ class Rtl433Temperature2:
                             data['loc'] = sensors.get(data.get('model'))
                             self.append_summary(data, summary)
 
-                            data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list,
-                                                    int_temp_list, sensors[model])
-                            self.__warn_battery(data, threads)
+                            data = self.__fill_dict(data, ext_humidity_list, ext_temp_list, int_humidity_list, int_temp_list, sensors[model])
+
+                            self.__warn_battery(data)
                             sensors.pop(model)
                             log.info(f'Removed: {model}')
                             json_rtl_433.update(data)
@@ -232,26 +225,22 @@ class Rtl433Temperature2:
     def __warn_not_respondig(self, sensors: dict[str, str]):
         if len(sensors) > 0:
             string: str = ' RTL 433 Warning '.center(80, '*')
+            content: str = '*' + f'Sensor{'s' if len(sensors) > 1 else ''} {list(sensors)} NOT responding'.center(len(string) - 2) + '*'
             log.warning(string)
-            log.warning('*' + f'Sensor{'s' if len(sensors) > 1 else ''} {list(sensors)} NOT responding'.center(len(string) - 2) + '*')
+            log.warning(content)
             log.warning(string)
+            if datetime.now().strftime("%H") == '06':
+                send_email(string, content)
 
-    def __warn_battery(self, data: dict, threads: list[threading.Thread]):
-        # print(data.get('battery_ok'), type(data.get('battery_ok')))
-        # data['battery_ok'] = 0
+    def __warn_battery(self, data: dict):
         if data.get('battery_ok') == 0:
             string: str = ' RTL 433 Warning '.center(80, '*')
+            content: str = f"Sensor {data.get('model')}'s battery is weak..."
             log.error(string)
-            log.error('*' + f"Sensor {data.get('model')} battery is weak...".center(len(string) - 2) + '*')
+            log.error(content)
             log.error(string)
-            print(datetime.now().strftime("%H"))
             if datetime.now().strftime("%H") == '06':
-                log.error(f"Displaying popup for {data.get('model')}")
-                thread = threading.Thread(target=ctypes.windll.user32.MessageBoxW,
-                                          args=(0, f"Sensor {data.get('model')}'s battery is weak...",
-                                                "RTL 433 Warning", 0x30))
-                thread.start()
-                threads.append(thread)
+                send_email(content, content)
 
     def __fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float],
                     int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:
