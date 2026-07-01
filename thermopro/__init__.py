@@ -51,8 +51,9 @@ def send_email(subject: str, content):
             server.send_message(msg)
             log.info("Email sent successfully!")
     except Exception as ex:
-        log.error(f"An error occurred: {ex}")
         log.error(ex)
+        log.error(f'subject: {subject}')
+        log.error(f'content: {content}')
         log.error(traceback.format_exc())
 
 
@@ -232,7 +233,7 @@ def save_json(df: DataFrame, thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OU
 
 
 def display_schedule() -> None:
-    log.info('Schedule set:')
+    log.info(f'Schedule set with {len(schedule.get_jobs())} jbs:')
     for job in schedule.get_jobs():
         log.info(f'---> {job.__repr__()}')
 
@@ -329,7 +330,6 @@ def copy_to_cloud() -> None:
                 log.error(ex)
                 log.error(traceback.format_exc())
 
-            display_schedule()
             log.warning(' End copy_to_cloud '.center(100, '*'))
     except Exception as ex:
         log.error(ex)

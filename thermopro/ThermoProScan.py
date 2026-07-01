@@ -114,49 +114,52 @@ class ThermoProScan:
             thermo_pro_graph.create_graph_temperature(show_window=False)
 
             show_df(df1, title='__call_all')
-        except Exception as ex:
-            log.fatal(ex)
-            log.fatal(traceback.format_exc())
 
-        thermopro.display_schedule()
-        log.warning(f' End __call_all Elapsed: {datetime.now().now() - now} '.center(100, '*'))
+            log.warning(f' End __call_all Elapsed: {datetime.now().now() - now} '.center(100, '*'))
+        except Exception as ex:
+            log.error(ex)
+            log.error(traceback.format_exc())
 
     def __get_means_and_mins(self, json_data: dict[str, int | float | datetime]) -> dict[str, int | float | str | None]:
         json_result: dict[str, int | float | str | None] = {}
-        ext_temperature_list: list[float | None] = []
-        for entry in [s for s in list(json_data) if "ext_temp_" in s]:
-            ext_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
-        ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
-        json_result['ext_temp'] = ext_temp if ext_temp else 0.0
-
-        room_temperature_list: list[float] = []
-        for entry in [s for s in list(json_data) if "int_temp_" in s]:
-            room_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
-        int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
-        json_result['int_temp'] = int_temp if int_temp else 0.0
-
-        ext_humidity_list: list[int] = []
-        for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
-            ext_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
-        ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
-        json_result['ext_humidity'] = ext_humidity if ext_humidity else 0
-
-        room_humidity_list: list[int | None] = []
-        for entry in [s for s in list(json_data) if "int_humidity_" in s]:
-            room_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
-        int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else 0
-
-        json_result['int_humidity'] = int_humidity
-        json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
-        json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
-
         try:
-            log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
-            log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
-            log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
-            log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
-            log.info(f'>>>>>> ext_humidex:  {json_result['ext_humidex']}')
-            log.info(f'>>>>>> int_humidex:  {json_result['int_humidex']}')
+            ext_temperature_list: list[float | None] = []
+            for entry in [s for s in list(json_data) if "ext_temp_" in s]:
+                ext_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+            ext_temp: float | None = round(min(ext_temperature_list), 2) if len(ext_temperature_list) > 0 else None
+            json_result['ext_temp'] = ext_temp if ext_temp else 0.0
+
+            room_temperature_list: list[float] = []
+            for entry in [s for s in list(json_data) if "int_temp_" in s]:
+                room_temperature_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+            int_temp: float = round(statistics.mean(room_temperature_list), 2) if len(room_temperature_list) > 0 else None
+            json_result['int_temp'] = int_temp if int_temp else 0.0
+
+            ext_humidity_list: list[int] = []
+            for entry in [s for s in list(json_data) if "ext_humidity_" in s]:
+                ext_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+            ext_humidity: float = round(statistics.mean(ext_humidity_list), 2) if len(ext_humidity_list) > 0 else None
+            json_result['ext_humidity'] = ext_humidity if ext_humidity else 0
+
+            room_humidity_list: list[int | None] = []
+            for entry in [s for s in list(json_data) if "int_humidity_" in s]:
+                room_humidity_list.append(json_data.get(entry)) if not pd.isnull(json_data.get(entry)) else None
+            int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else 0
+
+            json_result['int_humidity'] = int_humidity
+            json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
+            json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
+
+            try:
+                log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
+                log.info(f'>>>>>> int_temp:     {int_temp:<5}\tmin: {min(room_temperature_list):<5}\tmax: {max(room_temperature_list):<5}\t{room_temperature_list}')
+                log.info(f'>>>>>> ext_humidity: {ext_humidity:<5}\tmin: {min(ext_humidity_list):<5}\tmax: {max(ext_humidity_list):<5}\t{ext_humidity_list}')
+                log.info(f'>>>>>> int_humidity: {int_humidity:<5}\tmin: {min(room_humidity_list):<5}\tmax: {max(room_humidity_list):<5}\t{room_humidity_list}')
+                log.info(f'>>>>>> ext_humidex:  {json_result['ext_humidex']}')
+                log.info(f'>>>>>> int_humidex:  {json_result['int_humidex']}')
+            except Exception as ex:
+                log.error(ex)
+                log.error(traceback.format_exc())
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
@@ -185,35 +188,21 @@ class ThermoProScan:
             log.error(traceback.format_exc())
 
     def __get_humidex(self, temp: float, humidity: int) -> int | None:
-        if temp is not None and humidity is not None:
-            kelvin = temp + 273
-            ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
-            etd = ets * humidity / 100
-            humidex: int = round(temp + ((etd - 10) * 5 / 9))
-            if humidex < temp:
-                humidex = round(temp)
-            return humidex
-        return None
-
-    def start(self):
         try:
-            self.set_frequency(4)
-            schedule.every().hour.at(":01").do(self.__call_all)
-
-            self.__call_all()
-
-            log.info("Schedule set and first __call_all done, entering loop.")
-            while True:
-                schedule.run_pending()
-                sleep(1)
-        except KeyboardInterrupt as ki:
-            log.error(f'KeyboardInterrupt: {ki}')
+            if temp is not None and humidity is not None:
+                kelvin = temp + 273
+                ets = pow(10, ((-2937.4 / kelvin) - 4.9283 * math.log(kelvin) / math.log(10) + 23.5471))
+                etd = ets * humidity / 100
+                humidex: int = round(temp + ((etd - 10) * 5 / 9))
+                if humidex < temp:
+                    humidex = round(temp)
+                return humidex
         except Exception as ex:
             log.error(ex)
             log.error(traceback.format_exc())
-            self.__cleanup_function()
+        return None
 
-    def set_frequency(self, frequency_per_day: int = 4):
+    def set_bkp_frequency(self, frequency_per_day: int = 4):
         log.info(f'Creating schedule at: {frequency_per_day} per day')
         values: dict[int, int] = {1: 24, 2: 12, 3: 8, 4: 6, 6: 4, 8: 3, 12: 2, 24: 1}
         if frequency_per_day not in values:
@@ -222,6 +211,28 @@ class ThermoProScan:
         while i < 24:
             i += values[frequency_per_day]
             schedule.every().day.at(f"{i % 24:02d}:10").do(thermopro.copy_to_cloud)
+
+    def start(self):
+        try:
+            self.__call_all()
+
+            schedule.every().hour.at(":01").do(self.__call_all)
+            self.set_bkp_frequency(4)
+            thermopro.display_schedule()
+            log.warning("Schedule set and first __call_all done, entering loop.")
+
+            while True:
+                schedule.run_pending()
+                if datetime.now().minute == 15 and datetime.now().second == 0:
+                    thermopro.display_schedule()
+                sleep(1)
+
+        except KeyboardInterrupt as ki:
+            log.error(f'KeyboardInterrupt: {ki}')
+        except BaseException as be:
+            log.error(be)
+            log.error(traceback.format_exc())
+            thermopro.send_email(f"Main error in start: {be}", f'{traceback.format_exc()}')
 
     def __cleanup_function(self):
         try:
@@ -234,34 +245,27 @@ class ThermoProScan:
 
 
 if __name__ == '__main__':
-    thermopro.set_up(__file__)
-    log.info('-------------------------------------------------------------------------------------')
-    log.info('|                           ThermoProScan started                                   |')
-    log.info('-------------------------------------------------------------------------------------')
-    thermoProScan: ThermoProScan = ThermoProScan()
-    thermoProScan.start()
-    sys.exit()
-
-    # df = thermopro.load_json()
-    # thermopro.save_json(df)
-    # thermopro.show_df(df)
-
-# schedule.every().day.at("00:10").do(thermopro.copy_to_cloud)
-# schedule.every().day.at("06:10").do(thermopro.copy_to_cloud)
-# schedule.every().day.at("12:10").do(thermopro.copy_to_cloud)
-# schedule.every().day.at("18:10").do(thermopro.copy_to_cloud)
-
-
-# def set_frequency(frequency_per_day: int = 4):
-#     log.info(f'Creating schedule at: {frequency_per_day} per day')
-#     values: dict[int, int] = {1: 24, 2: 12, 3: 8, 4: 6, 6: 4, 8: 3, 12: 2, 24: 1}
-#     if frequency_per_day not in values:
-#         raise ValueError(f"Invalid frequency: {frequency_per_day}")
-#     i: int = 0
-#     while i < 24:
-#         i += values[frequency_per_day]
-#         schedule.every().day.at(f"{i % 24:02d}:10").do(thermopro.copy_to_cloud)
-#
-#
-# set_frequency(8)
-# thermopro.display_schedule()
+    try:
+        thermopro.set_up(__file__)
+        # log.info(f'__file__: {__file__}')
+        # if __file__ == 'C:\\Users\\ADELE\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\thermopro\\ThermoProScan.py':
+        #     log.info(f'ThermoProScan.py local')
+        # else:
+        #     log.info(f'ThermoProScan.py service')
+        #     sleep(60 * 2)
+        log.warning('-------------------------------------------------------------------------------------')
+        log.warning('|                           ThermoProScan started                                   |')
+        log.warning('-------------------------------------------------------------------------------------')
+        thermoProScan: ThermoProScan = ThermoProScan()
+        thermoProScan.start()
+    except SystemExit as se:
+        log.error(f'SystemExit: {se}')
+    except KeyboardInterrupt as ki:
+        log.error(f'KeyboardInterrupt: {ki}')
+    except BaseException as be:
+        log.error(be)
+        log.error(traceback.format_exc())
+        thermopro.send_email(f"Main error in __name__: {be}", f'{traceback.format_exc()}')
+    finally:
+        log.error('ThermoProScan exit()')
+        sys.exit()
