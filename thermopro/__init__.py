@@ -180,21 +180,25 @@ def load_sensors() -> DataFrame | None:
 #                                   ].index)
 # log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
 # df = df_conditional_drop.reset_index(drop=True)
-def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> DataFrame:
+def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> DataFrame | None:
+    now: datetime = datetime.now()
     df: DataFrame | None = None
     try:
-        if os.path.exists(thermo_pro_scan_output_json_file + '.zip'):
-            log.info(f'Loading file {thermo_pro_scan_output_json_file + '.zip'}')
-            df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file + '.zip', compression='zip',
-                                             orient='records')
+        # if os.path.exists(thermo_pro_scan_output_json_file + '.json.zip') and os.path.exists(thermo_pro_scan_output_json_file + '.csv.zip'):
+        #     log.info(f'Loading file {thermo_pro_scan_output_json_file + '.json.zip'}')
+        #     df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file + '.json.zip', compression='zip', orient='records')
+
+        if os.path.exists(thermo_pro_scan_output_json_file + '.csv.zip'):
+            log.info(f'Loading file {thermo_pro_scan_output_json_file + '.csv.zip'}')
+            df: DataFrame = pandas.read_csv(thermo_pro_scan_output_json_file + '.csv.zip', compression='zip')
     except Exception as ex:
         log.error(' NOT JSON zip loaded '.center(100, '*'))
         log.error(ex)
         log.error(traceback.format_exc())
         try:
-            if os.path.exists(thermo_pro_scan_output_json_file):
-                log.info(f'Loading file {thermo_pro_scan_output_json_file}')
-                df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file, orient='records')
+            if os.path.exists(thermo_pro_scan_output_json_file + '.csv'):
+                log.info(f'Loading file {thermo_pro_scan_output_json_file + '.csv'}')
+                df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file + '.csv')
         except Exception as ex:
             log.error('NOT JSON loaded'.center(100, '*'))
             log.error(ex)
@@ -208,23 +212,34 @@ def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE)
         df = set_astype(df)
         for col in ['time', 'open_sunrise', 'open_sunset']:
             df = df.astype({col: 'datetime64[ns]'})
+    log.warning(f'End load_json Elapsed: {datetime.now() - now}')
     return df
 
 
 def save_json(df: DataFrame, thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> None:
+    now: datetime = datetime.now()
     try:
         if df is None or len(df) == 0:
             raise Exception("The DataFrame is None. Unable to save file")
 
         df = set_astype(df)
-        df.to_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE, orient='records', indent=4, date_format='iso')
-        df.to_json(THERMO_PRO_SCAN_OUTPUT_JSON_FILE + '.zip', orient='records', indent=4, date_format='iso',
-                   compression={
-                       'method': 'zip',
-                       'compression': zipfile.ZIP_LZMA,
-                       'compresslevel': 9
-                   })
-        log.info(f'JSON saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.zip')} bytes')
+        df.to_csv(thermo_pro_scan_output_json_file + '.csv', index=False)
+        df.to_csv(thermo_pro_scan_output_json_file + '.csv.zip', index=False,
+                  compression={
+                      'method': 'zip',
+                      'compression': zipfile.ZIP_LZMA,
+                      'compresslevel': 9
+                  })
+
+        # df.to_json(thermo_pro_scan_output_json_file + '.json', orient='records', indent=4, date_format='iso')
+        # df.to_json(thermo_pro_scan_output_json_file + '.json.zip', orient='records', indent=4, date_format='iso',
+        #            compression={
+        #                'method': 'zip',
+        #                'compression': zipfile.ZIP_LZMA,
+        #                'compresslevel': 9
+        #            })
+        log.info(f'JSON saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.csv.zip')} bytes')
+        log.warning(f'End save_json Elapsed: {datetime.now() - now}')
     except Exception as ex:
         log.error(' NOT JSON saved '.center(100, '*'))
         log.error(ex)

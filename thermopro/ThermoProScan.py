@@ -212,9 +212,12 @@ class ThermoProScan:
             i += values[frequency_per_day]
             schedule.every().day.at(f"{i % 24:02d}:10").do(thermopro.copy_to_cloud)
 
-    def start(self):
+    def start(self, is_local: bool):
         try:
             self.__call_all()
+            if is_local:
+                log.info("Local mode, exiting")
+                return
 
             schedule.every().hour.at(":01").do(self.__call_all)
             self.set_bkp_frequency(4)
@@ -247,17 +250,20 @@ class ThermoProScan:
 if __name__ == '__main__':
     try:
         thermopro.set_up(__file__)
-        # log.info(f'__file__: {__file__}')
-        # if __file__ == 'C:\\Users\\ADELE\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\thermopro\\ThermoProScan.py':
-        #     log.info(f'ThermoProScan.py local')
-        # else:
-        #     log.info(f'ThermoProScan.py service')
-        #     sleep(60 * 2)
+        is_local: bool = False
+        log.info(f'__file__: {__file__}')
+        if __file__ == 'C:\\Users\\ADELE\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\thermopro\\ThermoProScan.py':
+            log.info(f'ThermoProScan.py local')
+            is_local = True
+        else:
+            log.info(f'ThermoProScan.py service')
+            is_local = False
+
         log.warning('-------------------------------------------------------------------------------------')
         log.warning('|                           ThermoProScan started                                   |')
         log.warning('-------------------------------------------------------------------------------------')
         thermoProScan: ThermoProScan = ThermoProScan()
-        thermoProScan.start()
+        thermoProScan.start(is_local)
     except SystemExit as se:
         log.error(f'SystemExit: {se}')
     except KeyboardInterrupt as ki:
