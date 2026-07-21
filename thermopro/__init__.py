@@ -94,9 +94,7 @@ def get_sensors() -> dict[str, dict[str, list[str]] | dict[str, str | None]]:
                         start: int = token.find('{') + 1
                         end: int = token.find('}')
                         if start != -1 and end != -1:
-                            sensors[freq]['args'][i] = sensors[freq]['args'][i].replace(token[start - 1:end + 1],
-                                                                                        str(getattr(constants,
-                                                                                                    token[start:end])))
+                            sensors[freq]['args'][i] = sensors[freq]['args'][i].replace(token[start - 1:end + 1], str(getattr(constants, token[start:end])))
                     except AttributeError as ae:
                         pass
         except Exception as ex:
@@ -212,7 +210,7 @@ def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE)
         df = set_astype(df)
         for col in ['time', 'open_sunrise', 'open_sunset']:
             df = df.astype({col: 'datetime64[ns]'})
-    log.warning(f'End load_json Elapsed: {datetime.now() - now}')
+    log.info(f'End load_json Elapsed: {datetime.now() - now}')
     return df
 
 
@@ -239,7 +237,7 @@ def save_json(df: DataFrame, thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OU
         #                'compresslevel': 9
         #            })
         log.info(f'JSON saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.csv.zip')} bytes')
-        log.warning(f'End save_json Elapsed: {datetime.now() - now}')
+        log.info(f'End save_json Elapsed: {datetime.now() - now}')
     except Exception as ex:
         log.error(' NOT JSON saved '.center(100, '*'))
         log.error(ex)

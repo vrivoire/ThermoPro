@@ -250,18 +250,13 @@ class ThermoProScan:
 if __name__ == '__main__':
     try:
         thermopro.set_up(__file__)
-        is_local: bool = False
-        log.info(f'__file__: {__file__}')
-        if __file__ == 'C:\\Users\\ADELE\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\thermopro\\ThermoProScan.py':
-            log.info(f'ThermoProScan.py local')
-            is_local = True
-        else:
-            log.info(f'ThermoProScan.py service')
-            is_local = False
+        is_local: bool = True if __file__ == 'C:\\Users\\ADELE\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\thermopro\\ThermoProScan.py' else False
+        log.warning('*'.center(100, '*'))
+        log.warning('*' + 'ThermoProScan started'.center(98, ' ') + '*')
+        log.warning('*' + sys.version.center(98, ' ') + '*')
+        log.warning('*' + ('LOCAL' if is_local else 'SERVICE').center(98, ' ') + '*')
+        log.warning('*'.center(100, '*'))
 
-        log.warning('-------------------------------------------------------------------------------------')
-        log.warning('|                           ThermoProScan started                                   |')
-        log.warning('-------------------------------------------------------------------------------------')
         thermoProScan: ThermoProScan = ThermoProScan()
         thermoProScan.start(is_local)
     except SystemExit as se:

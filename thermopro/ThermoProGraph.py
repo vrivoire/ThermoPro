@@ -25,8 +25,6 @@ import thermopro
 from constants import MIN_HPA, MAX_HPA, DAYS_PER_MONTH
 from thermopro import log
 
-# from thermopro.Tooltip import Tooltip
-
 root = tkinter.Tk()
 SCREEN_WIDTH: int = root.winfo_screenwidth()
 SCREEN_HEIGHT: int = root.winfo_screenheight()
