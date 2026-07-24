@@ -7,14 +7,14 @@ call .venv\Scripts\activate.bat
 
 @echo ----------------------------------------------------------------------------------
 
-start "ThermoProGraph" pyinstaller -y --onedir thermopro\ThermoProGraph.py --icon=ThermoPro.png --nowindowed --noconsole --paths C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro;C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro\thermopro;C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ThermoPro\.venv\Lib\site-packages
+start "ThermoProGraph" pyinstaller -y --onedir thermopro\ThermoProGraph.py --icon thermometer.png --nowindowed --noconsole --paths C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro;C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro\thermopro;C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ThermoPro\.venv\Lib\site-packages --splash thermometer.png
 
 nssm stop ThermoProScan
 taskkill /F /T /IM ThermoProScan.exe
 
 @echo ----------------------------------------------------------------------------------
 title ThermoProScan
-call pyinstaller -y --onedir thermopro\ThermoProScan.py --icon=ThermoPro.png --nowindowed --noconsole --hidden-import win32timezone --paths C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro;C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro\thermopro;C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ThermoPro\.venv\Lib\site-packages
+call pyinstaller -y --onedir thermopro\ThermoProScan.py --icon thermometer.png --nowindowed --noconsole --hidden-import win32timezone --paths C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro;C:\Users\adele\Documents\NetBeansProjects\PycharmProjects\ThermoPro\thermopro;C:\Users\ADELE\Documents\NetBeansProjects\PycharmProjects\ThermoPro\.venv\Lib\site-packages
 
 @echo ----------------------------------------------------------------------------------
 

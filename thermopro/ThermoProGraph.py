@@ -30,6 +30,13 @@ SCREEN_WIDTH: int = root.winfo_screenwidth()
 SCREEN_HEIGHT: int = root.winfo_screenheight()
 root.destroy()
 
+try:
+    import pyi_splash
+
+    pyi_splash.update_text("Unpacking app assets...")
+except BaseException as be:
+    pass
+
 
 class ThermoProGraph:
     df: pd.DataFrame
@@ -354,13 +361,20 @@ class ThermoProGraph:
             thermopro.save_window(fig, 'ThermoGraph.png')
 
             if show_window:
+                try:
+                    import pyi_splash
+
+                    pyi_splash.close()
+                except BaseException as be:
+                    pass
+
                 thermopro.show_df(df, title='create_graph_temperature')
                 slider_mean.ax.set_visible(True)
                 slider_date.ax.set_visible(True)
                 button.ax.set_visible(True)
                 fig.canvas.manager.set_window_title('ThermoPro Temperature')
                 plt.get_current_fig_manager().window.state('zoomed')
-                thermopro.set_icon('ThermoPro.png')
+                thermopro.set_icon('thermometer.png')
                 plt.show()
 
         except Exception as ex:
@@ -672,13 +686,20 @@ class ThermoProGraph:
             thermopro.save_window(fig, 'ThermoEnergy.png')
 
             if show_window:
+                try:
+                    import pyi_splash
+
+                    pyi_splash.close()
+                except BaseException as be:
+                    pass
+
                 thermopro.show_df(df, title='create_graph_energy')
                 slider_mean.ax.set_visible(True)
                 slider_date.ax.set_visible(True)
                 button.ax.set_visible(True)
                 fig.canvas.manager.set_window_title('ThermoPro Energy')
                 plt.get_current_fig_manager().window.state('zoomed')
-                thermopro.set_icon('ThermoPro.png')
+                thermopro.set_icon('hydro-quebec.png')
                 plt.show()
 
         except Exception as ex:

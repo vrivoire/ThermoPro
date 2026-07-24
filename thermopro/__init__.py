@@ -330,8 +330,7 @@ def copy_to_cloud() -> None:
                     shell=True,
                     text=True
                 )
-                log.warning(
-                    f'Drive: {drive}, robocopy returncode: {completed_process.returncode}: {ROBOCOPY_RETURNCODES.get(completed_process.returncode)}')
+                log.warning(f'Drive: {drive}, robocopy returncode: {completed_process.returncode}: {ROBOCOPY_RETURNCODES.get(completed_process.returncode)}')
                 if completed_process.returncode > 0:
                     log.info(f'Drive: {drive}, robocopy stdout: {completed_process.stdout}')
                     if completed_process.stderr is not None and not completed_process.stderr.strip() == '':

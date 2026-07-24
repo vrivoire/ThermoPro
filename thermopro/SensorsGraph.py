@@ -131,10 +131,10 @@ class SensorsGraph:
                 wspace=0.198,
                 hspace=0.202
             )
-            fig.canvas.manager.set_window_title('ThermoPro Energy')
+            fig.canvas.manager.set_window_title('Thermometer Energy')
             mng = plt.get_current_fig_manager()
             mng.window.state('zoomed')
-            thermopro.set_icon('ThermoPro.png')
+            thermopro.set_icon('thermometer.png')
             plt.show()
         except Exception as ex:
             log.error(ex)

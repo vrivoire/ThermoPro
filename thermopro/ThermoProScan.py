@@ -250,9 +250,11 @@ class ThermoProScan:
 if __name__ == '__main__':
     try:
         thermopro.set_up(__file__)
+
         is_local: bool = True if __file__ == 'C:\\Users\\ADELE\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\thermopro\\ThermoProScan.py' else False
+
         log.warning('*'.center(100, '*'))
-        log.warning('*' + 'ThermoProScan started'.center(98, ' ') + '*')
+        log.warning('*' + f'{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]} started'.center(98, ' ') + '*')
         log.warning('*' + sys.version.center(98, ' ') + '*')
         log.warning('*' + ('LOCAL' if is_local else 'SERVICE').center(98, ' ') + '*')
         log.warning('*'.center(100, '*'))
