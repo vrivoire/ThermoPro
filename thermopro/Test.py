@@ -1,13 +1,11 @@
-from rocketry import Rocketry
-from rocketry.conds import cron
+import thermopro
+from thermopro.ThermoProScan import ThermoProScan
 
-app = Rocketry()
-
-
-@app.task(cron.(minute="1"))
-def run_at_minute_one():
-    print("Task running at the 1st minute of the hour.")
-
+temp: float = 23.5
+humidity: int = 84
 
 if __name__ == "__main__":
-    app.run()
+    thermopro.set_up(__file__)
+    thermoProScan: ThermoProScan = ThermoProScan()
+    humidex = thermoProScan.get_humidex(temp, humidity)
+    print(f"{temp}, {humidity}: {humidex}")

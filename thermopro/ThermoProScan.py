@@ -18,11 +18,12 @@ from pandas import DataFrame
 import thermopro
 from constants import COLUMNS
 from thermopro import log, show_df
+from thermopro.EnergyGraph import EnergyGraph
 from thermopro.HydroQuébecPower import HydroQuébec
 from thermopro.NeviwebTempPwr import NeviwebTempPwr
 from thermopro.OpenWeather import OpenWeather
 from thermopro.Rtl433Temperature2 import Rtl433Temperature2
-from thermopro.ThermoProGraph import ThermoProGraph
+from thermopro.TemperatureGraph import TemperatureGraph
 
 
 class ThermoProScan:
@@ -77,6 +78,10 @@ class ThermoProScan:
                         log.warning(ke)
 
             log.info(f'Got all new data:\n{json.dumps(json_data, indent=4, sort_keys=True, default=str)}')
+            log.info(f'Feels like, '
+                     f'open: {self.calculate_feels_like(json_data.get('open_temp'), json_data.get('open_humidity'), json_data.get('open_wind_speed'))}, '
+                     f'ext: {self.calculate_feels_like(json_data.get('ext_temp'), json_data.get('ext_humidity'), json_data.get('open_wind_speed'))}, '
+                     f'int: {self.calculate_feels_like(json_data.get('int_temp'), json_data.get('int_humidity'), 0)}')
 
             df1: DataFrame = thermopro.load_json()
             if json_data:
@@ -109,9 +114,8 @@ class ThermoProScan:
             thermopro.save_json(df1)
             thermopro.save_sensors(now, sensors2)
 
-            thermo_pro_graph: ThermoProGraph = ThermoProGraph()
-            thermo_pro_graph.create_graph_energy(show_window=False)
-            thermo_pro_graph.create_graph_temperature(show_window=False)
+            TemperatureGraph().create_graph_temperature(show_window=False)
+            EnergyGraph().create_graph_energy(show_window=False)
 
             show_df(df1, title='__call_all')
 
@@ -147,8 +151,8 @@ class ThermoProScan:
             int_humidity: float = round(statistics.mean(room_humidity_list), 2) if len(room_humidity_list) > 0 else 0
 
             json_result['int_humidity'] = int_humidity
-            json_result['ext_humidex'] = self.__get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
-            json_result['int_humidex'] = self.__get_humidex(json_result['int_temp'], json_result['int_humidity'])
+            json_result['ext_humidex'] = self.get_humidex(json_result['ext_temp'], json_result['ext_humidity'])
+            json_result['int_humidex'] = self.get_humidex(json_result['int_temp'], json_result['int_humidity'])
 
             try:
                 log.info(f'>>>>>> ext_temp:     {ext_temp:<5}\tmin: {min(ext_temperature_list):<5}\tmax: {max(ext_temperature_list):<5}\t{ext_temperature_list}')
@@ -187,7 +191,7 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
 
-    def __get_humidex(self, temp: float, humidity: int) -> int | None:
+    def get_humidex(self, temp: float, humidity: int) -> int | None:
         try:
             if temp is not None and humidity is not None:
                 kelvin = temp + 273
@@ -201,6 +205,25 @@ class ThermoProScan:
             log.error(ex)
             log.error(traceback.format_exc())
         return None
+
+    def calculate_feels_like(self, temp_c: float, humidity_pct: float, wind_speed_ms: float) -> float:
+        """
+        Calculates apparent temperature ('feels like') based on OpenWeather parameters.
+
+        :param temp_c: Air temperature in Celsius
+        :param humidity_pct: Relative humidity as a percentage (0 to 100)
+        :param wind_speed_ms: Wind speed in meters per second
+        :return: Apparent temperature in Celsius
+        """
+        # 1. Calculate water vapor pressure (rho)
+        vapor_pressure = (humidity_pct / 100.0) * 6.105 * math.exp(
+            (17.27 * temp_c) / (237.7 + temp_c)
+        )
+
+        # 2. Apply the apparent temperature formula
+        feels_like_c = temp_c + (0.33 * vapor_pressure) - (0.70 * wind_speed_ms) - 4.00
+
+        return round(feels_like_c, 2)
 
     def set_bkp_frequency(self, frequency_per_day: int = 4):
         log.info(f'Creating schedule at: {frequency_per_day} per day')
@@ -251,7 +274,10 @@ if __name__ == '__main__':
     try:
         thermopro.set_up(__file__)
 
-        is_local: bool = True if __file__ == 'C:\\Users\\ADELE\\Documents\\NetBeansProjects\\PycharmProjects\\ThermoPro\\thermopro\\ThermoProScan.py' else False
+        # thermopro.send_email('test', 'toto')
+        # exit()
+
+        is_local: bool = False if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS') else True
 
         log.warning('*'.center(100, '*'))
         log.warning('*' + f'{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]} started'.center(98, ' ') + '*')

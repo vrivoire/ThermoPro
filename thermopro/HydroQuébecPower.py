@@ -3,14 +3,17 @@ import asyncio
 import math
 import traceback
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from io import StringIO
 from queue import Queue
+from typing import Any
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from hydroqc.contract.common import Contract
-from hydroqc.types.consump import ConsumpHourlyResultTyping, ConsumpHourlyResultsTyping, ConsumpHourlyTyping
+from hydroqc.error import HydroQcHTTPError
+from hydroqc.types import ConsumpHourlyTyping
+from hydroqc.types.consump import ConsumpHourlyResultTyping, ConsumpHourlyResultsTyping
 from hydroqc.webuser import WebUser
 from pandas import DataFrame
 from pandas.io.parsers import TextFileReader
@@ -47,51 +50,70 @@ class HydroQuébec:
 
                 try:
                     log.info(' get_hourly_energy '.center(100, '*'))
-                    start_date = datetime.now() - relativedelta(weeks=0)
-                    end_date = datetime.now() - relativedelta(weeks=weeks)
-                    log.info(f'Date range: from: {end_date.strftime('%Y-%m-%d %H:%M')}, to: {start_date.strftime('%Y-%m-%d %H:%M')}')
-                    string: Iterator[list[str | int | float]] | StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
-                    df: DataFrame | TextFileReader = pd.read_csv(string, sep=";")
-                    log.info(f'Data parsed, from: {df.iloc[-1]['Date et heure']}, to: {df.iloc[0]['Date et heure']}, rows: {len(df)}')
-                    df['Date et heure'].astype('datetime64[ns]')
-                    df.set_index('Date et heure')
-                    df_reversed = df[::-1].reset_index(drop=True)
-                    df_reversed['Date et heure'].astype('datetime64[ns]')
-                    df_reversed.set_index('Date et heure')
-                    df_reversed = df_reversed.sort_values(by='Date et heure', ascending=True)
 
-                    log.info('Creating kwh_dict...')
-                    for index, row in df_reversed.iterrows():
-                        split = row['Date et heure'].split(' ')
-                        kwh: float = 0.0
-                        if type(row['kWh']) == str:
-                            kwh = float(str(row['kWh']).replace(',', '.'))
-                        elif type(row['kWh']) == float:
-                            kwh = float(row['kWh'])
-                        kwh_dict[f'{split[0]} {split[1][0:2]}'] = kwh if not math.isnan(kwh) else 0.0
+                    log.info(f'1 Date range: from: {(date.today() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M')}, to: {(date.today() - timedelta(days=1 + weeks * 7)).strftime('%Y-%m-%d %H:%M')}')
+                    for days in range(0, weeks * 7):
+                        try:
+                            today_hourly_consumption = await contract.get_hourly_consumption(date.today() - timedelta(days=days))
+                            if today_hourly_consumption.get('success'):
+                                await self.fill_kwh_dict(kwh_dict, today_hourly_consumption)
+                        except HydroQcHTTPError as hqhe:
+                            log.error(f'days: {days}, {hqhe}')
+                        except Exception as ex:
+                            log.error(ex)
+                            log.error(traceback.format_exc())
+                    log.info(f'Found {len(kwh_dict)} rows')
+
+                    if len(kwh_dict) == 0:
+                        log.warning('Retrying with get_hourly_energy')
+                        start_date = datetime.now() - relativedelta(weeks=0)
+                        end_date = datetime.now() - relativedelta(weeks=weeks)
+                        log.info(f'2 Date range: from: {start_date.strftime('%Y-%m-%d %H:%M')}, to: {end_date.strftime('%Y-%m-%d %H:%M')}')
+                        string: Iterator[list[str | int | float]] | StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
+                        df: DataFrame | TextFileReader = pd.read_csv(string, sep=";")
+                        if len(df) == 0:
+                            log.error('get_hourly_energy is empty.')
+                        else:
+                            log.info(f'Data parsed, from: {df.iloc[-1]['Date et heure']}, to: {df.iloc[0]['Date et heure']}, rows: {len(df)}')
+                            df['Date et heure'].astype('datetime64[ns]')
+                            df.set_index('Date et heure')
+                            df_reversed = df[::-1].reset_index(drop=True)
+                            df_reversed['Date et heure'].astype('datetime64[ns]')
+                            df_reversed.set_index('Date et heure')
+                            df_reversed = df_reversed.sort_values(by='Date et heure', ascending=True)
+
+                            log.info('Creating kwh_dict...')
+                            for index, row in df_reversed.iterrows():
+                                split = row['Date et heure'].split(' ')
+                                kwh: float = 0.0
+                                if type(row['kWh']) == str:
+                                    kwh = float(str(row['kWh']).replace(',', '.'))
+                                elif type(row['kWh']) == float:
+                                    kwh = float(row['kWh'])
+                                kwh_dict[f'{split[0]} {split[1][0:2]}'] = kwh if not math.isnan(kwh) else 0.0
+                except HydroQcHTTPError as hqhe:
+                    log.error(hqhe)
                 except Exception as ex:
                     log.error(ex)
                     log.error(traceback.format_exc())
 
                 try:
                     log.info(' get_today_hourly_consumption '.center(100, '*'))
-                    today_hourly_consumption: ConsumpHourlyTyping = await contract.get_today_hourly_consumption()
-                    if today_hourly_consumption.get('success'):
-                        crt: ConsumpHourlyResultsTyping = today_hourly_consumption.get('results')
-                        date_jour: str = crt.get('dateJour')
-                        liste_donnees_conso_energie_horaire: list[ConsumpHourlyResultTyping] = crt.get('listeDonneesConsoEnergieHoraire')
-                        log.info(f'Got liste_donnees_conso_energie_horaire ({len(liste_donnees_conso_energie_horaire)} rows)')
-                        for ldceh in liste_donnees_conso_energie_horaire:
-                            kwh_dict[f'{date_jour} {ldceh.get('heure')[0:2]}'] = float(ldceh.get('consoTotal') if not math.isnan(ldceh.get('consoTotal')) else 0.0)
-                    else:
-                        log.error('ERROR today_hourly_consumption')
-                        log.error(f'today_hourly_consumption: {thermopro.ppretty(today_hourly_consumption)}')
+                    try:
+                        today_hourly_consumption: ConsumpHourlyTyping = await contract.get_today_hourly_consumption()
+                        # today_hourly_consumption = await contract.get_today_daily_consumption()
+                        await self.fill_kwh_dict(kwh_dict, today_hourly_consumption)
+                    except HydroQcHTTPError as hqhe:
+                        log.error(f'ERROR with contract.get_today_hourly_consumption(), using get_hourly_consumption, {hqhe}')
+                except HydroQcHTTPError as hqhe:
+                    log.error(hqhe)
+                    log.error(traceback.format_exc())
                 except Exception as ex:
                     log.error(ex)
                     log.error(traceback.format_exc())
 
                 kwh_dict = dict(sorted({key: value for key, value in kwh_dict.items() if value != 0.0}.items()))
-                log.info(f'Created kwh_dict, size: {len(kwh_dict)} from: {next(iter(kwh_dict))}, to: {next(reversed(kwh_dict.keys()))}')
+                log.info(f'Created kwh_dict, size: {len(kwh_dict)} from: {next(iter(kwh_dict))}, to: {next(reversed(kwh_dict.keys()))}') if len(kwh_dict) > 0 else None
             else:
                 log.error('Not logged in')
         except Exception as exp:
@@ -103,6 +125,18 @@ class HydroQuébec:
                 log.info('Session closed')
             result_queue.put({'kwh_dict': kwh_dict})
         log.info(' End get_kwh_list '.center(100, '*'))
+
+    async def fill_kwh_dict(self, kwh_dict: dict[str, float | int | None], today_hourly_consumption: ConsumpHourlyTyping | dict[str, bool | dict[Any, Any]]):
+        if today_hourly_consumption.get('success'):
+            crt: ConsumpHourlyResultsTyping = today_hourly_consumption.get('results')
+            date_jour: str = crt.get('dateJour')
+            liste_donnees_conso_energie_horaire: list[ConsumpHourlyResultTyping] = crt.get('listeDonneesConsoEnergieHoraire')
+            # log.info(f'Got liste_donnees_conso_energie_horaire ({len(liste_donnees_conso_energie_horaire)} rows)')
+            for ldceh in liste_donnees_conso_energie_horaire:
+                kwh_dict[f'{date_jour} {ldceh.get('heure')[0:2]}'] = float(ldceh.get('consoTotal') if not math.isnan(ldceh.get('consoTotal')) else 0.0)
+        else:
+
+            log.error(f'today_hourly_consumption: {thermopro.ppretty(today_hourly_consumption)}')
 
     def start(self, result_queue: Queue):
         loop = asyncio.new_event_loop()

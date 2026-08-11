@@ -5,7 +5,6 @@ import logging.handlers
 import os.path
 import shutil
 import smtplib
-import ssl
 import subprocess
 import tkinter
 import tkinter as tk
@@ -26,34 +25,44 @@ from pandas import DataFrame
 import thermopro
 from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_PATH, HOME_PATH, TIMEOUT, \
     POIDS_PRESSION_PATH, SENSORS_OUTPUT_JSON_FILE, DAYS_PER_MONTH, RTL_433_EXE_PATH, OUTPUT_RTL_433_FILE, BKP_SCRIPTS, \
-    CLOUD_PATHS, ROBOCOPY_RETURNCODES, BKP_PATH, BKP_DAYS, BELL_EMAIL, BELL_PASSWORD, GOOGLE_EMAIL
+    CLOUD_PATHS, ROBOCOPY_RETURNCODES, BKP_PATH, BKP_DAYS, GOOGLE_EMAIL, GOOGLE_APP_PWD, SMTP_SERVER, SMTP_PORT
 
 sensors: dict[str, dict[str, list[str]] | dict[str, str | None]]
 
 
-def send_email(subject: str, content):
-    SMTP_SERVER = "smtphm.sympatico.ca"
-    SMTP_PORT = 587
-
+def send_email(subject: str, content: str, html: str | None = None):
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = BELL_EMAIL
+    msg["From"] = GOOGLE_EMAIL
     msg["To"] = GOOGLE_EMAIL
-    msg.set_content(content)
+    if content is not None:
+        msg.set_content(content)
+        msg.add_alternative(f'<code style="font-size:12px;font-family:monospace">{content.replace("\n", '<br>').replace(" ", '&nbsp;')}</code>', subtype="html")
+    if html is not None:
+        msg.set_content(content)
+        msg.add_alternative(html, subtype="html")
 
-    context = ssl.create_default_context()
     try:
+        # 3. Connect to Gmail's SMTP server using port 587 (TLS)
+        # log.info("Connecting to server...")
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.ehlo()  # Identify yourself to the server
-            server.starttls(context=context)
-            server.ehlo()  # Re-identify yourself over the encrypted connection
-            server.login(BELL_EMAIL, BELL_PASSWORD)
+            # File Attachments
+            # with open("document.pdf", "rb") as f:
+            #     file_data = f.read()
+            #     file_name = f.name
+            # msg.add_attachment(file_data, maintype="application", subtype="octet-stream", filename=file_name)
+
+            server.starttls()  # Encrypt the connection
+            server.login(GOOGLE_EMAIL, GOOGLE_APP_PWD)
             server.send_message(msg)
-            log.info("Email sent successfully!")
+
+        log.info("🚀 Email sent successfully!")
+
     except Exception as ex:
         log.error(ex)
-        log.error(f'subject: {subject}')
-        log.error(f'content: {content}')
+        log.error(f'To: {GOOGLE_EMAIL}')
+        log.error(f'Subject: {subject}')
+        log.error(f'Content: {content}')
         log.error(traceback.format_exc())
 
 
@@ -81,27 +90,24 @@ def set_icon(icon_name: str):
 
 
 def get_sensors() -> dict[str, dict[str, list[str]] | dict[str, str | None]]:
-    global sensors
-    if sensors is None:
-        log.info(f"Loading sensors from sensor_list.json...")
-        try:
-            with open(f'{BKP_SCRIPTS}/sensor_list.json', 'r') as file:
-                sensors = json.load(file)
+    try:
+        with open(f'{BKP_SCRIPTS}/sensor_list.json', 'r') as file:
+            sensors = json.load(file)
 
-            for freq in sensors:
-                for i, token in enumerate(sensors[freq]['args']):
-                    try:
-                        start: int = token.find('{') + 1
-                        end: int = token.find('}')
-                        if start != -1 and end != -1:
-                            sensors[freq]['args'][i] = sensors[freq]['args'][i].replace(token[start - 1:end + 1], str(getattr(constants, token[start:end])))
-                    except AttributeError as ae:
-                        pass
-        except Exception as ex:
-            log.error(' NOT JSON sensors loaded '.center(100, '*'))
-            log.error(ex)
-            log.error(traceback.format_exc())
-            raise ex
+        for freq in sensors:
+            for i, token in enumerate(sensors[freq]['args']):
+                try:
+                    start: int = token.find('{') + 1
+                    end: int = token.find('}')
+                    if start != -1 and end != -1:
+                        sensors[freq]['args'][i] = sensors[freq]['args'][i].replace(token[start - 1:end + 1], str(getattr(constants, token[start:end])))
+                except AttributeError as ae:
+                    pass
+    except Exception as ex:
+        log.error(' NOT JSON sensors loaded '.center(100, '*'))
+        log.error(ex)
+        log.error(traceback.format_exc())
+        raise ex
 
     return sensors
 

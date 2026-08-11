@@ -115,7 +115,7 @@ class Rtl433Temperature2:
                     else:
                         data: dict = json.loads(line.strip())
                         model: str = data['model']
-                        log.info(f'{model}, {list(sensors.keys())}')
+                        log.info(f'Found: {model}, remain: {list(sensors.keys())}')
                         if model in sensors.keys():
                             log.info(f'>>>>>> {data.get('model')}: {data}')
                             data['loc'] = sensors.get(data.get('model'))
@@ -224,23 +224,23 @@ class Rtl433Temperature2:
 
     def __warn_not_respondig(self, sensors: dict[str, str]):
         if len(sensors) > 0:
-            string: str = ' RTL 433 Warning '.center(80, '*')
-            content: str = '*' + f'Sensor{'s' if len(sensors) > 1 else ''} {list(sensors)} NOT responding'.center(len(string) - 2) + '*'
-            log.warning(string)
+            subject: str = ' RTL 433 Warning '.center(100, '*')
+            content: str = '*' + f'Sensor{'s' if len(sensors) > 1 else ''} {list(sensors)} NOT responding'.center(len(subject) - 2) + '*'
+            log.warning(subject)
             log.warning(content)
-            log.warning(string)
+            log.warning(subject)
             if datetime.now().strftime("%H") == '06':
-                send_email(string, content)
+                send_email(subject, f'{subject}\n{content}\n{subject}')
 
     def __warn_battery(self, data: dict):
         if data.get('battery_ok') == 0:
-            string: str = ' RTL 433 Warning '.center(80, '*')
-            content: str = f"Sensor {data.get('model')}'s battery is weak..."
-            log.error(string)
+            subject: str = ' RTL 433 Warning '.center(100, '*')
+            content: str = '*' + f" Sensor {data.get('model')}'s battery is weak... ".center(98, ' ') + '*'
+            log.error(subject)
             log.error(content)
-            log.error(string)
+            log.error(subject)
             if datetime.now().strftime("%H") == '06':
-                send_email(content, content)
+                send_email(subject, f'{subject}\n{content}\n{subject}')
 
     def __fill_dict(self, data: dict, ext_humidity_list: list[int], ext_temp_list: list[float],
                     int_humidity_list: list[int], int_temp_list: list[float], kind: str) -> dict:

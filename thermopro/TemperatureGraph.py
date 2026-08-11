@@ -1,13 +1,11 @@
 # start pyinstaller --onedir ThermoProGraph.py --icon=ThermoPro.jpg --nowindowed --noconsole
 
 import ctypes
-import math
 import sys
 import tkinter
 import traceback
 from collections.abc import Sequence
 from datetime import timedelta
-from typing import Any
 
 import matplotlib
 
@@ -16,7 +14,6 @@ import matplotlib.dates as m_dates
 import matplotlib.pyplot as plt
 import mplcursors
 import pandas as pd
-from matplotlib.container import BarContainer
 from matplotlib.dates import date2num, num2date
 from matplotlib.lines import Line2D
 from matplotlib.widgets import CheckButtons, Slider, Button
@@ -38,11 +35,11 @@ except BaseException as be:
     pass
 
 
-class ThermoProGraph:
+class TemperatureGraph:
     df: pd.DataFrame
 
     def __init__(self):
-        log.info('Starting ThermoProGraph')
+        log.info('Starting TemperatureGraph')
         thermopro.sensors = None
         global df
         df = thermopro.load_json()
@@ -391,342 +388,17 @@ class ThermoProGraph:
         df['ext_humidex'] = df['ext_humidex'].apply(lambda x: None if x == 0 else x)
         df['open_pressure'] = df['open_pressure'].apply(lambda x: None if x < 30 else x)
 
-    def create_graph_energy(self, show_window: bool) -> None:
-        try:
-            log.info('create_graph_energy')
-
-            global df
-            self.clean_data()
-
-            mean: int = DAYS_PER_MONTH
-
-            fig, ax1 = plt.subplots()
-            ax2 = ax1.twinx()
-
-            ax1.set_ylabel('KWh', color='xkcd:grey')  # we already handled the x-label with ax1
-            ax1.grid(axis='y', color='gray', linewidth=0.2)
-            ax1.set_yticks(list(range(0, math.ceil(df['kwh_hydro_quebec'].max(numeric_only=True)))), minor=True)
-            kwh_hydro_quebec, = ax1.plot(df["time"], (df["kwh_hydro_quebec"]), color='xkcd:grey', label='Hydro KWh')
-            kwh_neviweb, = ax1.plot(df["time"], (df["kwh_neviweb"]), color='xkcd:charcoal grey', label='Nevi KWh')
-
-            ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
-            ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
-            ax1.xaxis.set_minor_formatter(m_dates.DateFormatter('%d'))
-            ax1.xaxis.set_minor_locator(m_dates.WeekdayLocator(byweekday=m_dates.SU.weekday, interval=1))
-            ax1.grid(axis='x', color='black', which="major", linewidth=0.2)
-            ax1.grid(axis='x', color='black', which="minor", linewidth=0.1)
-            ax1.tick_params(axis='both', which='minor', labelsize='small')
-            plt.xticks(rotation=45, ha='right', fontsize='9')
-            plt.gcf().autofmt_xdate()
-
-            ext_temp, = ax2.plot(df["time"], df["ext_temp"], color='xkcd:scarlet', label='Ext. °C')
-            open_temp, = ax2.plot(df["time"], df["open_temp"], color='xkcd:brick red', label='Open °C')
-            int_temp, = ax2.plot(df["time"], df["int_temp"], color='xkcd:red', label='Int. °C')
-
-            ax2.set_ylabel('Temperature °C', color='xkcd:scarlet')
-            ax2.grid(axis='y', linewidth=0.2, color='xkcd:scarlet')
-
-            mean_ext_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean(),
-                                      color='xkcd:deep red', alpha=0.3, label='Mean ext °C')
-            mean_int_temp, = ax2.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['int_temp'].mean(),
-                                      color='xkcd:deep rose', alpha=0.3, label='Mean int °C')
-            mean_kwh_hydro_quebec, = ax1.plot(df["time"],
-                                              df.rolling(window=f'{mean}D', on='time')['kwh_hydro_quebec'].mean(),
-                                              color='xkcd:medium grey', alpha=0.3, label='Mean Hydo KWh')
-            mean_kwh_neviweb, = ax1.plot(df["time"], df.rolling(window=f'{mean}D', on='time')['kwh_neviweb'].mean(),
-                                         color='xkcd:charcoal', alpha=0.3, label='Mean Nevi KWh')
-
-            plt.axhline(0, linewidth=0.5, color='black', zorder=-10)
-
-            try:
-                plt.title(
-                    f"Date: {df['time'][len(df['time']) - 1].strftime('%Y/%m/%d %H:%M')}, " \
-                    + f"Mean Int: {round(df.rolling(window=f'{mean}D', on='time')['int_temp'].mean()[len(df['int_temp']) - 1], 2)}°C, " \
-                    + f"Mean Ext.: {round(df.rolling(window=f'{mean}D', on='time')['ext_temp'].mean()[len(df['ext_temp']) - 1])}°C, " \
-                    + f"Mean Hydro: {round(df.rolling(window=f'{mean}D', on='time')['kwh_hydro_quebec'].mean()[len(df['kwh_hydro_quebec']) - 1], 2)}KWh, " \
-                    + f"Mean Nevi: {round(df.rolling(window=f'{mean}D', on='time')['kwh_neviweb'].mean()[len(df['kwh_neviweb']) - 1], 2)}KWh",
-                    fontsize=10)
-            except Exception as ex:
-                log.error(ex)
-                log.error(traceback.format_exc())
-
-            plt.tight_layout()
-            fig.subplots_adjust(
-                left=0.055,
-                bottom=0.105,
-                right=0.952,
-                top=0.948,
-                wspace=0.198,
-                hspace=0.202
-            )
-
-            def on_clicked(label):
-                line: Line2D | None = None
-                for line in all_lines:
-                    if line.get_label() == label:
-                        break
-                line.set_visible(not line.get_visible())
-                line.figure.canvas.draw_idle()
-
-                check.eventson = False
-                if label == 'All/None':
-                    for i in range(len(all_lines)):
-                        line2 = all_lines[i]
-                        line2.set_visible(line.get_visible())
-                        line2.figure.canvas.draw_idle()
-                        check.set_active(i, line.get_visible())
-                check.eventson = True
-
-            select: Line2D = Line2D([1], [1], label='All/None', color='black')
-            select.set_figure(ext_temp.figure)
-            select.figure.set_canvas(ext_temp.figure.canvas)
-
-            all_lines: list[Line2D | BarContainer] = [select, kwh_hydro_quebec, kwh_neviweb, int_temp, ext_temp,
-                                                      open_temp]
-            lines_colors: list[Any] = []
-            lines_actives: list[bool] = []
-            for line in all_lines:
-                if type(line) == BarContainer:
-                    lines_colors.append(line[0].get_facecolor())
-                    lines_actives.append(line[0].get_visible())
-                else:
-                    lines_colors.append(line.get_color())
-                    lines_actives.append(line.get_visible())
-            lines_label: list[str] = [str(line.get_label()) for line in all_lines]
-            check: CheckButtons = CheckButtons(
-                ax=ax1.inset_axes((0.0, 0.0, 0.07, 0.3), zorder=-10),
-                labels=lines_label,
-                actives=lines_actives,
-                label_props={'color': lines_colors},
-                frame_props={'edgecolor': lines_colors},
-                check_props={'facecolor': lines_colors},
-            )
-            check.on_clicked(on_clicked)
-
-            # def on_click(event: MouseEvent) -> None:
-            #     if event.dblclick and event.button == 1 and event.inaxes and not check.ax.contains(event)[0]:
-            #         tooltip: Tooltip = Tooltip()
-            #         tooltip.render(df, event.xdata, event.guiEvent.x, fig.canvas.get_width_height(physical=True)[1] - 0, SCREEN_WIDTH, SCREEN_HEIGHT, mean)
-            #
-            # fig.canvas.mpl_connect('button_press_event', on_click)
-
-            def on_changed(val):
-                log.info(
-                    f'on_changed({num2date(val)}) -> from: {num2date(val - mean).date()}, to: {num2date(val + 1).date()}')
-                slider_date.valtext.set_text(num2date(val).date())
-                df2 = df[df['time'].dt.date.between(num2date(val - mean).date(), num2date(val + 1).date())]
-                if len(df2) > 0:
-                    window = (
-                        val - mean,
-                        val + 0.1,
-                        0,
-                        math.ceil(max(df2['kwh_hydro_quebec']) * 10 if len(df2['kwh_hydro_quebec']) > 0 else 0.0) / 10
-                    )
-                    ax1.axis(window)
-                    ax1.set_yticks(
-                        list(
-                            range(0,
-                                  math.ceil(max(df2['kwh_hydro_quebec']) if len(df2['kwh_hydro_quebec']) > 0 else 0.0)
-                                  )
-                        ), minor=True)
-                    ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m/%d'))
-                    ax1.xaxis.set_major_locator(m_dates.DayLocator(interval=1))
-
-                    ax2.axis((
-                        val - mean,
-                        val + 0.1,
-                        min(
-                            df2['ext_temp'].min(numeric_only=True, skipna=True),
-                            df2['int_temp'].min(numeric_only=True, skipna=True),
-                            df2['open_temp'].min(numeric_only=True, skipna=True)
-                        ) - 2.0,
-                        max(
-                            df2['ext_temp'].max(numeric_only=True, skipna=True),
-                            df2['int_temp'].max(numeric_only=True, skipna=True),
-                            df2['open_temp'].max(numeric_only=True, skipna=True),
-                        ) + 2.0
-                    ))
-                    ax2.set_yticks(list(range(
-                        int(min(
-                            df2['ext_temp'].min(numeric_only=True, skipna=True),
-                            df2['int_temp'].min(numeric_only=True, skipna=True),
-                            df2['open_temp'].min(numeric_only=True, skipna=True)
-                        ) - 2),
-                        int(max(
-                            df2['ext_temp'].max(numeric_only=True, skipna=True),
-                            df2['int_temp'].max(numeric_only=True, skipna=True),
-                            df2['open_temp'].max(numeric_only=True, skipna=True),
-                        ) + 2),
-                        1)),
-                        minor=True)
-
-                    fig.canvas.draw_idle()
-
-            def reset(val) -> None:
-                log.info(
-                    f'reset({val}) -> from: {df['time'][0] - timedelta(hours=1)}, to: {df["time"][df["time"].size - 1] + timedelta(hours=1)}')
-                slider_date.reset()
-                ax1.axis((
-                    df['time'][0] - timedelta(hours=1),
-                    df["time"][df["time"].size - 1] + timedelta(hours=1),
-                    0,
-                    math.ceil(df['kwh_hydro_quebec'].max(numeric_only=True, skipna=True))
-                ))
-                ax1.set_yticks(
-                    list(
-                        range(0, math.ceil(df['kwh_hydro_quebec'].max(numeric_only=True, skipna=True)))),
-                    minor=True)
-                ax1.xaxis.set_major_formatter(m_dates.DateFormatter('%Y/%m'))
-                ax1.xaxis.set_major_locator(m_dates.MonthLocator(interval=1))
-                ax1.xaxis.set_minor_formatter(m_dates.DateFormatter('%d'))
-                ax1.xaxis.set_minor_locator(m_dates.WeekdayLocator(byweekday=m_dates.SU.weekday, interval=1))
-
-                ax2.axis((
-                    df['time'][0] - timedelta(hours=1),
-                    df["time"][df["time"].size - 1] + timedelta(hours=1),
-                    min(
-                        df['ext_temp'].min(numeric_only=True, skipna=True),
-                        df['int_temp'].min(numeric_only=True, skipna=True),
-                        df['open_temp'].min(numeric_only=True, skipna=True)
-                    ) - 2.0,
-                    max(
-                        df['ext_temp'].max(numeric_only=True, skipna=True),
-                        df['int_temp'].max(numeric_only=True, skipna=True),
-                        df['open_temp'].max(numeric_only=True, skipna=True),
-                    ) + 2.0
-                ))
-                ax2.set_yticks(list(range(
-                    int(min(
-                        df['ext_temp'].min(numeric_only=True, skipna=True),
-                        df['int_temp'].min(numeric_only=True, skipna=True),
-                        df['open_temp'].min(numeric_only=True, skipna=True)
-                    ) - 2),
-                    int(max(
-                        df['ext_temp'].max(numeric_only=True, skipna=True),
-                        df['int_temp'].max(numeric_only=True, skipna=True),
-                        df['open_temp'].max(numeric_only=True, skipna=True),
-                    ) + 2),
-                    1)),
-                    minor=True)
-                fig.canvas.draw_idle()
-
-            def on_changed_mean(val):
-                mean_ext_temp.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['ext_temp'].mean())
-                mean_int_temp.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['int_temp'].mean())
-                mean_kwh_hydro_quebec.set_data(df["time"],
-                                               df.rolling(window=f'{val}D', on='time')['kwh_hydro_quebec'].mean())
-                mean_kwh_neviweb.set_data(df["time"], df.rolling(window=f'{val}D', on='time')['kwh_neviweb'].mean())
-
-            slider_mean = Slider(
-                plt.axes(
-                    (0.08, 0.03, 0.73, 0.03),  # (left, bottom, width, height)
-                    facecolor='gray'
-                ),
-                'Mean',
-                1,
-                int(DAYS_PER_MONTH),
-                valstep=1,
-                color='gray',
-                initcolor='none',
-            )
-            slider_mean.valtext.set_text(int(DAYS_PER_MONTH))
-            slider_mean.set_val(int(DAYS_PER_MONTH))
-            slider_mean.on_changed(on_changed_mean)
-
-            slider_date = Slider(
-                plt.axes(
-                    (0.08, 0.01, 0.73, 0.03),
-                    facecolor='gray'
-                ),
-                'Date',
-                date2num(df["time"][0]),
-                date2num(df['time'][len(df['time']) - 1]),
-                valstep=1,
-                color='gray',
-                initcolor='none',
-            )
-            slider_date.valtext.set_text(df["time"][0].date())
-            slider_date.on_changed(on_changed)
-            slider_date.set_val(date2num(df['time'][len(df['time']) - 1]))
-
-            button = Button(fig.add_axes((0.9, 0.01, 0.055, 0.03)), 'Reset', hovercolor='0.975')
-            button.on_clicked(reset)
-
-            mplcursors.cursor(int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(open_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(mean_ext_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(mean_int_temp, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}:  {round(float(sel[1][1]), 2)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(kwh_hydro_quebec, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]), 3)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(mean_kwh_hydro_quebec, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]), 3)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(mean_kwh_neviweb, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]), 3)} {sel[0].get_label()}'
-            ))
-            mplcursors.cursor(kwh_neviweb, hover=2).connect("add", lambda sel: sel.annotation.set_text(
-                f'{m_dates.num2date(sel.target[0]).strftime('%Y/%m/%d %H:00')}: {round(float(sel[1][1]), 3)} {sel[0].get_label()}'
-            ))
-
-            slider_mean.ax.set_visible(False)
-            slider_date.ax.set_visible(False)
-            button.ax.set_visible(False)
-            thermopro.save_window(fig, 'ThermoEnergy.png')
-
-            if show_window:
-                try:
-                    import pyi_splash
-
-                    pyi_splash.close()
-                except BaseException as be:
-                    pass
-
-                thermopro.show_df(df, title='create_graph_energy')
-                slider_mean.ax.set_visible(True)
-                slider_date.ax.set_visible(True)
-                button.ax.set_visible(True)
-                fig.canvas.manager.set_window_title('ThermoPro Energy')
-                plt.get_current_fig_manager().window.state('zoomed')
-                thermopro.set_icon('hydro-quebec.png')
-                plt.show()
-
-        except Exception as ex:
-            log.error(ex)
-            log.error(traceback.format_exc())
-            ctypes.windll.user32.MessageBoxW(0, f'{ex}', "ThermoProGraph Error", 16)
-
 
 if __name__ == '__main__':
     thermopro.set_up(__file__)
-    thermoProGraph: ThermoProGraph = ThermoProGraph()
 
-    # thermoProGraph.create_graph_energy(show_window=True)
-    # exit()
+    log.warning('*'.center(100, '*'))
+    log.warning('*' + f'{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]} started'.center(98, ' ') + '*')
+    log.warning('*' + sys.version.center(98, ' ') + '*')
+    log.warning('*'.center(100, '*'))
 
-    if len(sys.argv) == 2:
-        arg = sys.argv[1]
-        log.info(f"The command line argument is: {arg}")
-        if arg == 'temperature':
-            thermoProGraph.create_graph_temperature(True)
-        elif arg == 'energy':
-            thermoProGraph.create_graph_energy(show_window=True)
-        else:
-            log.error(f'The argument "{arg}" is invalid')
-    else:
-        log.info("No command line arguments provided.")
-        thermoProGraph.create_graph_temperature(show_window=True)
+    thermoProGraph: TemperatureGraph = TemperatureGraph()
+    thermoProGraph.create_graph_temperature(True)
 
     log.info('exit')
     sys.exit()
