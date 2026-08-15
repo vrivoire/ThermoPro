@@ -70,11 +70,11 @@ class OpenWeather:
                     'open_feels_like': round(current['feels_like'], 2) if current.get("feels_like") else last_row_series['open_feels_like'],
                     'open_humidity': int(current['humidity']) if current.get("humidity") else last_row_series['open_humidity'],
                     "open_pressure": int(current['pressure']) if current.get("pressure") else last_row_series['open_pressure'],
-                    "open_clouds": round(current['clouds'], 0) if current.get("pressure") else last_row_series['open_clouds'],
-                    "open_visibility": round(current['visibility'], 0) if current.get("pressure") else last_row_series['open_visibility'],
-                    "open_wind_speed": round(current['wind_speed'], 2) if current.get("pressure") else last_row_series['open_wind_speed'],
-                    "open_wind_gust": round(current['wind_gust'], 2) if current.get("pressure") else last_row_series['open_wind_gust'],
-                    "open_wind_deg": round(current['wind_deg'], 0) if current.get("pressure") else last_row_series['open_wind_deg'],
+                    "open_clouds": round(current['clouds'], 0) if current.get("clouds") else last_row_series['open_clouds'],
+                    "open_visibility": round(current['visibility'], 0) if current.get("visibility") else last_row_series['open_visibility'],
+                    "open_wind_speed": round(current['wind_speed'], 2) if current.get("wind_speed") else last_row_series['open_wind_speed'],
+                    "open_wind_gust": round(current['wind_gust'], 2) if current.get("wind_gust") else last_row_series['open_wind_gust'],
+                    "open_wind_deg": round(current['wind_deg'], 0) if current.get("wind_deg") else last_row_series['open_wind_deg'],
 
                     "open_rain": round(current['rain']["1h"], 2) if current.get('rain') else last_row_series['open_rain'],  # mm/h
                     "open_snow": round(current['snow']["1h"], 2) if current.get('snow') else last_row_series['open_snow'],  # mm/h

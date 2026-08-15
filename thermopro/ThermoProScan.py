@@ -215,15 +215,18 @@ class ThermoProScan:
         :param wind_speed_ms: Wind speed in meters per second
         :return: Apparent temperature in Celsius
         """
-        # 1. Calculate water vapor pressure (rho)
-        vapor_pressure = (humidity_pct / 100.0) * 6.105 * math.exp(
-            (17.27 * temp_c) / (237.7 + temp_c)
-        )
+        try:
+            # 1. Calculate water vapor pressure (rho)
+            vapor_pressure = (humidity_pct / 100.0) * 6.105 * math.exp(
+                (17.27 * temp_c) / (237.7 + temp_c)
+            )
 
-        # 2. Apply the apparent temperature formula
-        feels_like_c = temp_c + (0.33 * vapor_pressure) - (0.70 * wind_speed_ms) - 4.00
-
-        return round(feels_like_c, 2)
+            # 2. Apply the apparent temperature formula
+            feels_like_c = temp_c + (0.33 * vapor_pressure) - (0.70 * wind_speed_ms) - 4.00
+            return round(feels_like_c, 2)
+        except Exception as ex:
+            log.error(ex)
+            return None
 
     def set_bkp_frequency(self, frequency_per_day: int = 4):
         log.info(f'Creating schedule at: {frequency_per_day} per day')
