@@ -52,7 +52,7 @@ class HydroQuébec:
                     log.info(' get_hourly_energy '.center(100, '*'))
 
                     log.info(f'1 Date range: from: {(date.today() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M')}, to: {(date.today() - timedelta(days=1 + weeks * 7)).strftime('%Y-%m-%d %H:%M')}')
-                    for days in range(0, weeks * 7):
+                    for days in range(1, weeks * 7):
                         try:
                             today_hourly_consumption = await contract.get_hourly_consumption(date.today() - timedelta(days=days))
                             if today_hourly_consumption.get('success'):

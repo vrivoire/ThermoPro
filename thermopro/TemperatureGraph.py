@@ -392,10 +392,7 @@ class TemperatureGraph:
 if __name__ == '__main__':
     thermopro.set_up(__file__)
 
-    log.warning('*'.center(100, '*'))
-    log.warning('*' + f'{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]} started'.center(98, ' ') + '*')
-    log.warning('*' + sys.version.center(98, ' ') + '*')
-    log.warning('*'.center(100, '*'))
+    is_local = thermopro.show_header()
 
     thermoProGraph: TemperatureGraph = TemperatureGraph()
     thermoProGraph.create_graph_temperature(True)

@@ -1,13 +1,19 @@
 import os
+import platform
 import sys
 
-HOME_PATH = f"{os.getenv('USERPROFILE')}".replace('\\', '/')
+# [print(f'{a}\t\t{os.getenv(a)}') for a in os.environ]
+if platform.system() == 'Windows':
+    HOME_PATH = os.getenv('USERPROFILE')
+else:
+    HOME_PATH = os.getenv('HOME')
+
 LOG_PATH = f"{HOME_PATH}/Documents/NetBeansProjects/PycharmProjects/logs/"
 BKP_SCRIPTS = f'{HOME_PATH}/Documents/BkpScripts/ThermoPro'
 
 POIDS_PRESSION_PATH = f"{HOME_PATH}/Documents/PoidsPression/"
 BKP_PATH = f'{POIDS_PRESSION_PATH}bkp'
-CLOUD_PATHS = ['OneDrive', 'Mega', 'Icedrive', 'GoogleDrive', 'TeraBox', 'PCloud', 'NordLocker_913740/My Files']
+CLOUD_PATHS = ['OneDrive', 'Mega', 'GoogleDrive', 'TeraBox', 'PCloud']
 BKP_DAYS = 7
 
 LOG_NAME: str = ''

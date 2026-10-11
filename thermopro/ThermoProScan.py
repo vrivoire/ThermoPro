@@ -83,7 +83,6 @@ class ThermoProScan:
                      f'ext: {self.calculate_feels_like(json_data.get('ext_temp'), json_data.get('ext_humidity'), json_data.get('open_wind_speed'))}, '
                      f'int: {self.calculate_feels_like(json_data.get('int_temp'), json_data.get('int_humidity'), 0)}')
 
-            df1: DataFrame = thermopro.load_json()
             if json_data:
                 data_dict: dict[str, Any] = {}
                 for col in COLUMNS:
@@ -104,6 +103,7 @@ class ThermoProScan:
                             data_dict[col] = json_data.get(col)
 
                 new_row_df = pd.DataFrame([data_dict])
+                df1: DataFrame = thermopro.load_json()
                 df1 = pd.concat([df1, new_row_df], ignore_index=True)
 
                 for col in ['time', 'open_sunrise', 'open_sunset']:
@@ -277,16 +277,11 @@ if __name__ == '__main__':
     try:
         thermopro.set_up(__file__)
 
-        # thermopro.send_email('test', 'toto')
+        # thermopro.copy_to_cloud()
+        # # thermopro.send_email('test', 'toto')
         # exit()
 
-        is_local: bool = False if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS') else True
-
-        log.warning('*'.center(100, '*'))
-        log.warning('*' + f'{__file__[__file__.rfind('\\') + 1:len(__file__) - 3]} started'.center(98, ' ') + '*')
-        log.warning('*' + sys.version.center(98, ' ') + '*')
-        log.warning('*' + ('LOCAL' if is_local else 'SERVICE').center(98, ' ') + '*')
-        log.warning('*'.center(100, '*'))
+        is_local = thermopro.show_header()
 
         thermoProScan: ThermoProScan = ThermoProScan()
         thermoProScan.start(is_local)

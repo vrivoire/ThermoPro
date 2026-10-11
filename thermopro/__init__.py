@@ -3,9 +3,11 @@ import json
 import logging as log
 import logging.handlers
 import os.path
+import platform
 import shutil
 import smtplib
 import subprocess
+import sys
 import tkinter
 import tkinter as tk
 import traceback
@@ -28,6 +30,15 @@ from thermopro.constants import COLUMNS, THERMO_PRO_SCAN_OUTPUT_JSON_FILE, LOG_P
     CLOUD_PATHS, ROBOCOPY_RETURNCODES, BKP_PATH, BKP_DAYS, GOOGLE_EMAIL, GOOGLE_APP_PWD, SMTP_SERVER, SMTP_PORT
 
 sensors: dict[str, dict[str, list[str]] | dict[str, str | None]]
+
+
+def show_header() -> bool:
+    is_local: bool = False if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS') else True
+    log.warning('*'.center(100, '*'))
+    log.warning('*' + sys.version.center(98, ' ') + '*')
+    log.warning('*' + f"{'LOCAL' if is_local else 'SERVICE'}, {platform.system()}".center(98, ' ') + '*')
+    log.warning('*'.center(100, '*'))
+    return is_local
 
 
 def send_email(subject: str, content: str, html: str | None = None):
@@ -184,7 +195,7 @@ def load_sensors() -> DataFrame | None:
 #                                   ].index)
 # log.info(f'Purged {len(df) - len(df_conditional_drop)} rows {len(df)}, {len(df_conditional_drop)}.')
 # df = df_conditional_drop.reset_index(drop=True)
-def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> DataFrame | None:
+def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE) -> DataFrame:
     now: datetime = datetime.now()
     df: DataFrame | None = None
     try:
@@ -192,19 +203,20 @@ def load_json(thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OUTPUT_JSON_FILE)
         #     log.info(f'Loading file {thermo_pro_scan_output_json_file + '.json.zip'}')
         #     df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file + '.json.zip', compression='zip', orient='records')
 
-        if os.path.exists(thermo_pro_scan_output_json_file + '.csv.zip'):
-            log.info(f'Loading file {thermo_pro_scan_output_json_file + '.csv.zip'}')
-            df: DataFrame = pandas.read_csv(thermo_pro_scan_output_json_file + '.csv.zip', compression='zip')
+        if os.path.exists(thermo_pro_scan_output_json_file + '.csv'):
+            log.info(f'Loading file {thermo_pro_scan_output_json_file + '.csv'}')
+            df: DataFrame = pandas.read_csv(thermo_pro_scan_output_json_file + '.csv')
+
     except Exception as ex:
-        log.error(' NOT JSON zip loaded '.center(100, '*'))
+        log.error(' NOT CSV loaded '.center(100, '*'))
         log.error(ex)
         log.error(traceback.format_exc())
         try:
-            if os.path.exists(thermo_pro_scan_output_json_file + '.csv'):
-                log.info(f'Loading file {thermo_pro_scan_output_json_file + '.csv'}')
-                df: DataFrame = pandas.read_json(thermo_pro_scan_output_json_file + '.csv')
+            if os.path.exists(thermo_pro_scan_output_json_file + '.csv.zip'):
+                log.info(f'Loading file {thermo_pro_scan_output_json_file + '.csv.zip'}')
+                df: DataFrame = pandas.read_csv(thermo_pro_scan_output_json_file + '.csv.zip', compression='zip')
         except Exception as ex:
-            log.error('NOT JSON loaded'.center(100, '*'))
+            log.error('NOT CSV ZIP loaded'.center(100, '*'))
             log.error(ex)
             log.error(traceback.format_exc())
             raise ex
@@ -242,10 +254,10 @@ def save_json(df: DataFrame, thermo_pro_scan_output_json_file=THERMO_PRO_SCAN_OU
         #                'compression': zipfile.ZIP_LZMA,
         #                'compresslevel': 9
         #            })
-        log.info(f'JSON saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.csv.zip')} bytes')
+        log.info(f'CSV saved: {thermo_pro_scan_output_json_file} & zip\t\t{os.path.getsize(thermo_pro_scan_output_json_file + '.csv.zip')} bytes')
         log.info(f'End save_json Elapsed: {datetime.now() - now}')
     except Exception as ex:
-        log.error(' NOT JSON saved '.center(100, '*'))
+        log.error(' NOT CSV saved '.center(100, '*'))
         log.error(ex)
         log.error(traceback.format_exc())
         raise ex
@@ -268,13 +280,28 @@ def save_bkp() -> None:
             # [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.json'))] +
             [files_json.replace('\\', '/') for files_json in glob.glob(os.path.join(POIDS_PRESSION_PATH, '*.zip'))]
         )
-        # log.info(f'Files to bkp: {thermopro.ppretty(in_file_list)}')
-        out_file_list: list[str] = [
-            BKP_PATH + '/' + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime(
-                '_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):] for file in in_file_list]
+        log.info(f'Files to bkp: {thermopro.ppretty(in_file_list)}')
+        out_file_list: list[str] = []
+        timestamp = datetime.now().strftime('_%Y-%m-%d_%H-%M-%S')
+        for file in in_file_list:
+            p = Path(file)
+            backup_path = Path(BKP_PATH) / f"{p.stem}{timestamp}{p.suffix}"
+            out_file_list.append(backup_path.as_posix())
         log.info(f'out_file_list: {thermopro.ppretty(out_file_list)}')
+
+        # out_file_list: list[str] = []
+        # for file in in_file_list:
+        #     tmp = BKP_PATH + '/' + file[file.rindex('/') + 1:file.rindex('.')] + datetime.now().strftime('_%Y-%m-%d_%H-%M-%S') + file[file.rindex('.'):]
+        #     tmp = tmp.replace('\\', '/')
+        #     out_file_list += [tmp]
+        # log.info(f'out_file_list: {thermopro.ppretty(out_file_list)}')
+
         for i, name in enumerate(in_file_list):
-            shutil.copy2(in_file_list[i], out_file_list[i])
+            try:
+                shutil.copy2(in_file_list[i], out_file_list[i])
+            except Exception as ex:
+                log.error(f'shutil.copy2({in_file_list[i]}, {out_file_list[i]})')
+                log.error(ex)
 
         file_name = 'ThermoProScan'
         zip_file_name = f'{BKP_PATH}/{file_name}_{datetime.now().strftime('%Y-%m-%d')}.zip'
