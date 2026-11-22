@@ -43,84 +43,85 @@ class HydroQuébec:
         web_user: WebUser = WebUser(HYDRO_EMAIL, HYDRO_PASSWORD, verify_ssl=False, log_level="ERROR", http_log_level="ERROR")
         kwh_dict: dict[str, float | None] = {}
         try:
-            status: LoginStatus = await self.__login(web_user)
-
             check_hq_portal_status: bool = await web_user.check_hq_portal_status()
             log.info(f'check_hq_portal_status: {check_hq_portal_status}')
+            if check_hq_portal_status:
+                status: LoginStatus = await self.__login(web_user)
+                if status is LoginStatus.SUCCESS:
+                    await web_user.get_info()
+                    customer = web_user.customers[0]
+                    await customer.get_info()
+                    contract: Contract = web_user.customers[0].accounts[0].contracts[0]
 
-            if status is LoginStatus.SUCCESS and check_hq_portal_status:
-                await web_user.get_info()
-                customer = web_user.customers[0]
-                await customer.get_info()
-                contract: Contract = web_user.customers[0].accounts[0].contracts[0]
-
-                try:
-                    log.info(' get_hourly_energy '.center(100, '*'))
-
-                    log.info(f'1 Date range: from: {(date.today() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M')}, to: {(date.today() - timedelta(days=1 + weeks * 7)).strftime('%Y-%m-%d %H:%M')}')
-                    for days in range(1, weeks * 7):
-                        try:
-                            today_hourly_consumption = await contract.get_hourly_consumption(date.today() - timedelta(days=days))
-                            if today_hourly_consumption.get('success'):
-                                await self.fill_kwh_dict(kwh_dict, today_hourly_consumption)
-                        except HydroQcHTTPError as hqhe:
-                            log.error(f'days: {days}, {hqhe}')
-                        except Exception as ex:
-                            log.error(ex)
-                            log.error(traceback.format_exc())
-                    log.info(f'Found {len(kwh_dict)} rows')
-
-                    if len(kwh_dict) == 0:
-                        log.warning('Retrying with get_hourly_energy')
-                        start_date = datetime.now() - relativedelta(weeks=0)
-                        end_date = datetime.now() - relativedelta(weeks=weeks)
-                        log.info(f'2 Date range: from: {start_date.strftime('%Y-%m-%d %H:%M')}, to: {end_date.strftime('%Y-%m-%d %H:%M')}')
-                        string: Iterator[list[str | int | float]] | StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
-                        df: DataFrame | TextFileReader = pd.read_csv(string, sep=";")
-                        if len(df) == 0:
-                            log.error('get_hourly_energy is empty.')
-                        else:
-                            log.info(f'Data parsed, from: {df.iloc[-1]['Date et heure']}, to: {df.iloc[0]['Date et heure']}, rows: {len(df)}')
-                            df['Date et heure'].astype('datetime64[ns]')
-                            df.set_index('Date et heure')
-                            df_reversed = df[::-1].reset_index(drop=True)
-                            df_reversed['Date et heure'].astype('datetime64[ns]')
-                            df_reversed.set_index('Date et heure')
-                            df_reversed = df_reversed.sort_values(by='Date et heure', ascending=True)
-
-                            log.info('Creating kwh_dict...')
-                            for index, row in df_reversed.iterrows():
-                                split = row['Date et heure'].split(' ')
-                                kwh: float = 0.0
-                                if type(row['kWh']) == str:
-                                    kwh = float(str(row['kWh']).replace(',', '.'))
-                                elif type(row['kWh']) == float:
-                                    kwh = float(row['kWh'])
-                                kwh_dict[f'{split[0]} {split[1][0:2]}'] = kwh if not math.isnan(kwh) else 0.0
-                except HydroQcHTTPError as hqhe:
-                    log.error(hqhe)
-                except Exception as ex:
-                    log.error(ex)
-                    log.error(traceback.format_exc())
-
-                try:
-                    log.info(' get_today_hourly_consumption '.center(100, '*'))
                     try:
-                        today_hourly_consumption: ConsumpHourlyTyping = await contract.get_today_hourly_consumption()
-                        await self.fill_kwh_dict(kwh_dict, today_hourly_consumption)
-                    except HydroQcHTTPError as hqhe:
-                        log.error(f'ERROR with contract.get_today_hourly_consumption(), using get_hourly_consumption, {hqhe}')
-                except HydroQcHTTPError as hqhe:
-                    log.error(hqhe)
-                    log.error(traceback.format_exc())
-                except Exception as ex:
-                    log.error(ex)
-                    log.error(traceback.format_exc())
+                        log.info(' get_hourly_energy '.center(100, '*'))
 
-                kwh_dict = dict(sorted({key: value for key, value in kwh_dict.items() if value != 0.0}.items()))
-                log.info(f'Created kwh_dict, size: {len(kwh_dict)} from: {next(iter(kwh_dict))}, to: {next(reversed(kwh_dict.keys()))}') if len(kwh_dict) > 0 else None
+                        log.info(f'1 Date range: from: {(date.today() - timedelta(days=1)).strftime('%Y-%m-%d %H:%M')}, to: {(date.today() - timedelta(days=1 + weeks * 7)).strftime('%Y-%m-%d %H:%M')}')
+                        for days in range(1, weeks * 7):
+                            try:
+                                today_hourly_consumption = await contract.get_hourly_consumption(date.today() - timedelta(days=days))
+                                if today_hourly_consumption.get('success'):
+                                    await self.fill_kwh_dict(kwh_dict, today_hourly_consumption)
+                            except HydroQcHTTPError as hqhe:
+                                log.error(f'days: {days}, {hqhe}')
+                            except Exception as ex:
+                                log.error(ex)
+                                log.error(traceback.format_exc())
+                        log.info(f'Found {len(kwh_dict)} rows')
+
+                        if len(kwh_dict) == 0:
+                            log.warning('Retrying with get_hourly_energy')
+                            start_date = datetime.now() - relativedelta(weeks=0)
+                            end_date = datetime.now() - relativedelta(weeks=weeks)
+                            log.info(f'2 Date range: from: {start_date.strftime('%Y-%m-%d %H:%M')}, to: {end_date.strftime('%Y-%m-%d %H:%M')}')
+                            string: Iterator[list[str | int | float]] | StringIO = await contract.get_hourly_energy(start_date, end_date, raw_output=True)
+                            df: DataFrame | TextFileReader = pd.read_csv(string, sep=";")
+                            if len(df) == 0:
+                                log.error('get_hourly_energy is empty.')
+                            else:
+                                log.info(f'Data parsed, from: {df.iloc[-1]['Date et heure']}, to: {df.iloc[0]['Date et heure']}, rows: {len(df)}')
+                                df['Date et heure'].astype('datetime64[ns]')
+                                df.set_index('Date et heure')
+                                df_reversed = df[::-1].reset_index(drop=True)
+                                df_reversed['Date et heure'].astype('datetime64[ns]')
+                                df_reversed.set_index('Date et heure')
+                                df_reversed = df_reversed.sort_values(by='Date et heure', ascending=True)
+
+                                log.info('Creating kwh_dict...')
+                                for index, row in df_reversed.iterrows():
+                                    split = row['Date et heure'].split(' ')
+                                    kwh: float = 0.0
+                                    if type(row['kWh']) == str:
+                                        kwh = float(str(row['kWh']).replace(',', '.'))
+                                    elif type(row['kWh']) == float:
+                                        kwh = float(row['kWh'])
+                                    kwh_dict[f'{split[0]} {split[1][0:2]}'] = kwh if not math.isnan(kwh) else 0.0
+                    except HydroQcHTTPError as hqhe:
+                        log.error(hqhe)
+                    except Exception as ex:
+                        log.error(ex)
+                        log.error(traceback.format_exc())
+
+                    try:
+                        log.info(' get_today_hourly_consumption '.center(100, '*'))
+                        try:
+                            today_hourly_consumption: ConsumpHourlyTyping = await contract.get_today_hourly_consumption()
+                            await self.fill_kwh_dict(kwh_dict, today_hourly_consumption)
+                        except HydroQcHTTPError as hqhe:
+                            log.error(f'ERROR with contract.get_today_hourly_consumption(), using get_hourly_consumption, {hqhe}')
+                    except HydroQcHTTPError as hqhe:
+                        log.error(hqhe)
+                        log.error(traceback.format_exc())
+                    except Exception as ex:
+                        log.error(ex)
+                        log.error(traceback.format_exc())
+
+                    kwh_dict = dict(sorted({key: value for key, value in kwh_dict.items() if value != 0.0}.items()))
+                    log.info(f'Created kwh_dict, size: {len(kwh_dict)} from: {next(iter(kwh_dict))}, to: {next(reversed(kwh_dict.keys()))}') if len(kwh_dict) > 0 else None
+                else:
+                    log.error(f'Not ready, status: {status}')
             else:
-                log.error(f'Not ready, status: {status}, check_hq_portal_status: {check_hq_portal_status}')
+                log.error(f'Not ready, check_hq_portal_status: {check_hq_portal_status}')
         except Exception as exp:
             log.error(exp)
             log.error(traceback.format_exc())
