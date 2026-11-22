@@ -45,7 +45,10 @@ class HydroQuébec:
         try:
             status: LoginStatus = await self.__login(web_user)
 
-            if status is LoginStatus.SUCCESS:
+            check_hq_portal_status: bool = await web_user.check_hq_portal_status()
+            log.info(f'check_hq_portal_status: {check_hq_portal_status}')
+
+            if status is LoginStatus.SUCCESS and check_hq_portal_status:
                 await web_user.get_info()
                 customer = web_user.customers[0]
                 await customer.get_info()
@@ -117,7 +120,7 @@ class HydroQuébec:
                 kwh_dict = dict(sorted({key: value for key, value in kwh_dict.items() if value != 0.0}.items()))
                 log.info(f'Created kwh_dict, size: {len(kwh_dict)} from: {next(iter(kwh_dict))}, to: {next(reversed(kwh_dict.keys()))}') if len(kwh_dict) > 0 else None
             else:
-                log.error('Not logged in')
+                log.error(f'Not ready, status: {status}, check_hq_portal_status: {check_hq_portal_status}')
         except Exception as exp:
             log.error(exp)
             log.error(traceback.format_exc())
@@ -173,7 +176,6 @@ class HydroQuébec:
 
         log.info(f'state: {state}')
         log.info(f'Login: {status}')
-        log.info(f'check_hq_portal_status: {await web_user.check_hq_portal_status()}')
         return status
 
     def __check_mfa_email(self) -> str | None:
