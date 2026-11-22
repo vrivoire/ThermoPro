@@ -1,17 +1,23 @@
 # https://services-cl.solutions.hydroquebec.com/lsw/portail/fr/group/clientele/portrait-de-consommation/resourceObtenirDonneesConsommationHoraires?date=2025-09-24&_=1758820938310
 import asyncio
+import email
+import imaplib
+import json
 import math
 import traceback
 from collections.abc import Iterator
 from datetime import datetime, timedelta, date
+from email.message import Message
 from io import StringIO
 from queue import Queue
+from time import sleep
 from typing import Any
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
+from hydroqc.consts import LoginStatus
 from hydroqc.contract.common import Contract
-from hydroqc.error import HydroQcHTTPError
+from hydroqc.error import HydroQcHTTPError, HydroQcMFAInvalidCodeError
 from hydroqc.types import ConsumpHourlyTyping
 from hydroqc.types.consump import ConsumpHourlyResultTyping, ConsumpHourlyResultsTyping
 from hydroqc.webuser import WebUser
@@ -19,7 +25,7 @@ from pandas import DataFrame
 from pandas.io.parsers import TextFileReader
 
 import thermopro
-from constants import HYDRO_EMAIL, HYDRO_PASSWORD
+from constants import HYDRO_EMAIL, HYDRO_PASSWORD, GMAIL_SESSION_PATH, GOOGLE_EMAIL, GOOGLE_APP_PWD
 from thermopro import log
 
 
@@ -33,16 +39,13 @@ class HydroQuébec:
                              weeks=4
                              ) -> None:
         log.info(' Start get_kwh_list '.center(100, '*'))
-        web_user: WebUser | None = None
+        # https://pypi.org/project/Hydro-Quebec-API-Wrapper/
+        web_user: WebUser = WebUser(HYDRO_EMAIL, HYDRO_PASSWORD, verify_ssl=False, log_level="ERROR", http_log_level="ERROR")
         kwh_dict: dict[str, float | None] = {}
         try:
-            web_user = WebUser(HYDRO_EMAIL, HYDRO_PASSWORD, verify_ssl=False, log_level="ERROR", http_log_level="ERROR")
-            await web_user.login()
-            is_logged: bool = await web_user.login()
-            log.info(f'Login: {is_logged}')
-            log.info(f'check_hq_portal_status: {await web_user.check_hq_portal_status()}')
+            status: LoginStatus = await self.__login(web_user)
 
-            if is_logged:
+            if status is LoginStatus.SUCCESS:
                 await web_user.get_info()
                 customer = web_user.customers[0]
                 await customer.get_info()
@@ -101,7 +104,6 @@ class HydroQuébec:
                     log.info(' get_today_hourly_consumption '.center(100, '*'))
                     try:
                         today_hourly_consumption: ConsumpHourlyTyping = await contract.get_today_hourly_consumption()
-                        # today_hourly_consumption = await contract.get_today_daily_consumption()
                         await self.fill_kwh_dict(kwh_dict, today_hourly_consumption)
                     except HydroQcHTTPError as hqhe:
                         log.error(f'ERROR with contract.get_today_hourly_consumption(), using get_hourly_consumption, {hqhe}')
@@ -125,6 +127,96 @@ class HydroQuébec:
                 log.info('Session closed')
             result_queue.put({'kwh_dict': kwh_dict})
         log.info(' End get_kwh_list '.center(100, '*'))
+
+    async def __login(self, web_user: WebUser) -> LoginStatus:
+        log.info('Trying to login...')
+        status: str = LoginStatus.FAILED
+        try:
+            with open(GMAIL_SESSION_PATH, "r", encoding="utf-8") as file:
+                session = json.load(file)
+                web_user.import_session_state(session)
+                status = await web_user.try_silent_login()
+                log.info(f'Logged in with session: {status}')
+        except FileNotFoundError:
+            log.info(f"The file '{GMAIL_SESSION_PATH}' does not exist.")
+        except json.JSONDecodeError as e:
+            log.error(f"The file '{GMAIL_SESSION_PATH}' is a invalid JSON format at line {e.lineno}, column {e.colno}: {e.msg}")
+
+        log.info(f'Login status: {status}')
+        if status is not LoginStatus.SUCCESS:
+            try:
+                log.warning('Logging in with MFA....')
+                status = await web_user.login()
+                while status is LoginStatus.MFA_REQUIRED:
+                    code: str | None = self.__check_mfa_email()
+                    # code = input("Verification code (empty = send a new one): ")
+                    if code is not None and not code.strip():
+                        await web_user.request_mfa_code()
+                        continue
+                    if code is not None:
+                        try:
+                            status = await web_user.submit_mfa_code(code)
+                        except HydroQcMFAInvalidCodeError:
+                            log.error("Code refused, try again.")
+            except BaseException as exp:
+                log.error(exp)
+                log.error(traceback.format_exc())
+                thermopro.send_email('HydroQuébecPower ERROR', f'{exp}\n{traceback.format_exc()}')
+                raise exp
+
+        if status is not LoginStatus.SUCCESS:
+            raise RuntimeError("Login failed")
+
+        state = web_user.export_session_state()
+        with open(GMAIL_SESSION_PATH, 'w') as f:
+            json.dump(state, f)
+
+        log.info(f'state: {state}')
+        log.info(f'Login: {status}')
+        log.info(f'check_hq_portal_status: {await web_user.check_hq_portal_status()}')
+        return status
+
+    def __check_mfa_email(self) -> str | None:
+
+        sleep(10)
+
+        imap = imaplib.IMAP4_SSL("imap.gmail.com")
+        try:
+            # Connect to Gmail's IMAP server
+            imap.login(GOOGLE_EMAIL, GOOGLE_APP_PWD)
+            imap.select("INBOX")
+
+            # Search for all unread emails
+            status, messages = imap.search(None, "UNSEEN")
+            email_ids = messages[0].split()
+
+            for email_id in email_ids:
+                # Fetch the email by ID (Use '(BODY.PEEK[])' instead of '(RFC822)' to keep it unread)
+                _, msg_data = imap.fetch(email_id, "(BODY.PEEK[])")
+                for response_part in msg_data:
+                    if isinstance(response_part, tuple):
+                        msg: Message[str, str] = email.message_from_bytes(response_part[1])
+                        sender: str | None = msg.get("From")
+                        if sender is not None and 'hydro-quebec@communications.hydro.qc.ca' in sender:
+                            if msg.is_multipart():
+                                for part in msg.walk():
+                                    if part.get_content_type() == "text/plain":
+                                        parts = part.get_payload(decode=True).decode(errors="ignore").split("*")
+                                        if len(parts) > 2:
+                                            result = parts[1].replace("Code de vérification : ", "")
+                                            log.info(f"Code de vérification : {result}")
+                                            imap.store(email_id, "+FLAGS", "\\Seen")
+                                            imap.store(email_id, "+FLAGS", "\\Deleted")
+                                            imap.expunge()
+                                            return result
+
+        except BaseException as exp:
+            log.error(exp)
+            log.error(traceback.format_exc())
+            raise exp
+        finally:
+            imap.close()
+            imap.logout()
 
     async def fill_kwh_dict(self, kwh_dict: dict[str, float | int | None], today_hourly_consumption: ConsumpHourlyTyping | dict[str, bool | dict[Any, Any]]):
         if today_hourly_consumption.get('success'):
@@ -158,4 +250,5 @@ if __name__ == "__main__":
 
     while not result_queue.empty():
         kwh_list: dict[str, dict[str, float | None]] = result_queue.get()
-        print(thermopro.ppretty(kwh_list))
+        # print(thermopro.ppretty(kwh_list))
+        print(f'kwh_list: {len(kwh_list.get('kwh_dict'))}')

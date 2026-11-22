@@ -48,13 +48,13 @@ class EnergyGraph:
         self.clean_data()
 
     def clean_data(self):
-        df['ext_humidity'] = df['ext_humidity'].apply(lambda x: None if x == 0 else x)
-        df['int_humidity'] = df['int_humidity'].apply(lambda x: None if x == 0 else x)
-        df['int_temp'] = df['int_temp'].apply(lambda x: None if x == 0.0 else x)
-        df['open_feels_like'] = df['open_feels_like'].apply(lambda x: None if x == 0.0 else x)
-        df['open_humidity'] = df['open_humidity'].apply(lambda x: None if x == 0 else x)
-        df['ext_humidex'] = df['ext_humidex'].apply(lambda x: None if x == 0 else x)
-        df['open_pressure'] = df['open_pressure'].apply(lambda x: None if x < 30 else x)
+        df['ext_humidity'] = df['ext_humidity'].apply(lambda x: None if pd.isna(x) or x == 0 else x)
+        df['int_humidity'] = df['int_humidity'].apply(lambda x: None if pd.isna(x) or x == 0 else x)
+        df['int_temp'] = df['int_temp'].apply(lambda x: None if pd.isna(x) or x == 0.0 else x)
+        df['open_feels_like'] = df['open_feels_like'].apply(lambda x: None if pd.isna(x) or x == 0.0 else x)
+        df['open_humidity'] = df['open_humidity'].apply(lambda x: None if pd.isna(x) or x == 0 else x)
+        df['ext_humidex'] = df['ext_humidex'].apply(lambda x: None if pd.isna(x) or x == 0 else x)
+        df['open_pressure'] = df['open_pressure'].apply(lambda x: None if pd.isna(x) or x < 30 else x)
 
     def create_graph_energy(self, show_window: bool) -> None:
         try:

@@ -175,8 +175,7 @@ class ThermoProScan:
                 keys: list[str] = sorted(kwh_dict.keys())
                 start_date = datetime.strptime(keys[0][0:10], "%Y-%m-%d")
                 end_date = datetime.now()
-                log.info(
-                    f'Setting hydro KWH, kwh_list size: {len(keys)}, first: {keys[0][0:10]}, last: {keys[len(keys) - 1][0:10]}')
+                log.info(f'Setting hydro KWH, kwh_list size: {len(keys)}, first: {keys[0][0:10]}, last: {keys[len(keys) - 1][0:10]}')
                 filtered_df = df.loc[(df['time'] >= start_date) & (df['time'] <= end_date)]
                 filtered_df['time'].astype('datetime64[ns]')
                 filtered_df.set_index('time')
@@ -278,7 +277,7 @@ if __name__ == '__main__':
         thermopro.set_up(__file__)
 
         # thermopro.copy_to_cloud()
-        # # thermopro.send_email('test', 'toto')
+        # thermopro.send_email('test', 'toto')
         # exit()
 
         is_local = thermopro.show_header()
